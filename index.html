@@ -62,21 +62,34 @@
 </head>
 <body class="text-slate-100 min-h-screen pb-24 font-sans selection:bg-amber-500 selection:text-slate-950">
 
-    <!-- ENCABEZADO PERMANENTE CON IMAGEN DE MARCA ÚNICA (SIN TEXTOS EXTRA) -->
-    <header class="sticky top-0 z-40 bg-slate-950/95 text-white border-b-2 border-amber-500/80 px-4 py-2 shadow-2xl backdrop-blur-md">
+    <!-- ENCABEZADO PERMANENTE CON ISOTIPO Y TEXTOS TIPOGRÁFICOS DE ALTA RESOLUCIÓN -->
+    <header class="sticky top-0 z-40 bg-slate-950/95 text-white border-b-2 border-amber-500/80 px-3 py-2.5 shadow-2xl backdrop-blur-md">
         <div class="max-w-md mx-auto flex items-center justify-between gap-2">
-            <!-- MARCA ÚNICA OFICIAL DEL PROFESOR -->
-            <div class="flex items-center">
-                <div class="h-14 rounded-xl overflow-hidden shadow-md border border-amber-400/60 bg-slate-900 flex items-center justify-center">
-                    <img src="./imagenes/franco-fit-MARCA.jpg" 
-                         alt="FC Training - Prof. Franco Comeglio" 
-                         class="h-full w-auto object-cover rounded-lg"
-                         onerror="this.onerror=null; this.parentElement.innerHTML='<div class=\'text-xs font-black text-amber-400 px-3\'>FC TRAINING</div>';">
+            
+            <!-- MARCA PERSONAL (ISOTIPO + TEXTOS NÍTIDOS) -->
+            <div class="flex items-center gap-2.5 min-w-0">
+                <!-- Isotipo FC -->
+                <div class="h-12 w-12 shrink-0 rounded-xl overflow-hidden shadow-md border border-amber-400/80 bg-slate-900 flex items-center justify-center">
+                    <img src="./imagenes/FC-MARCA.png" 
+                         alt="FC" 
+                         class="h-full w-full object-cover"
+                         onerror="this.onerror=null; this.parentElement.innerHTML='<div class=\'text-xs font-black text-amber-400\'>FC</div>';">
+                </div>
+
+                <!-- Textos con colores originales exactos -->
+                <div class="flex flex-col min-w-0 leading-tight">
+                    <span class="text-sm font-black tracking-wider text-sky-200 uppercase truncate drop-shadow">FC TRAINING</span>
+                    <span class="text-[11px] font-semibold text-slate-200 truncate">Prof. Franco Comeglio</span>
+                    <div class="flex items-center gap-1 text-[10px] text-sky-300/90 font-medium truncate">
+                        <i data-feather="phone" class="w-2.5 h-2.5 text-emerald-400 shrink-0"></i>
+                        <span>+54 9 261 693-9818</span>
+                    </div>
+                    <span class="text-[9px] font-bold text-amber-400/90 tracking-widest uppercase truncate">MENDOZA, ARGENTINA</span>
                 </div>
             </div>
 
             <!-- BOTÓN DE CAMBIO DE MODO -->
-            <button onclick="toggleViewMode()" id="role-toggle-btn" class="text-xs bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 text-slate-950 px-3.5 py-2.5 rounded-xl border border-amber-300 transition font-black shadow-lg active:scale-95 shrink-0">
+            <button onclick="toggleViewMode()" id="role-toggle-btn" class="text-[11px] bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 text-slate-950 px-2.5 py-2 rounded-xl border border-amber-300 transition font-black shadow-lg active:scale-95 shrink-0">
                 Modo: Profesor
             </button>
         </div>
@@ -346,7 +359,7 @@
         let selectedDay = 1;
         let currentStudentId = "st_2";
 
-        // BASE DE DATOS LOCAL PERSISTENTE EN LOCALSTORAGE
+        // BASE DE DATOS LOCAL PERSISTENTE
         let studentsDatabase = JSON.parse(localStorage.getItem('fit_students_db')) || [
             { 
                 id: "st_2", 
@@ -799,7 +812,7 @@
             setTimeout(() => { toast.classList.add('hidden'); }, 3000);
         }
 
-        // GENERADOR COMPLETO DE PDF MULTISEMANA CON MARCA DEDICADA
+        // GENERADOR DE PDF NATIVO CON ENCABEZADO VECTORIZADO Y NÍTIDO
         function generateFullPrintReport() {
             const st = studentsDatabase.find(item => item.id === currentStudentId);
             if (!st) return '';
@@ -842,7 +855,7 @@
                 if (weekHTML) {
                     fullRoutineHTML += `
                         <div style="margin-top: 16px;" class="pdf-avoid-break">
-                            <div style="background: #0b192c; color: #ffffff; padding: 6px 10px; font-weight: bold; font-size: 12px; border-radius: 4px; letter-spacing: 0.5px; border-left: 4px solid #f59e0b;">
+                            <div style="background: #0b192c; color: #ffffff; padding: 6px 10px; font-weight: bold; font-size: 12px; border-radius: 4px; border-left: 4px solid #f59e0b;">
                                 SEMANA ${w}
                             </div>
                             ${weekHTML}
@@ -872,9 +885,16 @@
 
             return `
                 <div style="font-family: Arial, sans-serif; color: #0f172a;">
-                    <!-- ENCABEZADO CON MARCA OFICIAL LIMPULSA -->
-                    <div style="border-bottom: 2px solid #f59e0b; padding-bottom: 8px; margin-bottom: 12px; display: flex; justify-content: center; align-items: center;">
-                        <img src="./imagenes/franco-fit-MARCA.jpg" style="height: 60px; border-radius: 8px; border: 1px solid #d97706;">
+                    <!-- ENCABEZADO DE IMPRESIÓN OFICIAL -->
+                    <div style="border-bottom: 2px solid #f59e0b; padding-bottom: 8px; margin-bottom: 12px; display: flex; justify-content: space-between; align-items: center;">
+                        <div style="display: flex; align-items: center; gap: 10px;">
+                            <img src="./imagenes/FC-MARCA.png" style="height: 50px; width: 50px; border-radius: 6px; border: 1px solid #d97706;">
+                            <div>
+                                <div style="font-size: 14px; font-weight: 900; color: #0f172a; letter-spacing: 0.5px;">FC TRAINING</div>
+                                <div style="font-size: 12px; font-weight: bold; color: #334155;">Prof. Franco Comeglio</div>
+                                <div style="font-size: 10px; color: #0284c7;">+54 9 261 693-9818 | MENDOZA, ARGENTINA</div>
+                            </div>
+                        </div>
                     </div>
 
                     <!-- FICHA ALUMNO -->
