@@ -1,0 +1,899 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>fctraining.ar - Prof. Franco Comeglio</title>
+    
+    <!-- Base URL para la carpeta de producción franco-fit -->
+    <!-- Ajustar si se aloja en subcarpeta: <base href="/franco-fit/"> -->
+
+    <!-- Tailwind CSS via CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Feather Icons -->
+    <script src="https://unpkg.com/feather-icons"></script>
+    
+    <style>
+        body { -webkit-tap-highlight-color: transparent; }
+
+        /* ESTILOS DE IMPRESIÓN Y GENERACIÓN PDF NATIVA */
+        @media print {
+            header, 
+            #role-banner, 
+            #student-management-card, 
+            #prof-controls, 
+            #interactive-routine-section,
+            #interactive-nutrition-section,
+            #prof-actions, 
+            #role-toggle-btn,
+            .no-print {
+                display: none !important;
+            }
+
+            #full-pdf-print-area {
+                display: block !important;
+            }
+
+            body {
+                background-color: #ffffff !important;
+                color: #0f172a !important;
+                padding: 0 !important;
+                margin: 0 !important;
+            }
+
+            .pdf-avoid-break {
+                page-break-inside: avoid;
+                break-inside: avoid;
+            }
+        }
+    </style>
+</head>
+<body class="bg-slate-950 text-slate-100 min-h-screen pb-24 font-sans">
+
+    <!-- ENCABEZADO PERMANENTE (MARCA PERSONAL FCTRAINING.AR) -->
+    <header class="sticky top-0 z-40 bg-slate-900/95 text-white border-b-2 border-sky-500 px-4 py-3 shadow-2xl backdrop-blur-md">
+        <div class="max-w-md mx-auto flex items-center justify-between">
+            <div class="flex items-center gap-3">
+                <!-- LOGO VECTORIAL SVG DE FCTRAINING.AR -->
+                <div class="w-11 h-11 rounded-2xl bg-gradient-to-tr from-sky-600 to-blue-900 flex items-center justify-center shadow-lg border border-sky-400/50 p-1.5 shrink-0">
+                    <svg viewBox="0 0 100 100" class="w-full h-full text-white fill-current">
+                        <path d="M20 20 H80 V32 H35 V48 H70 V60 H35 V80 H20 Z" fill="currentColor" />
+                        <path d="M65 48 L85 20 H100 L75 55 L95 80 H80 L65 58 Z" fill="#38bdf8" />
+                    </svg>
+                </div>
+                <div>
+                    <h1 class="text-base font-black tracking-tight leading-none text-white flex items-center gap-1">
+                        fc<span class="text-sky-400">training</span><span class="text-xs text-sky-500 font-extrabold">.ar</span>
+                    </h1>
+                    <p class="text-[11px] text-slate-300 font-medium mt-0.5" id="prof-name">Prof. Franco Comeglio</p>
+                    <p class="text-[10px] text-sky-400 font-mono" id="prof-contact">+54 9 261 693-9818</p>
+                </div>
+            </div>
+            <button onclick="toggleViewMode()" id="role-toggle-btn" class="text-xs bg-sky-600 hover:bg-sky-500 px-3 py-2 rounded-xl border border-sky-400 transition text-white font-black shadow-md active:scale-95">
+                Modo: Profesor
+            </button>
+        </div>
+    </header>
+
+    <main class="max-w-md mx-auto p-4 space-y-5">
+
+        <!-- BANNER DE ROL / ESTADO -->
+        <div id="role-banner" class="bg-slate-900 border-l-4 border-sky-400 rounded-xl p-3 flex items-center justify-between text-xs text-slate-200 shadow-md">
+            <span id="role-banner-text">Modo Profesor: Gestión de alumnos y diseño de rutinas</span>
+            <span class="w-2.5 h-2.5 rounded-full bg-sky-400 animate-pulse"></span>
+        </div>
+
+        <!-- SELECCIÓN Y GESTIÓN DE ALUMNOS + PLANIFICACIÓN (MODO PROFESOR) -->
+        <section id="student-management-card" class="bg-slate-900 rounded-2xl p-4 border border-slate-800 shadow-xl space-y-3">
+            <h3 class="text-xs font-bold text-sky-400 uppercase tracking-wider flex items-center justify-between">
+                <span class="flex items-center gap-1.5"><i data-feather="users" class="w-4 h-4"></i> Selección y Planificación</span>
+            </h3>
+
+            <div>
+                <label class="block text-[11px] font-bold text-slate-300 mb-1">Seleccionar Alumno de Lista</label>
+                <select id="student-select-list" onchange="onStudentSelectChange()" class="w-full bg-slate-950 border border-sky-500/50 rounded-xl p-2.5 text-xs text-white font-bold focus:ring-2 focus:ring-sky-400">
+                </select>
+            </div>
+
+            <div class="grid grid-cols-2 gap-2 pt-1">
+                <div>
+                    <label class="block text-[10px] font-bold text-slate-400 mb-1">Apellido(s)</label>
+                    <input type="text" id="student-lastname-input" placeholder="Ej. Pérez" class="w-full bg-slate-950 border border-slate-800 rounded-xl p-2 text-xs text-white font-semibold">
+                </div>
+                <div>
+                    <label class="block text-[10px] font-bold text-slate-400 mb-1">Nombre(s)</label>
+                    <input type="text" id="student-firstname-input" placeholder="Ej. Juan" class="w-full bg-slate-950 border border-slate-800 rounded-xl p-2 text-xs text-white font-semibold">
+                </div>
+            </div>
+
+            <!-- CONFIGURACIÓN DE PLANIFICACIÓN Y CICLOS -->
+            <div class="bg-slate-950 p-3 rounded-xl border border-slate-800 space-y-2">
+                <span class="text-[10px] font-bold text-sky-400 uppercase tracking-wider block">Configuración de Ciclo</span>
+                <div class="grid grid-cols-2 gap-2">
+                    <div>
+                        <label class="block text-[10px] font-bold text-slate-400 mb-1">Tipo de Ciclo</label>
+                        <select id="student-cycle-type" class="w-full bg-slate-900 border border-slate-700 rounded-xl p-2 text-xs text-white font-semibold">
+                            <option value="Microciclo">Microciclo</option>
+                            <option value="Mesociclo" selected>Mesociclo</option>
+                            <option value="Macrociclo">Macrociclo</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-[10px] font-bold text-slate-400 mb-1">Duración (Semanas)</label>
+                        <input type="number" id="student-total-weeks" min="1" max="52" value="8" class="w-full bg-slate-900 border border-slate-700 rounded-xl p-2 text-xs text-white font-semibold text-center">
+                    </div>
+                </div>
+            </div>
+
+            <div class="flex gap-2 pt-1">
+                <button onclick="saveCurrentStudent()" class="w-full bg-sky-600 hover:bg-sky-500 text-white text-xs font-bold py-2.5 rounded-xl border border-sky-400 shadow transition flex items-center justify-center gap-1.5">
+                    <i data-feather="save" class="w-3.5 h-3.5"></i> Guardar Alumno / Plan
+                </button>
+                <button onclick="prepareNewStudent()" class="w-1/2 bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-bold py-2.5 rounded-xl border border-slate-700 transition flex items-center justify-center gap-1">
+                    <i data-feather="user-plus" class="w-3.5 h-3.5"></i> Nuevo
+                </button>
+            </div>
+        </section>
+
+        <!-- FICHA ALUMNO ACTIVO -->
+        <section class="bg-gradient-to-r from-blue-900 to-slate-900 text-white rounded-2xl p-4 border border-blue-700/80 shadow-2xl space-y-3">
+            <div class="flex justify-between items-start border-b border-blue-700/60 pb-3">
+                <div>
+                    <span class="text-[10px] font-bold text-sky-400 uppercase tracking-widest block">Alumno Activo</span>
+                    <h2 class="text-xl font-black text-white" id="student-display-fullname">Pérez, Juan</h2>
+                </div>
+                <div class="text-right">
+                    <span class="text-[10px] text-sky-400 uppercase tracking-wider block">Planificación</span>
+                    <span class="text-xs font-extrabold text-sky-200 bg-slate-950 px-2.5 py-1 rounded-lg border border-sky-500/40 inline-block" id="cycle-display">Mesociclo (8 Semanas)</span>
+                </div>
+            </div>
+        </section>
+
+        <!-- SELECCIÓN SEMANA Y DÍA EN PANTALLA -->
+        <section id="prof-controls" class="bg-slate-900 rounded-2xl p-4 border border-slate-800 shadow-xl space-y-4">
+            <div class="grid grid-cols-2 gap-2">
+                <div>
+                    <label class="block text-xs font-bold text-slate-300 mb-1">Semana de Vista</label>
+                    <select id="week-select" onchange="onWeekSelectChange()" class="w-full bg-slate-950 border border-sky-500/50 rounded-xl p-2.5 text-xs text-white font-bold">
+                    </select>
+                </div>
+                <div>
+                    <label class="block text-xs font-bold text-slate-300 mb-1">Día de Vista</label>
+                    <select id="day-select" onchange="onDaySelectChange()" class="w-full bg-slate-950 border border-sky-500/50 rounded-xl p-2.5 text-xs text-white font-bold">
+                        <option value="1">Día 1</option>
+                        <option value="2">Día 2</option>
+                        <option value="3">Día 3</option>
+                        <option value="4">Día 4</option>
+                        <option value="5">Día 5</option>
+                        <option value="6">Día 6</option>
+                    </select>
+                </div>
+            </div>
+        </section>
+
+        <!-- LISTADO DE EJERCICIOS EN PANTALLA -->
+        <section id="interactive-routine-section" class="space-y-3">
+            <div class="flex items-center justify-between">
+                <h3 class="text-sm font-bold text-slate-200 flex items-center gap-2">
+                    <i data-feather="activity" class="w-4 h-4 text-sky-400"></i> Ejercicios: <span id="current-view-title" class="text-sky-300 font-extrabold">Semana 1 / Día 1</span>
+                </h3>
+                <button onclick="openAddModal()" id="add-ex-btn" class="text-xs bg-sky-600 hover:bg-sky-500 text-white font-bold px-3 py-1.5 rounded-xl transition shadow border border-sky-400">
+                    + Cargar Ejercicio
+                </button>
+            </div>
+
+            <div id="exercise-list" class="space-y-4"></div>
+        </section>
+
+        <!-- MÓDULO NUTRICIONAL EN PANTALLA -->
+        <section id="interactive-nutrition-section" class="bg-slate-900 border border-slate-800 p-4 rounded-2xl space-y-3 shadow-xl">
+            <div class="flex items-center justify-between border-b border-slate-800 pb-2">
+                <h3 class="text-xs font-bold text-emerald-400 uppercase tracking-wider flex items-center gap-1.5">
+                    <i data-feather="coffee" class="w-4 h-4"></i> Plan Nutricional & Recomendaciones
+                </h3>
+                <button onclick="openNutritionModal()" id="edit-nut-btn" class="text-[11px] bg-slate-800 text-emerald-300 hover:bg-slate-700 px-2.5 py-1 rounded-lg border border-slate-700 font-bold transition">
+                    Editar Plan
+                </button>
+            </div>
+            <div id="nutrition-display" class="text-xs text-slate-300 space-y-2">
+                <p class="italic text-slate-500">Sin recomendaciones registradas para este alumno.</p>
+            </div>
+        </section>
+
+        <!-- BOTÓN DE GUARDAR / IMPRIMIR PDF COMPLETO (MODO ALUMNO) -->
+        <section id="prof-actions" class="bg-slate-900 border border-slate-800 p-4 rounded-2xl space-y-3 shadow-xl hidden">
+            <button onclick="triggerPrintPDF()" class="w-full bg-gradient-to-r from-blue-900 to-sky-800 hover:from-blue-800 hover:to-sky-700 text-white font-extrabold p-3.5 rounded-xl border border-sky-400/60 shadow-xl flex items-center justify-center gap-2 text-xs">
+                <i data-feather="printer" class="w-4 h-4 text-sky-300"></i> Guardar / Imprimir PDF Completo (Todas las Semanas)
+            </button>
+        </section>
+
+    </main>
+
+    <!-- ÁREA DE IMPRESIÓN COMPLETA (PDF) -->
+    <div id="full-pdf-print-area" class="hidden p-4 max-w-3xl mx-auto text-slate-900 bg-white">
+        <!-- Generado dinámicamente por JS -->
+    </div>
+
+    <!-- MODAL CARGAR / EDITAR EJERCICIO -->
+    <div id="exercise-modal" class="fixed inset-0 bg-slate-950/85 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
+        <div class="bg-slate-900 border border-slate-700 text-slate-100 rounded-2xl w-full max-w-md p-5 space-y-4 shadow-2xl max-h-[90vh] overflow-y-auto">
+            <div class="flex justify-between items-center border-b border-slate-800 pb-3">
+                <h3 class="text-sm font-bold text-white flex items-center gap-2" id="modal-title">
+                    <i data-feather="plus-circle" class="w-4 h-4 text-sky-400"></i> Cargar Ejercicio
+                </h3>
+                <button onclick="closeModal()" class="text-slate-400 hover:text-white"><i data-feather="x" class="w-5 h-5"></i></button>
+            </div>
+
+            <form id="ex-form" onsubmit="saveExercise(event)" class="space-y-4 text-xs">
+                <input type="hidden" id="modal-ex-id" value="">
+                <div>
+                    <label class="block font-bold text-slate-300 mb-1">Nombre del Ejercicio *</label>
+                    <input type="text" id="modal-ex-name" required placeholder="Ej. Press Banca Plano" class="w-full bg-slate-950 border border-slate-700 rounded-xl p-2.5 text-white">
+                </div>
+
+                <div class="bg-slate-950 p-3 rounded-xl border border-slate-800 space-y-2">
+                    <label class="block font-bold text-sky-300 text-[11px]">Demostración Visual (GIF / Vídeo / Imagen)</label>
+                    <div>
+                        <label class="block text-[10px] text-slate-400 mb-1">A) Enlace / URL Web</label>
+                        <input type="url" id="modal-ex-media-url" placeholder="https://media.giphy.com/..." class="w-full bg-slate-900 border border-slate-700 rounded-xl p-2 text-white text-[11px]">
+                    </div>
+                    <div class="text-center text-[10px] font-bold text-slate-500 uppercase">- O -</div>
+                    <div>
+                        <label class="block text-[10px] text-slate-400 mb-1">B) Archivo Local</label>
+                        <input type="file" id="modal-ex-file" accept="image/*" class="w-full bg-slate-900 text-slate-300 text-[11px] rounded-xl border border-slate-700 file:mr-2 file:py-1.5 file:px-3 file:rounded-lg file:border-0 file:text-[10px] file:font-bold file:bg-sky-600 file:text-white hover:file:bg-sky-500">
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-3 gap-2">
+                    <div class="col-span-1">
+                        <label class="block font-bold text-sky-300 mb-1">Tipo</label>
+                        <select id="modal-ex-type" class="w-full bg-slate-950 border border-sky-500/50 rounded-xl p-2.5 text-white font-bold">
+                            <option value="Serie Simple">Serie Simple</option>
+                            <option value="Biserie">Biserie</option>
+                            <option value="Circuito">Circuito</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block font-bold text-slate-300 mb-1">Series</label>
+                        <input type="number" id="modal-ex-sets" min="1" max="20" value="4" required class="w-full bg-slate-950 border border-slate-700 rounded-xl p-2.5 text-white text-center font-bold">
+                    </div>
+                    <div>
+                        <label class="block font-bold text-slate-300 mb-1">Repeticiones</label>
+                        <input type="text" id="modal-ex-reps" required placeholder="10-12" value="10-12" class="w-full bg-slate-950 border border-slate-700 rounded-xl p-2.5 text-white text-center font-bold">
+                    </div>
+                </div>
+
+                <div class="bg-slate-950 p-3 rounded-xl border border-slate-800 space-y-3">
+                    <span class="font-extrabold text-sky-300 block uppercase text-[10px] tracking-wider">Cronometría de Tiempos</span>
+                    
+                    <div>
+                        <label class="block text-[10px] text-slate-300 font-bold mb-1">1. Tiempo de Ejecución</label>
+                        <div class="grid grid-cols-2 gap-2">
+                            <select id="modal-ex-exec-min" class="bg-slate-900 border border-slate-700 rounded-lg p-2 text-white text-center font-bold"></select>
+                            <select id="modal-ex-exec-sec" class="bg-slate-900 border border-slate-700 rounded-lg p-2 text-white text-center font-bold"></select>
+                        </div>
+                    </div>
+
+                    <div>
+                        <label class="block text-[10px] text-slate-300 font-bold mb-1">2. Descanso entre Repeticiones</label>
+                        <div class="grid grid-cols-2 gap-2">
+                            <select id="modal-ex-rep-rest-min" class="bg-slate-900 border border-slate-700 rounded-lg p-2 text-white text-center font-bold"></select>
+                            <select id="modal-ex-rep-rest-sec" class="bg-slate-900 border border-slate-700 rounded-lg p-2 text-white text-center font-bold"></select>
+                        </div>
+                    </div>
+
+                    <div>
+                        <label class="block text-[10px] text-slate-300 font-bold mb-1">3. Descanso entre Series</label>
+                        <div class="grid grid-cols-2 gap-2">
+                            <select id="modal-ex-set-rest-min" class="bg-slate-900 border border-slate-700 rounded-lg p-2 text-white text-center font-bold"></select>
+                            <select id="modal-ex-set-rest-sec" class="bg-slate-900 border border-slate-700 rounded-lg p-2 text-white text-center font-bold"></select>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="flex gap-2 pt-2">
+                    <button type="button" onclick="closeModal()" class="w-1/2 bg-slate-800 hover:bg-slate-700 text-slate-300 py-2.5 rounded-xl font-bold">Cancelar</button>
+                    <button type="submit" class="w-1/2 bg-sky-600 hover:bg-sky-500 text-white py-2.5 rounded-xl font-bold shadow border border-sky-400">Guardar Ejercicio</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- MODAL NUTRICIONAL -->
+    <div id="nutrition-modal" class="fixed inset-0 bg-slate-950/85 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
+        <div class="bg-slate-900 border border-slate-700 text-slate-100 rounded-2xl w-full max-w-md p-5 space-y-4 shadow-2xl">
+            <div class="flex justify-between items-center border-b border-slate-800 pb-3">
+                <h3 class="text-sm font-bold text-white flex items-center gap-2">
+                    <i data-feather="coffee" class="w-4 h-4 text-emerald-400"></i> Plan Nutricional del Alumno
+                </h3>
+                <button onclick="closeNutritionModal()" class="text-slate-400 hover:text-white"><i data-feather="x" class="w-5 h-5"></i></button>
+            </div>
+
+            <form onsubmit="saveNutritionPlan(event)" class="space-y-3 text-xs">
+                <div>
+                    <label class="block font-bold text-slate-300 mb-1">Indicaciones / Pautas Dietéticas</label>
+                    <textarea id="nut-diet-input" rows="3" placeholder="Ej. Aumentar consumo de proteínas (2g/kg). Mantener superávit calórico." class="w-full bg-slate-950 border border-slate-700 rounded-xl p-2.5 text-white"></textarea>
+                </div>
+                <div>
+                    <label class="block font-bold text-slate-300 mb-1">Hidratación y Suplementación</label>
+                    <textarea id="nut-supplements-input" rows="2" placeholder="Ej. 3 litros de agua/día. Creatina 5g diarios post entreno." class="w-full bg-slate-950 border border-slate-700 rounded-xl p-2.5 text-white"></textarea>
+                </div>
+
+                <div class="flex gap-2 pt-2">
+                    <button type="button" onclick="closeNutritionModal()" class="w-1/2 bg-slate-800 hover:bg-slate-700 text-slate-300 py-2.5 rounded-xl font-bold">Cancelar</button>
+                    <button type="submit" class="w-1/2 bg-emerald-600 hover:bg-emerald-500 text-white py-2.5 rounded-xl font-bold shadow border border-emerald-400">Guardar Plan</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- TOAST DE NOTIFICACIÓN -->
+    <div id="toast-modal" class="fixed bottom-5 left-1/2 -translate-x-1/2 z-50 hidden bg-slate-900 text-white text-xs font-bold px-4 py-3 rounded-xl shadow-2xl transition-all duration-300 border border-sky-400 flex items-center gap-2 no-print">
+        <i data-feather="check-circle" class="w-4 h-4 text-sky-400"></i>
+        <span id="toast-message">Notificación</span>
+    </div>
+
+    <script>
+        let isProfMode = true; 
+        let selectedWeek = 1;
+        let selectedDay = 1;
+        let currentStudentId = "st_2";
+
+        // BASE DE DATOS LOCAL PERSISTENTE EN LOCALSTORAGE
+        let studentsDatabase = JSON.parse(localStorage.getItem('fit_students_db')) || [
+            { 
+                id: "st_2", 
+                lastname: "Pérez", 
+                firstname: "Juan", 
+                cycleType: "Mesociclo",
+                totalWeeks: 8, 
+                nutrition: {
+                    diet: "Dieta hiperproteica. Priorizar carbohidratos complejos antes de entrenar.",
+                    supplements: "Creatina monohidratada (5g/día) + 3.5L de agua."
+                },
+                routine: {
+                    1: {
+                        1: [
+                            {
+                                id: 101,
+                                name: "Press de Banca Plano con Barra",
+                                type: "Serie Simple",
+                                sets: 4,
+                                reps: "10-12",
+                                execTime: "00m 45s",
+                                repRestTime: "00m 00s",
+                                setRestTime: "01m 30s",
+                                mediaUrl: "https://images.unsplash.com/photo-1517838277536-f5f99be501cd?w=500&auto=format&fit=crop&q=60"
+                            }
+                        ]
+                    }
+                } 
+            }
+        ];
+
+        document.addEventListener("DOMContentLoaded", () => {
+            initTimeDropdowns();
+            refreshStudentDatabaseDropdown();
+            loadStudentData(currentStudentId);
+            feather.replace();
+        });
+
+        function initTimeDropdowns() {
+            const timeFields = ['modal-ex-exec', 'modal-ex-rep-rest', 'modal-ex-set-rest'];
+            timeFields.forEach(field => {
+                const minSelect = document.getElementById(`${field}-min`);
+                const secSelect = document.getElementById(`${field}-sec`);
+
+                let minOptions = '';
+                for (let m = 0; m <= 30; m++) {
+                    const str = String(m).padStart(2, '0');
+                    minOptions += `<option value="${str}">${str}m</option>`;
+                }
+                minSelect.innerHTML = minOptions;
+
+                let secOptions = '';
+                for (let s = 0; s < 60; s += 5) {
+                    const str = String(s).padStart(2, '0');
+                    secOptions += `<option value="${str}">${str}s</option>`;
+                }
+                secSelect.innerHTML = secOptions;
+            });
+        }
+
+        function parseTimeString(timeStr) {
+            if (!timeStr) return { min: "00", sec: "00" };
+            const minMatch = timeStr.match(/(\d+)m/);
+            const secMatch = timeStr.match(/(\d+)s/);
+            return {
+                min: minMatch ? String(minMatch[1]).padStart(2, '0') : "00",
+                sec: secMatch ? String(secMatch[1]).padStart(2, '0') : "00"
+            };
+        }
+
+        function persistDatabase() {
+            localStorage.setItem('fit_students_db', JSON.stringify(studentsDatabase));
+        }
+
+        function refreshStudentDatabaseDropdown() {
+            const selectList = document.getElementById('student-select-list');
+            studentsDatabase.sort((a, b) => a.lastname.localeCompare(b.lastname, 'es', { sensitivity: 'base' }));
+
+            let html = '';
+            studentsDatabase.forEach(st => {
+                html += `<option value="${st.id}">${st.lastname}, ${st.firstname}</option>`;
+            });
+
+            selectList.innerHTML = html;
+            if (currentStudentId) selectList.value = currentStudentId;
+        }
+
+        function onStudentSelectChange() {
+            const id = document.getElementById('student-select-list').value;
+            loadStudentData(id);
+        }
+
+        function loadStudentData(id) {
+            const st = studentsDatabase.find(item => item.id === id);
+            if (!st) return;
+
+            currentStudentId = st.id;
+            document.getElementById('student-lastname-input').value = st.lastname;
+            document.getElementById('student-firstname-input').value = st.firstname;
+            document.getElementById('student-cycle-type').value = st.cycleType || "Mesociclo";
+            document.getElementById('student-total-weeks').value = st.totalWeeks || 8;
+
+            updateStudentDisplayHeader(st);
+            populateWeekSelectors(st.totalWeeks || 8);
+            renderNutrition();
+            renderExercises();
+        }
+
+        function updateStudentDisplayHeader(st) {
+            document.getElementById('student-display-fullname').innerText = `${st.lastname}, ${st.firstname}`;
+            document.getElementById('cycle-display').innerText = `${st.cycleType || 'Mesociclo'} (${st.totalWeeks || 8} Semanas)`;
+        }
+
+        function populateWeekSelectors(totalWeeks) {
+            const profWeekSelect = document.getElementById('week-select');
+            let html = '';
+            for (let w = 1; w <= totalWeeks; w++) {
+                html += `<option value="${w}">Semana ${w}</option>`;
+            }
+            profWeekSelect.innerHTML = html;
+            if (selectedWeek > totalWeeks) selectedWeek = 1;
+            profWeekSelect.value = selectedWeek;
+        }
+
+        function saveCurrentStudent() {
+            const lastname = document.getElementById('student-lastname-input').value.trim();
+            const firstname = document.getElementById('student-firstname-input').value.trim();
+            const cycleType = document.getElementById('student-cycle-type').value;
+            const totalWeeks = parseInt(document.getElementById('student-total-weeks').value) || 4;
+
+            if (!lastname || !firstname) {
+                showToast("Por favor completa Nombre y Apellido.");
+                return;
+            }
+
+            let st = studentsDatabase.find(item => item.id === currentStudentId);
+
+            if (!st) {
+                st = {
+                    id: 'st_' + Date.now(),
+                    lastname: lastname,
+                    firstname: firstname,
+                    cycleType: cycleType,
+                    totalWeeks: totalWeeks,
+                    nutrition: { diet: "", supplements: "" },
+                    routine: {}
+                };
+                studentsDatabase.push(st);
+                currentStudentId = st.id;
+            } else {
+                st.lastname = lastname;
+                st.firstname = firstname;
+                st.cycleType = cycleType;
+                st.totalWeeks = totalWeeks;
+            }
+
+            persistDatabase();
+            refreshStudentDatabaseDropdown();
+            loadStudentData(currentStudentId);
+            showToast("¡Planificación y Alumno guardados!");
+        }
+
+        function prepareNewStudent() {
+            currentStudentId = null;
+            document.getElementById('student-lastname-input').value = '';
+            document.getElementById('student-firstname-input').value = '';
+            document.getElementById('student-cycle-type').value = 'Mesociclo';
+            document.getElementById('student-total-weeks').value = 8;
+            document.getElementById('student-display-fullname').innerText = 'Nuevo Alumno';
+            document.getElementById('cycle-display').innerText = 'Mesociclo (8 Semanas)';
+            renderNutrition();
+            renderExercises();
+            showToast("Configura los datos del nuevo alumno y presiona Guardar.");
+        }
+
+        function onWeekSelectChange() {
+            selectedWeek = parseInt(document.getElementById('week-select').value);
+            renderExercises();
+        }
+
+        function onDaySelectChange() {
+            selectedDay = parseInt(document.getElementById('day-select').value);
+            renderExercises();
+        }
+
+        function toggleViewMode() {
+            isProfMode = !isProfMode;
+            const btn = document.getElementById('role-toggle-btn');
+            const card = document.getElementById('student-management-card');
+            const addBtn = document.getElementById('add-ex-btn');
+            const editNutBtn = document.getElementById('edit-nut-btn');
+            const profActions = document.getElementById('prof-actions');
+            const bannerText = document.getElementById('role-banner-text');
+
+            if (isProfMode) {
+                btn.innerText = "Modo: Profesor";
+                bannerText.innerText = "Modo Profesor: Gestión de alumnos y diseño de rutinas";
+                card.classList.remove('hidden');
+                addBtn.classList.remove('hidden');
+                editNutBtn.classList.remove('hidden');
+                profActions.classList.add('hidden');
+            } else {
+                btn.innerText = "Modo: Alumno";
+                bannerText.innerText = "Modo Alumno: Visualización de rutina y guardado PDF";
+                card.classList.add('hidden');
+                addBtn.classList.add('hidden');
+                editNutBtn.classList.add('hidden');
+                profActions.classList.remove('hidden');
+            }
+            renderExercises();
+        }
+
+        function renderExercises() {
+            const container = document.getElementById('exercise-list');
+            document.getElementById('current-view-title').innerText = `Semana ${selectedWeek} / Día ${selectedDay}`;
+
+            const st = studentsDatabase.find(item => item.id === currentStudentId);
+            const exercises = (st && st.routine && st.routine[selectedWeek] && st.routine[selectedWeek][selectedDay]) || [];
+
+            if (exercises.length === 0) {
+                container.innerHTML = `
+                    <div class="bg-slate-900 border border-dashed border-slate-800 rounded-2xl p-6 text-center text-slate-400">
+                        <i data-feather="calendar" class="w-8 h-8 text-sky-400 mx-auto mb-2"></i>
+                        <p class="text-xs">Sin ejercicios asignados para el <strong>Día ${selectedDay}</strong> de la <strong>Semana ${selectedWeek}</strong>.</p>
+                    </div>
+                `;
+                feather.replace();
+                return;
+            }
+
+            container.innerHTML = exercises.map(ex => `
+                <div class="bg-slate-900 text-white rounded-2xl border border-slate-800 overflow-hidden shadow-2xl relative">
+                    ${ex.mediaUrl ? `
+                    <div class="relative h-44 bg-slate-950 flex items-center justify-center overflow-hidden">
+                        <img src="${ex.mediaUrl}" alt="${ex.name}" class="w-full h-full object-cover">
+                    </div>` : ''}
+
+                    <div class="p-4 space-y-3">
+                        <div class="flex justify-between items-center">
+                            <h4 class="font-black text-white text-base">${ex.name}</h4>
+                            <span class="bg-sky-500 text-blue-950 text-[10px] font-black px-2 py-0.5 rounded-full">${ex.type}</span>
+                        </div>
+
+                        <div class="grid grid-cols-2 gap-2 text-xs">
+                            <div class="bg-slate-950 p-2 rounded-xl text-center border border-slate-800">
+                                <span class="text-sky-400 text-[10px] font-bold block">Series</span>
+                                <span class="text-white font-black text-base">${ex.sets}</span>
+                            </div>
+                            <div class="bg-slate-950 p-2 rounded-xl text-center border border-slate-800">
+                                <span class="text-sky-400 text-[10px] font-bold block">Repeticiones</span>
+                                <span class="text-white font-black text-base">${ex.reps}</span>
+                            </div>
+                        </div>
+
+                        <div class="bg-slate-950 p-2.5 rounded-xl text-center grid grid-cols-3 gap-1 text-[10px] border border-slate-800">
+                            <div><span class="text-slate-400 block">Ejecución</span><strong>${ex.execTime}</strong></div>
+                            <div><span class="text-slate-400 block">Desc. Rep</span><strong>${ex.repRestTime}</strong></div>
+                            <div><span class="text-slate-400 block">Desc. Serie</span><strong>${ex.setRestTime}</strong></div>
+                        </div>
+
+                        ${isProfMode ? `
+                        <div class="flex justify-end gap-2 pt-1 border-t border-slate-800">
+                            <button onclick="editExercise(${ex.id})" class="text-[11px] bg-slate-800 hover:bg-slate-700 text-sky-300 px-2.5 py-1 rounded-lg border border-slate-700 flex items-center gap-1 font-bold">
+                                <i data-feather="edit-2" class="w-3 h-3"></i> Editar
+                            </button>
+                            <button onclick="deleteExercise(${ex.id})" class="text-[11px] bg-rose-950/80 hover:bg-rose-900 text-rose-300 px-2.5 py-1 rounded-lg border border-rose-800 flex items-center gap-1 font-bold">
+                                <i data-feather="trash-2" class="w-3 h-3"></i> Eliminar
+                            </button>
+                        </div>` : ''}
+                    </div>
+                </div>
+            `).join('');
+            feather.replace();
+        }
+
+        function renderNutrition() {
+            const container = document.getElementById('nutrition-display');
+            const st = studentsDatabase.find(item => item.id === currentStudentId);
+
+            if (!st || !st.nutrition || (!st.nutrition.diet && !st.nutrition.supplements)) {
+                container.innerHTML = `<p class="italic text-slate-500">Sin pautas nutricionales registradas.</p>`;
+                return;
+            }
+
+            container.innerHTML = `
+                ${st.nutrition.diet ? `<div class="bg-slate-950 p-2.5 rounded-xl border border-slate-800"><strong class="text-emerald-400 block text-[10px] uppercase">Dieta / Hábitos:</strong>${st.nutrition.diet}</div>` : ''}
+                ${st.nutrition.supplements ? `<div class="bg-slate-950 p-2.5 rounded-xl border border-slate-800"><strong class="text-sky-400 block text-[10px] uppercase">Hidratación & Suplementos:</strong>${st.nutrition.supplements}</div>` : ''}
+            `;
+        }
+
+        function openNutritionModal() {
+            const st = studentsDatabase.find(item => item.id === currentStudentId);
+            if (!st) {
+                showToast("Selecciona un alumno activo primero.");
+                return;
+            }
+            document.getElementById('nut-diet-input').value = (st.nutrition && st.nutrition.diet) || '';
+            document.getElementById('nut-supplements-input').value = (st.nutrition && st.nutrition.supplements) || '';
+            document.getElementById('nutrition-modal').classList.remove('hidden');
+        }
+
+        function closeNutritionModal() {
+            document.getElementById('nutrition-modal').classList.add('hidden');
+        }
+
+        function saveNutritionPlan(e) {
+            e.preventDefault();
+            const st = studentsDatabase.find(item => item.id === currentStudentId);
+            if (!st) return;
+
+            st.nutrition = {
+                diet: document.getElementById('nut-diet-input').value.trim(),
+                supplements: document.getElementById('nut-supplements-input').value.trim()
+            };
+
+            persistDatabase();
+            renderNutrition();
+            closeNutritionModal();
+            showToast("Plan nutricional actualizado.");
+        }
+
+        function openAddModal() {
+            document.getElementById('modal-ex-id').value = '';
+            document.getElementById('ex-form').reset();
+            
+            setDropdownTimeValues('modal-ex-exec', "00m 45s");
+            setDropdownTimeValues('modal-ex-rep-rest', "00m 00s");
+            setDropdownTimeValues('modal-ex-set-rest', "01m 30s");
+
+            document.getElementById('modal-title').innerHTML = `<i data-feather="plus-circle" class="w-4 h-4 text-sky-400"></i> Cargar Ejercicio`;
+            document.getElementById('exercise-modal').classList.remove('hidden');
+            feather.replace();
+        }
+
+        function editExercise(exId) {
+            const st = studentsDatabase.find(item => item.id === currentStudentId);
+            const ex = st.routine[selectedWeek][selectedDay].find(item => item.id === exId);
+            if (!ex) return;
+
+            document.getElementById('modal-ex-id').value = ex.id;
+            document.getElementById('modal-ex-name').value = ex.name;
+            document.getElementById('modal-ex-media-url').value = ex.mediaUrl || '';
+            document.getElementById('modal-ex-type').value = ex.type;
+            document.getElementById('modal-ex-sets').value = ex.sets;
+            document.getElementById('modal-ex-reps').value = ex.reps;
+
+            setDropdownTimeValues('modal-ex-exec', ex.execTime);
+            setDropdownTimeValues('modal-ex-rep-rest', ex.repRestTime);
+            setDropdownTimeValues('modal-ex-set-rest', ex.setRestTime);
+
+            document.getElementById('modal-title').innerHTML = `<i data-feather="edit" class="w-4 h-4 text-sky-400"></i> Editar Ejercicio`;
+            document.getElementById('exercise-modal').classList.remove('hidden');
+            feather.replace();
+        }
+
+        function setDropdownTimeValues(fieldPrefix, timeString) {
+            const parsed = parseTimeString(timeString);
+            document.getElementById(`${fieldPrefix}-min`).value = parsed.min;
+            document.getElementById(`${fieldPrefix}-sec`).value = parsed.sec;
+        }
+
+        function getDropdownFormattedTime(fieldPrefix) {
+            const min = document.getElementById(`${fieldPrefix}-min`).value;
+            const sec = document.getElementById(`${fieldPrefix}-sec`).value;
+            return `${min}m ${sec}s`;
+        }
+
+        function deleteExercise(exId) {
+            const st = studentsDatabase.find(item => item.id === currentStudentId);
+            if (!st || !st.routine || !st.routine[selectedWeek] || !st.routine[selectedWeek][selectedDay]) return;
+
+            st.routine[selectedWeek][selectedDay] = st.routine[selectedWeek][selectedDay].filter(item => item.id !== exId);
+            persistDatabase();
+            renderExercises();
+            showToast("Ejercicio eliminado.");
+        }
+
+        function closeModal() {
+            document.getElementById('exercise-modal').classList.add('hidden');
+            document.getElementById('ex-form').reset();
+        }
+
+        async function saveExercise(e) {
+            e.preventDefault();
+
+            const st = studentsDatabase.find(item => item.id === currentStudentId);
+            if (!st) {
+                showToast("Selecciona o guarda un alumno primero.");
+                return;
+            }
+
+            const exId = document.getElementById('modal-ex-id').value;
+            const urlInput = document.getElementById('modal-ex-media-url').value.trim();
+            const fileInput = document.getElementById('modal-ex-file').files[0];
+            let mediaResultUrl = urlInput || "";
+
+            if (fileInput) {
+                mediaResultUrl = await new Promise((resolve) => {
+                    const reader = new FileReader();
+                    reader.onload = (e) => resolve(e.target.result);
+                    reader.readAsDataURL(fileInput);
+                });
+            }
+
+            const formattedExec = getDropdownFormattedTime('modal-ex-exec');
+            const formattedRepRest = getDropdownFormattedTime('modal-ex-rep-rest');
+            const formattedSetRest = getDropdownFormattedTime('modal-ex-set-rest');
+
+            if (!st.routine) st.routine = {};
+            if (!st.routine[selectedWeek]) st.routine[selectedWeek] = {};
+            if (!st.routine[selectedWeek][selectedDay]) st.routine[selectedWeek][selectedDay] = [];
+
+            if (exId) {
+                const ex = st.routine[selectedWeek][selectedDay].find(item => item.id == exId);
+                if (ex) {
+                    ex.name = document.getElementById('modal-ex-name').value;
+                    if (mediaResultUrl) ex.mediaUrl = mediaResultUrl;
+                    ex.type = document.getElementById('modal-ex-type').value;
+                    ex.sets = parseInt(document.getElementById('modal-ex-sets').value);
+                    ex.reps = document.getElementById('modal-ex-reps').value;
+                    ex.execTime = formattedExec;
+                    ex.repRestTime = formattedRepRest;
+                    ex.setRestTime = formattedSetRest;
+                }
+            } else {
+                const newEx = {
+                    id: Date.now(),
+                    name: document.getElementById('modal-ex-name').value,
+                    mediaUrl: mediaResultUrl,
+                    type: document.getElementById('modal-ex-type').value,
+                    sets: parseInt(document.getElementById('modal-ex-sets').value),
+                    reps: document.getElementById('modal-ex-reps').value,
+                    execTime: formattedExec,
+                    repRestTime: formattedRepRest,
+                    setRestTime: formattedSetRest
+                };
+                st.routine[selectedWeek][selectedDay].push(newEx);
+            }
+
+            persistDatabase();
+            closeModal();
+            renderExercises();
+            showToast("¡Ejercicio guardado exitosamente!");
+        }
+
+        function showToast(msg) {
+            const toast = document.getElementById('toast-modal');
+            document.getElementById('toast-message').innerText = msg;
+            toast.classList.remove('hidden');
+            setTimeout(() => { toast.classList.add('hidden'); }, 3000);
+        }
+
+        // GENERADOR COMPLETO DE PDF MULTISEMANA CON MARCA FCTRAINING.AR
+        function generateFullPrintReport() {
+            const st = studentsDatabase.find(item => item.id === currentStudentId);
+            if (!st) return '';
+
+            let fullRoutineHTML = '';
+            let totalWeeks = st.totalWeeks || 8;
+            let hasAnyExercise = false;
+
+            for (let w = 1; w <= totalWeeks; w++) {
+                let weekHTML = '';
+                for (let d = 1; d <= 6; d++) {
+                    const exercises = (st.routine && st.routine[w] && st.routine[w][d]) || [];
+                    if (exercises.length > 0) {
+                        hasAnyExercise = true;
+                        let exercisesHTML = exercises.map(ex => `
+                            <div style="border: 1px solid #cbd5e1; border-radius: 6px; padding: 8px; margin-top: 6px; background: #f8fafc;" class="pdf-avoid-break">
+                                <div style="display: flex; justify-content: space-between; font-weight: bold; font-size: 12px; color: #0f172a;">
+                                    <span>${ex.name}</span>
+                                    <span style="color: #0284c7; font-size: 11px;">${ex.type}</span>
+                                </div>
+                                <div style="font-size: 11px; color: #334155; margin-top: 4px; display: flex; gap: 12px;">
+                                    <span>Series: <strong>${ex.sets}</strong></span>
+                                    <span>Reps: <strong>${ex.reps}</strong></span>
+                                    <span>Ejecución: <strong>${ex.execTime}</strong></span>
+                                    <span>Desc. Rep: <strong>${ex.repRestTime}</strong></span>
+                                    <span>Desc. Serie: <strong>${ex.setRestTime}</strong></span>
+                                </div>
+                            </div>
+                        `).join('');
+
+                        weekHTML += `
+                            <div style="margin-top: 10px;">
+                                <div style="font-weight: bold; font-size: 11px; color: #0284c7; text-transform: uppercase;">Día ${d}</div>
+                                ${exercisesHTML}
+                            </div>
+                        `;
+                    }
+                }
+
+                if (weekHTML) {
+                    fullRoutineHTML += `
+                        <div style="margin-top: 16px;" class="pdf-avoid-break">
+                            <div style="background: #0f172a; color: #ffffff; padding: 6px 10px; font-weight: bold; font-size: 12px; border-radius: 4px; letter-spacing: 0.5px;">
+                                SEMANA ${w}
+                            </div>
+                            ${weekHTML}
+                        </div>
+                    `;
+                }
+            }
+
+            if (!hasAnyExercise) {
+                fullRoutineHTML = `
+                    <div style="padding: 20px; text-align: center; color: #64748b; font-size: 12px;">
+                        No se registraron ejercicios en esta planificación.
+                    </div>
+                `;
+            }
+
+            let nutritionHTML = '';
+            if (st.nutrition && (st.nutrition.diet || st.nutrition.supplements)) {
+                nutritionHTML = `
+                    <div style="margin-top: 20px; background: #ecfdf5; border: 1px solid #a7f3d0; padding: 12px; border-radius: 6px; font-size: 11px; color: #065f46;" class="pdf-avoid-break">
+                        <h4 style="margin: 0 0 6px 0; font-size: 12px; text-transform: uppercase; color: #047857; font-weight: bold;">Plan Nutricional & Recomendaciones</h4>
+                        ${st.nutrition.diet ? `<p style="margin: 3px 0;"><strong>Dieta / Hábitos:</strong> ${st.nutrition.diet}</p>` : ''}
+                        ${st.nutrition.supplements ? `<p style="margin: 3px 0;"><strong>Hidratación & Suplementos:</strong> ${st.nutrition.supplements}</p>` : ''}
+                    </div>
+                `;
+            }
+
+            return `
+                <div style="font-family: Arial, sans-serif; color: #0f172a;">
+                    <!-- ENCABEZADO CON MARCA FCTRAINING.AR -->
+                    <div style="border-bottom: 2px solid #0284c7; padding-bottom: 8px; margin-bottom: 12px; display: flex; justify-content: space-between; align-items: center;">
+                        <div>
+                            <h1 style="margin: 0; font-size: 20px; color: #0f172a; font-weight: 900;">fc<span style="color:#0284c7">training</span>.ar</h1>
+                            <p style="margin: 2px 0; font-size: 11px; color: #475569; font-weight: bold;">Prof. Franco Comeglio | Entrenamiento Personalizado</p>
+                        </div>
+                        <div style="text-align: right; font-size: 11px; color: #475569;">
+                            <strong>Contacto:</strong> +54 9 261 693-9818
+                        </div>
+                    </div>
+
+                    <!-- FICHA ALUMNO -->
+                    <div style="background: #f0f9ff; border: 1px solid #bae6fd; padding: 10px; border-radius: 6px; font-size: 12px; margin-bottom: 12px; display: flex; justify-content: space-between;">
+                        <div><strong>Alumno:</strong> ${st.lastname}, ${st.firstname}</div>
+                        <div><strong>Planificación:</strong> ${st.cycleType || 'Mesociclo'} (${st.totalWeeks || 8} Semanas)</div>
+                    </div>
+
+                    <h3 style="font-size: 13px; text-transform: uppercase; color: #0c4a6e; border-bottom: 1px solid #cbd5e1; padding-bottom: 4px; margin-bottom: 8px;">Planificación Completa</h3>
+                    ${fullRoutineHTML}
+                    ${nutritionHTML}
+                </div>
+            `;
+        }
+
+        function triggerPrintPDF() {
+            const printArea = document.getElementById('full-pdf-print-area');
+            printArea.innerHTML = generateFullPrintReport();
+            window.print();
+        }
+    </script>
+</body>
+</html>
