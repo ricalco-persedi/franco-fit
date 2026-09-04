@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>FC Training - Prof. Franco Comeglio</title>
+    <title>FC Training - Control de Acceso y Gestión</title>
     
     <!-- Tailwind CSS via CDN -->
     <script src="https://cdn.tailwindcss.com"></script>
@@ -31,13 +31,14 @@
         /* ESTILOS DE IMPRESIÓN Y GENERACIÓN PDF NATIVA */
         @media print {
             header, 
+            #login-view,
             #role-banner, 
             #student-management-card, 
             #prof-controls, 
             #interactive-routine-section,
             #interactive-nutrition-section,
             #prof-actions, 
-            #role-toggle-btn,
+            #logout-btn,
             .no-print {
                 display: none !important;
             }
@@ -62,7 +63,7 @@
 </head>
 <body class="text-slate-100 min-h-screen pb-24 font-sans selection:bg-amber-500 selection:text-slate-950">
 
-    <!-- ENCABEZADO PERMANENTE CON ISOTIPO Y TEXTOS TIPOGRÁFICOS DE ALTA RESOLUCIÓN -->
+    <!-- ENCABEZADO PERMANENTE CON ISOTIPO Y MARCA -->
     <header class="sticky top-0 z-40 bg-slate-950/95 text-white border-b-2 border-amber-500/80 px-3 py-2.5 shadow-2xl backdrop-blur-md">
         <div class="max-w-md mx-auto flex items-center justify-between gap-2">
             
@@ -76,7 +77,7 @@
                          onerror="this.onerror=null; this.parentElement.innerHTML='<div class=\'text-xs font-black text-amber-400\'>FC</div>';">
                 </div>
 
-                <!-- Textos con colores originales exactos -->
+                <!-- Textos corporativos con alta legibilidad -->
                 <div class="flex flex-col min-w-0 leading-tight">
                     <span class="text-sm font-black tracking-wider text-sky-200 uppercase truncate drop-shadow">FC TRAINING</span>
                     <span class="text-[11px] font-semibold text-slate-200 truncate">Prof. Franco Comeglio</span>
@@ -88,151 +89,196 @@
                 </div>
             </div>
 
-            <!-- BOTÓN DE CAMBIO DE MODO -->
-            <button onclick="toggleViewMode()" id="role-toggle-btn" class="text-[11px] bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 text-slate-950 px-2.5 py-2 rounded-xl border border-amber-300 transition font-black shadow-lg active:scale-95 shrink-0">
-                Modo: Profesor
+            <!-- BOTÓN DE CERRAR SESIÓN -->
+            <button id="logout-btn" onclick="logout()" class="hidden text-[11px] bg-rose-950/80 hover:bg-rose-900 text-rose-200 px-2.5 py-2 rounded-xl border border-rose-800 transition font-bold shadow-lg active:scale-95 shrink-0 flex items-center gap-1">
+                <i data-feather="log-out" class="w-3 h-3"></i> Salir
             </button>
         </div>
     </header>
 
     <main class="max-w-md mx-auto p-4 space-y-5">
 
-        <!-- BANNER DE ROL / ESTADO -->
-        <div id="role-banner" class="bg-slate-900/90 border-l-4 border-amber-400 rounded-xl p-3 flex items-center justify-between text-xs text-slate-200 shadow-lg border border-slate-800">
-            <span id="role-banner-text" class="font-medium">Modo Profesor: Gestión de alumnos y diseño de rutinas</span>
-            <span class="w-2.5 h-2.5 rounded-full bg-amber-400 animate-pulse shrink-0"></span>
-        </div>
-
-        <!-- SELECCIÓN Y GESTIÓN DE ALUMNOS + PLANIFICACIÓN (MODO PROFESOR) -->
-        <section id="student-management-card" class="bg-slate-900/90 rounded-2xl p-4 border border-amber-500/20 shadow-xl space-y-3">
-            <h3 class="text-xs font-bold text-amber-400 uppercase tracking-wider flex items-center justify-between border-b border-slate-800 pb-2">
-                <span class="flex items-center gap-1.5"><i data-feather="users" class="w-4 h-4 text-amber-400"></i> Selección y Planificación</span>
-            </h3>
-
-            <div>
-                <label class="block text-[11px] font-bold text-slate-300 mb-1">Seleccionar Alumno de Lista</label>
-                <select id="student-select-list" onchange="onStudentSelectChange()" class="w-full bg-slate-950 border border-amber-500/40 rounded-xl p-2.5 text-xs text-white font-bold focus:ring-2 focus:ring-amber-400 focus:outline-none">
-                </select>
+        <!-- VISTA 1: PANTALLA DE ACCESO / LOGIN (OBLIGATORIA) -->
+        <section id="login-view" class="bg-slate-900/90 rounded-2xl p-5 border border-amber-500/30 shadow-2xl space-y-5">
+            <div class="text-center space-y-1 border-b border-slate-800 pb-4">
+                <h2 class="text-lg font-black text-white">Ingreso al Sistema</h2>
+                <p class="text-xs text-slate-400">Selecciona tu perfil para continuar</p>
             </div>
 
-            <div class="grid grid-cols-2 gap-2 pt-1">
-                <div>
-                    <label class="block text-[10px] font-bold text-slate-400 mb-1">Apellido(s)</label>
-                    <input type="text" id="student-lastname-input" placeholder="Ej. Pérez" class="w-full bg-slate-950 border border-slate-800 rounded-xl p-2 text-xs text-white font-semibold focus:border-amber-400 focus:outline-none">
-                </div>
-                <div>
-                    <label class="block text-[10px] font-bold text-slate-400 mb-1">Nombre(s)</label>
-                    <input type="text" id="student-firstname-input" placeholder="Ej. Juan" class="w-full bg-slate-950 border border-slate-800 rounded-xl p-2 text-xs text-white font-semibold focus:border-amber-400 focus:outline-none">
-                </div>
+            <!-- PESTAÑAS DE SELECCIÓN DE ROL -->
+            <div class="grid grid-cols-2 gap-2 bg-slate-950 p-1 rounded-xl border border-slate-800">
+                <button type="button" id="tab-student-btn" onclick="switchLoginTab('student')" class="py-2 text-xs font-extrabold rounded-lg transition text-slate-400">
+                    Soy Alumno
+                </button>
+                <button type="button" id="tab-prof-btn" onclick="switchLoginTab('prof')" class="py-2 text-xs font-extrabold rounded-lg transition text-slate-400">
+                    Soy Profesor
+                </button>
             </div>
 
-            <!-- CONFIGURACIÓN DE PLANIFICACIÓN Y CICLOS -->
-            <div class="bg-slate-950 p-3 rounded-xl border border-slate-800/80 space-y-2">
-                <span class="text-[10px] font-bold text-amber-400 uppercase tracking-wider block">Configuración de Ciclo</span>
+            <!-- FORMULARIO LOGIN ALUMNO -->
+            <form id="form-login-student" onsubmit="loginAsStudent(event)" class="space-y-4">
+                <div>
+                    <label class="block text-xs font-bold text-slate-300 mb-1">Nombre Completo registrado</label>
+                    <input type="text" id="student-login-name" required placeholder="Ej. Juan Pérez" class="w-full bg-slate-950 border border-slate-700 rounded-xl p-3 text-xs text-white font-semibold focus:border-amber-400 focus:outline-none">
+                    <p class="text-[10px] text-slate-500 mt-1">Ingresa el nombre exactamente como lo registró tu profesor.</p>
+                </div>
+                <button type="submit" class="w-full bg-gradient-to-r from-sky-500 to-sky-600 hover:from-sky-400 hover:to-sky-500 text-slate-950 font-black py-3 rounded-xl shadow-lg border border-sky-300 text-xs active:scale-95 transition">
+                    Ingresar a Mi Rutina
+                </button>
+            </form>
+
+            <!-- FORMULARIO LOGIN PROFESOR -->
+            <form id="form-login-prof" onsubmit="loginAsProf(event)" class="space-y-4 hidden">
+                <div>
+                    <label class="block text-xs font-bold text-slate-300 mb-1">Contraseña de Profesor</label>
+                    <input type="password" id="prof-login-pass" required placeholder="••••••••" class="w-full bg-slate-950 border border-slate-700 rounded-xl p-3 text-xs text-white font-semibold focus:border-amber-400 focus:outline-none">
+                    <p class="text-[10px] text-slate-500 mt-1">Clave maestra por defecto: <code class="text-amber-400">franco2026</code></p>
+                </div>
+                <button type="submit" class="w-full bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 text-slate-950 font-black py-3 rounded-xl shadow-lg border border-amber-300 text-xs active:scale-95 transition">
+                    Acceder al Panel de Control
+                </button>
+            </form>
+        </section>
+
+        <!-- VISTA 2: PANEL DE TRABAJO (DASHBOARD) -->
+        <div id="dashboard-view" class="space-y-5 hidden">
+
+            <!-- BANNER DE ROL ACTIVO -->
+            <div id="role-banner" class="bg-slate-900/90 border-l-4 border-amber-400 rounded-xl p-3 flex items-center justify-between text-xs text-slate-200 shadow-lg border border-slate-800">
+                <span id="role-banner-text" class="font-medium">Sesión Iniciada</span>
+                <span class="w-2.5 h-2.5 rounded-full bg-amber-400 animate-pulse shrink-0"></span>
+            </div>
+
+            <!-- GESTIÓN DE ALUMNOS Y PLANIFICACIÓN (EXCLUSIVO PROFESOR) -->
+            <section id="student-management-card" class="bg-slate-900/90 rounded-2xl p-4 border border-amber-500/20 shadow-xl space-y-3">
+                <h3 class="text-xs font-bold text-amber-400 uppercase tracking-wider flex items-center justify-between border-b border-slate-800 pb-2">
+                    <span class="flex items-center gap-1.5"><i data-feather="users" class="w-4 h-4 text-amber-400"></i> Gestión de Alumnos y Planificación</span>
+                </h3>
+
+                <div>
+                    <label class="block text-[11px] font-bold text-slate-300 mb-1">Seleccionar Alumno de Lista</label>
+                    <select id="student-select-list" onchange="onStudentSelectChange()" class="w-full bg-slate-950 border border-amber-500/40 rounded-xl p-2.5 text-xs text-white font-bold focus:ring-2 focus:ring-amber-400 focus:outline-none">
+                    </select>
+                </div>
+
+                <div class="grid grid-cols-2 gap-2 pt-1">
+                    <div>
+                        <label class="block text-[10px] font-bold text-slate-400 mb-1">Apellido(s)</label>
+                        <input type="text" id="student-lastname-input" placeholder="Ej. Pérez" class="w-full bg-slate-950 border border-slate-800 rounded-xl p-2 text-xs text-white font-semibold focus:border-amber-400 focus:outline-none">
+                    </div>
+                    <div>
+                        <label class="block text-[10px] font-bold text-slate-400 mb-1">Nombre(s)</label>
+                        <input type="text" id="student-firstname-input" placeholder="Ej. Juan" class="w-full bg-slate-950 border border-slate-800 rounded-xl p-2 text-xs text-white font-semibold focus:border-amber-400 focus:outline-none">
+                    </div>
+                </div>
+
+                <!-- CONFIGURACIÓN DE PLANIFICACIÓN -->
+                <div class="bg-slate-950 p-3 rounded-xl border border-slate-800/80 space-y-2">
+                    <span class="text-[10px] font-bold text-amber-400 uppercase tracking-wider block">Configuración de Ciclo</span>
+                    <div class="grid grid-cols-2 gap-2">
+                        <div>
+                            <label class="block text-[10px] font-bold text-slate-400 mb-1">Tipo de Ciclo</label>
+                            <select id="student-cycle-type" class="w-full bg-slate-900 border border-slate-700 rounded-xl p-2 text-xs text-white font-semibold focus:outline-none">
+                                <option value="Microciclo">Microciclo</option>
+                                <option value="Mesociclo" selected>Mesociclo</option>
+                                <option value="Macrociclo">Macrociclo</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="block text-[10px] font-bold text-slate-400 mb-1">Duración (Semanas)</label>
+                            <input type="number" id="student-total-weeks" min="1" max="52" value="8" class="w-full bg-slate-900 border border-slate-700 rounded-xl p-2 text-xs text-white font-semibold text-center focus:outline-none">
+                        </div>
+                    </div>
+                </div>
+
+                <div class="flex gap-2 pt-1">
+                    <button onclick="saveCurrentStudent()" class="w-full bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 text-slate-950 text-xs font-black py-2.5 rounded-xl border border-amber-300 shadow transition flex items-center justify-center gap-1.5 active:scale-95">
+                        <i data-feather="save" class="w-3.5 h-3.5"></i> Guardar Alumno / Plan
+                    </button>
+                    <button onclick="prepareNewStudent()" class="w-1/2 bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-bold py-2.5 rounded-xl border border-slate-700 transition flex items-center justify-center gap-1 active:scale-95">
+                        <i data-feather="user-plus" class="w-3.5 h-3.5"></i> Nuevo
+                    </button>
+                </div>
+            </section>
+
+            <!-- FICHA ALUMNO ACTIVO -->
+            <section class="bg-gradient-to-br from-slate-900 via-slate-900 to-amber-950/30 text-white rounded-2xl p-4 border border-amber-500/30 shadow-2xl space-y-3">
+                <div class="flex justify-between items-start border-b border-slate-800/80 pb-3">
+                    <div>
+                        <span class="text-[10px] font-bold text-amber-400 uppercase tracking-widest block">Alumno Activo</span>
+                        <h2 class="text-xl font-black text-white tracking-tight" id="student-display-fullname">Pérez, Juan</h2>
+                    </div>
+                    <div class="text-right">
+                        <span class="text-[10px] text-amber-400 uppercase tracking-wider block">Planificación</span>
+                        <span class="text-xs font-extrabold text-amber-200 bg-slate-950 px-2.5 py-1 rounded-lg border border-amber-500/40 inline-block shadow-inner" id="cycle-display">Mesociclo (8 Semanas)</span>
+                    </div>
+                </div>
+            </section>
+
+            <!-- SELECCIÓN SEMANA Y DÍA EN PANTALLA -->
+            <section id="prof-controls" class="bg-slate-900/90 rounded-2xl p-4 border border-slate-800 shadow-xl space-y-4">
                 <div class="grid grid-cols-2 gap-2">
                     <div>
-                        <label class="block text-[10px] font-bold text-slate-400 mb-1">Tipo de Ciclo</label>
-                        <select id="student-cycle-type" class="w-full bg-slate-900 border border-slate-700 rounded-xl p-2 text-xs text-white font-semibold focus:outline-none">
-                            <option value="Microciclo">Microciclo</option>
-                            <option value="Mesociclo" selected>Mesociclo</option>
-                            <option value="Macrociclo">Macrociclo</option>
+                        <label class="block text-xs font-bold text-slate-300 mb-1">Semana de Vista</label>
+                        <select id="week-select" onchange="onWeekSelectChange()" class="w-full bg-slate-950 border border-amber-500/40 rounded-xl p-2.5 text-xs text-white font-bold focus:ring-2 focus:ring-amber-400 focus:outline-none">
                         </select>
                     </div>
                     <div>
-                        <label class="block text-[10px] font-bold text-slate-400 mb-1">Duración (Semanas)</label>
-                        <input type="number" id="student-total-weeks" min="1" max="52" value="8" class="w-full bg-slate-900 border border-slate-700 rounded-xl p-2 text-xs text-white font-semibold text-center focus:outline-none">
+                        <label class="block text-xs font-bold text-slate-300 mb-1">Día de Vista</label>
+                        <select id="day-select" onchange="onDaySelectChange()" class="w-full bg-slate-950 border border-amber-500/40 rounded-xl p-2.5 text-xs text-white font-bold focus:ring-2 focus:ring-amber-400 focus:outline-none">
+                            <option value="1">Día 1</option>
+                            <option value="2">Día 2</option>
+                            <option value="3">Día 3</option>
+                            <option value="4">Día 4</option>
+                            <option value="5">Día 5</option>
+                            <option value="6">Día 6</option>
+                        </select>
                     </div>
                 </div>
-            </div>
+            </section>
 
-            <div class="flex gap-2 pt-1">
-                <button onclick="saveCurrentStudent()" class="w-full bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 text-slate-950 text-xs font-black py-2.5 rounded-xl border border-amber-300 shadow transition flex items-center justify-center gap-1.5 active:scale-95">
-                    <i data-feather="save" class="w-3.5 h-3.5"></i> Guardar Alumno / Plan
-                </button>
-                <button onclick="prepareNewStudent()" class="w-1/2 bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-bold py-2.5 rounded-xl border border-slate-700 transition flex items-center justify-center gap-1 active:scale-95">
-                    <i data-feather="user-plus" class="w-3.5 h-3.5"></i> Nuevo
-                </button>
-            </div>
-        </section>
-
-        <!-- FICHA ALUMNO ACTIVO -->
-        <section class="bg-gradient-to-br from-slate-900 via-slate-900 to-amber-950/30 text-white rounded-2xl p-4 border border-amber-500/30 shadow-2xl space-y-3">
-            <div class="flex justify-between items-start border-b border-slate-800/80 pb-3">
-                <div>
-                    <span class="text-[10px] font-bold text-amber-400 uppercase tracking-widest block">Alumno Activo</span>
-                    <h2 class="text-xl font-black text-white tracking-tight" id="student-display-fullname">Pérez, Juan</h2>
+            <!-- LISTADO DE EJERCICIOS EN PANTALLA -->
+            <section id="interactive-routine-section" class="space-y-3">
+                <div class="flex items-center justify-between">
+                    <h3 class="text-sm font-bold text-slate-200 flex items-center gap-2">
+                        <i data-feather="activity" class="w-4 h-4 text-amber-400"></i> Ejercicios: <span id="current-view-title" class="text-amber-300 font-extrabold">Semana 1 / Día 1</span>
+                    </h3>
+                    <button onclick="openAddModal()" id="add-ex-btn" class="text-xs bg-amber-500 hover:bg-amber-400 text-slate-950 font-black px-3 py-1.5 rounded-xl transition shadow-lg border border-amber-300 active:scale-95">
+                        + Cargar Ejercicio
+                    </button>
                 </div>
-                <div class="text-right">
-                    <span class="text-[10px] text-amber-400 uppercase tracking-wider block">Planificación</span>
-                    <span class="text-xs font-extrabold text-amber-200 bg-slate-950 px-2.5 py-1 rounded-lg border border-amber-500/40 inline-block shadow-inner" id="cycle-display">Mesociclo (8 Semanas)</span>
-                </div>
-            </div>
-        </section>
 
-        <!-- SELECCIÓN SEMANA Y DÍA EN PANTALLA -->
-        <section id="prof-controls" class="bg-slate-900/90 rounded-2xl p-4 border border-slate-800 shadow-xl space-y-4">
-            <div class="grid grid-cols-2 gap-2">
-                <div>
-                    <label class="block text-xs font-bold text-slate-300 mb-1">Semana de Vista</label>
-                    <select id="week-select" onchange="onWeekSelectChange()" class="w-full bg-slate-950 border border-amber-500/40 rounded-xl p-2.5 text-xs text-white font-bold focus:ring-2 focus:ring-amber-400 focus:outline-none">
-                    </select>
-                </div>
-                <div>
-                    <label class="block text-xs font-bold text-slate-300 mb-1">Día de Vista</label>
-                    <select id="day-select" onchange="onDaySelectChange()" class="w-full bg-slate-950 border border-amber-500/40 rounded-xl p-2.5 text-xs text-white font-bold focus:ring-2 focus:ring-amber-400 focus:outline-none">
-                        <option value="1">Día 1</option>
-                        <option value="2">Día 2</option>
-                        <option value="3">Día 3</option>
-                        <option value="4">Día 4</option>
-                        <option value="5">Día 5</option>
-                        <option value="6">Día 6</option>
-                    </select>
-                </div>
-            </div>
-        </section>
+                <div id="exercise-list" class="space-y-4"></div>
+            </section>
 
-        <!-- LISTADO DE EJERCICIOS EN PANTALLA -->
-        <section id="interactive-routine-section" class="space-y-3">
-            <div class="flex items-center justify-between">
-                <h3 class="text-sm font-bold text-slate-200 flex items-center gap-2">
-                    <i data-feather="activity" class="w-4 h-4 text-amber-400"></i> Ejercicios: <span id="current-view-title" class="text-amber-300 font-extrabold">Semana 1 / Día 1</span>
-                </h3>
-                <button onclick="openAddModal()" id="add-ex-btn" class="text-xs bg-amber-500 hover:bg-amber-400 text-slate-950 font-black px-3 py-1.5 rounded-xl transition shadow-lg border border-amber-300 active:scale-95">
-                    + Cargar Ejercicio
+            <!-- MÓDULO NUTRICIONAL EN PANTALLA -->
+            <section id="interactive-nutrition-section" class="bg-slate-900/90 border border-slate-800 p-4 rounded-2xl space-y-3 shadow-xl">
+                <div class="flex items-center justify-between border-b border-slate-800/80 pb-2">
+                    <h3 class="text-xs font-bold text-emerald-400 uppercase tracking-wider flex items-center gap-1.5">
+                        <i data-feather="coffee" class="w-4 h-4"></i> Plan Nutricional & Recomendaciones
+                    </h3>
+                    <button onclick="openNutritionModal()" id="edit-nut-btn" class="text-[11px] bg-slate-800 text-emerald-300 hover:bg-slate-700 px-2.5 py-1 rounded-lg border border-slate-700 font-bold transition">
+                        Editar Plan
+                    </button>
+                </div>
+                <div id="nutrition-display" class="text-xs text-slate-300 space-y-2">
+                    <p class="italic text-slate-500">Sin recomendaciones registradas para este alumno.</p>
+                </div>
+            </section>
+
+            <!-- BOTÓN IMPRIMIR PDF COMPLETO -->
+            <section id="prof-actions" class="bg-slate-900/90 border border-slate-800 p-4 rounded-2xl space-y-3 shadow-xl">
+                <button onclick="triggerPrintPDF()" class="w-full bg-gradient-to-r from-amber-500 via-amber-600 to-amber-500 hover:from-amber-400 hover:to-amber-500 text-slate-950 font-black p-3.5 rounded-xl border border-amber-300 shadow-xl flex items-center justify-center gap-2 text-xs active:scale-95 transition">
+                    <i data-feather="printer" class="w-4 h-4 text-slate-950"></i> Guardar / Imprimir PDF Completo (Todas las Semanas)
                 </button>
-            </div>
+            </section>
 
-            <div id="exercise-list" class="space-y-4"></div>
-        </section>
-
-        <!-- MÓDULO NUTRICIONAL EN PANTALLA -->
-        <section id="interactive-nutrition-section" class="bg-slate-900/90 border border-slate-800 p-4 rounded-2xl space-y-3 shadow-xl">
-            <div class="flex items-center justify-between border-b border-slate-800/80 pb-2">
-                <h3 class="text-xs font-bold text-emerald-400 uppercase tracking-wider flex items-center gap-1.5">
-                    <i data-feather="coffee" class="w-4 h-4"></i> Plan Nutricional & Recomendaciones
-                </h3>
-                <button onclick="openNutritionModal()" id="edit-nut-btn" class="text-[11px] bg-slate-800 text-emerald-300 hover:bg-slate-700 px-2.5 py-1 rounded-lg border border-slate-700 font-bold transition">
-                    Editar Plan
-                </button>
-            </div>
-            <div id="nutrition-display" class="text-xs text-slate-300 space-y-2">
-                <p class="italic text-slate-500">Sin recomendaciones registradas para este alumno.</p>
-            </div>
-        </section>
-
-        <!-- BOTÓN DE GUARDAR / IMPRIMIR PDF COMPLETO (MODO ALUMNO) -->
-        <section id="prof-actions" class="bg-slate-900/90 border border-slate-800 p-4 rounded-2xl space-y-3 shadow-xl hidden">
-            <button onclick="triggerPrintPDF()" class="w-full bg-gradient-to-r from-amber-500 via-amber-600 to-amber-500 hover:from-amber-400 hover:to-amber-500 text-slate-950 font-black p-3.5 rounded-xl border border-amber-300 shadow-xl flex items-center justify-center gap-2 text-xs active:scale-95 transition">
-                <i data-feather="printer" class="w-4 h-4 text-slate-950"></i> Guardar / Imprimir PDF Completo (Todas las Semanas)
-            </button>
-        </section>
+        </div>
 
     </main>
 
     <!-- ÁREA DE IMPRESIÓN COMPLETA (PDF) -->
-    <div id="full-pdf-print-area" class="hidden p-4 max-w-3xl mx-auto text-slate-900 bg-white">
-        <!-- Generado dinámicamente por JS -->
-    </div>
+    <div id="full-pdf-print-area" class="hidden p-4 max-w-3xl mx-auto text-slate-900 bg-white"></div>
 
     <!-- MODAL CARGAR / EDITAR EJERCICIO -->
     <div id="exercise-modal" class="fixed inset-0 bg-slate-950/85 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
@@ -332,11 +378,11 @@
             <form onsubmit="saveNutritionPlan(event)" class="space-y-3 text-xs">
                 <div>
                     <label class="block font-bold text-slate-300 mb-1">Indicaciones / Pautas Dietéticas</label>
-                    <textarea id="nut-diet-input" rows="3" placeholder="Ej. Aumentar consumo de proteínas (2g/kg). Mantener superávit calórico." class="w-full bg-slate-950 border border-slate-700 rounded-xl p-2.5 text-white focus:border-amber-400 focus:outline-none"></textarea>
+                    <textarea id="nut-diet-input" rows="3" placeholder="Ej. Aumentar consumo de proteínas (2g/kg)." class="w-full bg-slate-950 border border-slate-700 rounded-xl p-2.5 text-white focus:border-amber-400 focus:outline-none"></textarea>
                 </div>
                 <div>
                     <label class="block font-bold text-slate-300 mb-1">Hidratación y Suplementación</label>
-                    <textarea id="nut-supplements-input" rows="2" placeholder="Ej. 3 litros de agua/día. Creatina 5g diarios post entreno." class="w-full bg-slate-950 border border-slate-700 rounded-xl p-2.5 text-white focus:border-amber-400 focus:outline-none"></textarea>
+                    <textarea id="nut-supplements-input" rows="2" placeholder="Ej. 3 litros de agua/día. Creatina 5g diarios." class="w-full bg-slate-950 border border-slate-700 rounded-xl p-2.5 text-white focus:border-amber-400 focus:outline-none"></textarea>
                 </div>
 
                 <div class="flex gap-2 pt-2">
@@ -354,15 +400,19 @@
     </div>
 
     <script>
-        let isProfMode = true; 
+        // CONTRASEÑA MAESTRA DEL PROFESOR
+        const PROF_PASSWORD_MASTER = "franco2026";
+
+        let currentRole = null; // 'prof' | 'student'
+        let activeTab = 'student'; // Estado del formulario de Login
         let selectedWeek = 1;
         let selectedDay = 1;
-        let currentStudentId = "st_2";
+        let currentStudentId = null;
 
         // BASE DE DATOS LOCAL PERSISTENTE
         let studentsDatabase = JSON.parse(localStorage.getItem('fit_students_db')) || [
             { 
-                id: "st_2", 
+                id: "st_1", 
                 lastname: "Pérez", 
                 firstname: "Juan", 
                 cycleType: "Mesociclo",
@@ -393,11 +443,133 @@
 
         document.addEventListener("DOMContentLoaded", () => {
             initTimeDropdowns();
-            refreshStudentDatabaseDropdown();
-            loadStudentData(currentStudentId);
+            switchLoginTab('student');
+            checkActiveSession();
             feather.replace();
         });
 
+        // CONTROL DE SESIONES Y LOGIN
+        function switchLoginTab(tab) {
+            activeTab = tab;
+            const btnStudent = document.getElementById('tab-student-btn');
+            const btnProf = document.getElementById('tab-prof-btn');
+            const formStudent = document.getElementById('form-login-student');
+            const formProf = document.getElementById('form-login-prof');
+
+            if (tab === 'student') {
+                btnStudent.className = "py-2 text-xs font-extrabold rounded-lg transition bg-sky-500 text-slate-950 shadow";
+                btnProf.className = "py-2 text-xs font-extrabold rounded-lg transition text-slate-400 hover:text-white";
+                formStudent.classList.remove('hidden');
+                formProf.classList.add('hidden');
+            } else {
+                btnProf.className = "py-2 text-xs font-extrabold rounded-lg transition bg-amber-500 text-slate-950 shadow";
+                btnStudent.className = "py-2 text-xs font-extrabold rounded-lg transition text-slate-400 hover:text-white";
+                formProf.classList.remove('hidden');
+                formStudent.classList.add('hidden');
+            }
+        }
+
+        function loginAsProf(e) {
+            e.preventDefault();
+            const pass = document.getElementById('prof-login-pass').value;
+
+            if (pass === PROF_PASSWORD_MASTER) {
+                currentRole = 'prof';
+                localStorage.setItem('fit_active_session', JSON.stringify({ role: 'prof' }));
+                showDashboard();
+                showToast("¡Bienvenido, Profesor Franco!");
+            } else {
+                showToast("Contraseña incorrecta. Inténtalo de nuevo.");
+            }
+        }
+
+        function loginAsStudent(e) {
+            e.preventDefault();
+            const inputName = document.getElementById('student-login-name').value.trim().toLowerCase();
+
+            if (!inputName) {
+                showToast("Por favor ingresa tu nombre completo.");
+                return;
+            }
+
+            // Búsqueda del alumno por Nombre Completo o Apellido
+            const foundStudent = studentsDatabase.find(st => {
+                const fullName = `${st.firstname} ${st.lastname}`.toLowerCase();
+                const reverseName = `${st.lastname} ${st.firstname}`.toLowerCase();
+                return fullName.includes(inputName) || reverseName.includes(inputName);
+            });
+
+            if (foundStudent) {
+                currentRole = 'student';
+                currentStudentId = foundStudent.id;
+                localStorage.setItem('fit_active_session', JSON.stringify({ role: 'student', studentId: foundStudent.id }));
+                showDashboard();
+                showToast(`¡Hola, ${foundStudent.firstname}!`);
+            } else {
+                showToast("Alumno no encontrado. Consulta con el profesor.");
+            }
+        }
+
+        function checkActiveSession() {
+            const savedSession = JSON.parse(localStorage.getItem('fit_active_session'));
+            if (savedSession) {
+                currentRole = savedSession.role;
+                if (currentRole === 'student') {
+                    currentStudentId = savedSession.studentId;
+                }
+                showDashboard();
+            } else {
+                showLogin();
+            }
+        }
+
+        function logout() {
+            localStorage.removeItem('fit_active_session');
+            currentRole = null;
+            currentStudentId = null;
+            showLogin();
+            showToast("Sesión cerrada correctamente.");
+        }
+
+        function showLogin() {
+            document.getElementById('login-view').classList.remove('hidden');
+            document.getElementById('dashboard-view').classList.add('hidden');
+            document.getElementById('logout-btn').classList.add('hidden');
+        }
+
+        function showDashboard() {
+            document.getElementById('login-view').classList.add('hidden');
+            document.getElementById('dashboard-view').classList.remove('hidden');
+            document.getElementById('logout-btn').classList.remove('hidden');
+
+            const bannerText = document.getElementById('role-banner-text');
+            const studentCard = document.getElementById('student-management-card');
+            const addExBtn = document.getElementById('add-ex-btn');
+            const editNutBtn = document.getElementById('edit-nut-btn');
+
+            if (currentRole === 'prof') {
+                bannerText.innerHTML = `<strong>Modo Profesor:</strong> Control total de gestión y edición.`;
+                studentCard.classList.remove('hidden');
+                addExBtn.classList.remove('hidden');
+                editNutBtn.classList.remove('hidden');
+                
+                refreshStudentDatabaseDropdown();
+                if (!currentStudentId && studentsDatabase.length > 0) {
+                    currentStudentId = studentsDatabase[0].id;
+                }
+            } else {
+                bannerText.innerHTML = `<strong>Modo Alumno:</strong> Consulta de rutina y plan nutricional.`;
+                studentCard.classList.add('hidden');
+                addExBtn.classList.add('hidden');
+                editNutBtn.classList.add('hidden');
+            }
+
+            if (currentStudentId) {
+                loadStudentData(currentStudentId);
+            }
+        }
+
+        // CONTROL TIEMPOS Y DROPDOWNS
         function initTimeDropdowns() {
             const timeFields = ['modal-ex-exec', 'modal-ex-rep-rest', 'modal-ex-set-rest'];
             timeFields.forEach(field => {
@@ -457,10 +629,12 @@
             if (!st) return;
 
             currentStudentId = st.id;
-            document.getElementById('student-lastname-input').value = st.lastname;
-            document.getElementById('student-firstname-input').value = st.firstname;
-            document.getElementById('student-cycle-type').value = st.cycleType || "Mesociclo";
-            document.getElementById('student-total-weeks').value = st.totalWeeks || 8;
+            if (currentRole === 'prof') {
+                document.getElementById('student-lastname-input').value = st.lastname;
+                document.getElementById('student-firstname-input').value = st.firstname;
+                document.getElementById('student-cycle-type').value = st.cycleType || "Mesociclo";
+                document.getElementById('student-total-weeks').value = st.totalWeeks || 8;
+            }
 
             updateStudentDisplayHeader(st);
             populateWeekSelectors(st.totalWeeks || 8);
@@ -519,7 +693,7 @@
             persistDatabase();
             refreshStudentDatabaseDropdown();
             loadStudentData(currentStudentId);
-            showToast("¡Planificación y Alumno guardados!");
+            showToast("¡Alumno y Planificación guardados!");
         }
 
         function prepareNewStudent() {
@@ -532,7 +706,7 @@
             document.getElementById('cycle-display').innerText = 'Mesociclo (8 Semanas)';
             renderNutrition();
             renderExercises();
-            showToast("Configura los datos del nuevo alumno y presiona Guardar.");
+            showToast("Ingresa los datos y presiona Guardar.");
         }
 
         function onWeekSelectChange() {
@@ -542,33 +716,6 @@
 
         function onDaySelectChange() {
             selectedDay = parseInt(document.getElementById('day-select').value);
-            renderExercises();
-        }
-
-        function toggleViewMode() {
-            isProfMode = !isProfMode;
-            const btn = document.getElementById('role-toggle-btn');
-            const card = document.getElementById('student-management-card');
-            const addBtn = document.getElementById('add-ex-btn');
-            const editNutBtn = document.getElementById('edit-nut-btn');
-            const profActions = document.getElementById('prof-actions');
-            const bannerText = document.getElementById('role-banner-text');
-
-            if (isProfMode) {
-                btn.innerText = "Modo: Profesor";
-                bannerText.innerText = "Modo Profesor: Gestión de alumnos y diseño de rutinas";
-                card.classList.remove('hidden');
-                addBtn.classList.remove('hidden');
-                editNutBtn.classList.remove('hidden');
-                profActions.classList.add('hidden');
-            } else {
-                btn.innerText = "Modo: Alumno";
-                bannerText.innerText = "Modo Alumno: Visualización de rutina y guardado PDF";
-                card.classList.add('hidden');
-                addBtn.classList.add('hidden');
-                editNutBtn.classList.add('hidden');
-                profActions.classList.remove('hidden');
-            }
             renderExercises();
         }
 
@@ -583,7 +730,7 @@
                 container.innerHTML = `
                     <div class="bg-slate-900 border border-dashed border-slate-800 rounded-2xl p-6 text-center text-slate-400">
                         <i data-feather="calendar" class="w-8 h-8 text-amber-400 mx-auto mb-2"></i>
-                        <p class="text-xs">Sin ejercicios asignados para el <strong>Día ${selectedDay}</strong> de la <strong>Semana ${selectedWeek}</strong>.</p>
+                        <p class="text-xs">Sin ejercicios programados para el <strong>Día ${selectedDay}</strong> de la <strong>Semana ${selectedWeek}</strong>.</p>
                     </div>
                 `;
                 feather.replace();
@@ -620,7 +767,7 @@
                             <div><span class="text-slate-400 block">Desc. Serie</span><strong class="text-slate-200">${ex.setRestTime}</strong></div>
                         </div>
 
-                        ${isProfMode ? `
+                        ${currentRole === 'prof' ? `
                         <div class="flex justify-end gap-2 pt-1 border-t border-slate-800/80">
                             <button onclick="editExercise(${ex.id})" class="text-[11px] bg-slate-800 hover:bg-slate-700 text-amber-300 px-2.5 py-1 rounded-lg border border-slate-700 flex items-center gap-1 font-bold">
                                 <i data-feather="edit-2" class="w-3 h-3"></i> Editar
@@ -652,10 +799,7 @@
 
         function openNutritionModal() {
             const st = studentsDatabase.find(item => item.id === currentStudentId);
-            if (!st) {
-                showToast("Selecciona un alumno activo primero.");
-                return;
-            }
+            if (!st) return;
             document.getElementById('nut-diet-input').value = (st.nutrition && st.nutrition.diet) || '';
             document.getElementById('nut-supplements-input').value = (st.nutrition && st.nutrition.supplements) || '';
             document.getElementById('nutrition-modal').classList.remove('hidden');
@@ -746,10 +890,7 @@
             e.preventDefault();
 
             const st = studentsDatabase.find(item => item.id === currentStudentId);
-            if (!st) {
-                showToast("Selecciona o guarda un alumno primero.");
-                return;
-            }
+            if (!st) return;
 
             const exId = document.getElementById('modal-ex-id').value;
             const urlInput = document.getElementById('modal-ex-media-url').value.trim();
@@ -812,7 +953,7 @@
             setTimeout(() => { toast.classList.add('hidden'); }, 3000);
         }
 
-        // GENERADOR DE PDF NATIVO CON ENCABEZADO VECTORIZADO Y NÍTIDO
+        // GENERADOR DE REPORTE IMPRESO / PDF NATIVO
         function generateFullPrintReport() {
             const st = studentsDatabase.find(item => item.id === currentStudentId);
             if (!st) return '';
@@ -867,7 +1008,7 @@
             if (!hasAnyExercise) {
                 fullRoutineHTML = `
                     <div style="padding: 20px; text-align: center; color: #64748b; font-size: 12px;">
-                        No se registraron ejercicios en esta planificación.
+                        Sin ejercicios programados.
                     </div>
                 `;
             }
