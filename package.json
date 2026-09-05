@@ -11,25 +11,23 @@
     "preview": "vite preview"
   },
   "devDependencies": {
-    "autoprefixer": "^10.4.19",
-    "postcss": "^8.4.38",
-    "tailwindcss": "^3.4.3",
-    "vite": "^5.2.0"
+    "autoprefixer": "10.4.19",
+    "postcss": "8.4.38",
+    "tailwindcss": "3.4.3",
+    "vite": "5.2.11"
   },
   "dependencies": {
-    "@supabase/supabase-js": "^2.43.0",
-    "chart.js": "^4.4.2",
-    "html2pdf.js": "^0.10.2",
-    "lucide": "^0.378.0",
-    "lucide-react": "^1.41.0",
-    "react-chartjs-2": "^5.3.1"
+    "@supabase/supabase-js": "2.43.4",
+    "chart.js": "4.4.2",
+    "html2pdf.js": "0.10.2",
+    "lucide": "0.378.0"
   },
   "repository": {
     "type": "git",
     "url": "git+https://github.com/ricalco-persedi/franco-fit.git"
   },
   "keywords": [],
-  "author": "",
+  "author": "Franco Fit",
   "license": "ISC",
   "bugs": {
     "url": "https://github.com/ricalco-persedi/franco-fit/issues"
