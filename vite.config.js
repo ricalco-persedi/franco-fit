@@ -2,14 +2,19 @@ import { defineConfig } from 'vite';
 
 export default defineConfig({
   root: './',
-  base: './', // Garantiza rutas relativas para despliegues en Vercel, Netlify o GitHub Pages
+  base: './',
   build: {
     outDir: 'dist',
     sourcemap: false,
-    emptyOutDir: true
+    emptyOutDir: true,
+    chunkSizeWarningLimit: 1600,
+    rollupOptions: {
+      output: {
+        manualChunks: undefined
+      }
+    }
   },
   server: {
-    port: 3000,
-    open: true
+    port: 3000
   }
 });
