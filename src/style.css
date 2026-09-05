@@ -1,28 +1,57 @@
+/* Importación de capas de Tailwind CSS (CLI) */
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
-/* Desplazamiento suave para la app móvil */
-html {
-  scroll-behavior: smooth;
-  -webkit-tap-highlight-color: transparent;
+/* Estilos de interfaz base y optimización táctil */
+body { 
+    -webkit-tap-highlight-color: transparent; 
+    background-color: #060b14;
 }
 
-/* Scrollbars personalizadas para vista web/móvil */
-::-webkit-scrollbar {
-  width: 6px;
+/* Scrollbars personalizadas para tema oscuro */
+::-webkit-scrollbar { 
+    width: 6px; 
 }
-::-webkit-scrollbar-track {
-  background: #1E1E1E;
+::-webkit-scrollbar-track { 
+    background: #0b1320; 
 }
-::-webkit-scrollbar-thumb {
-  background: #D4AF37;
-  border-radius: 3px;
+::-webkit-scrollbar-thumb { 
+    background: #d97706; 
+    border-radius: 4px; 
 }
 
-/* Formato exclusivo para exportación limpia de PDF sin botones de UI */
+/* Reglas de impresión para exportación limpia a PDF */
 @media print {
-  .no-print {
-    display: none !important;
-  }
+    header, 
+    #login-view, 
+    #role-banner, 
+    #student-management-card, 
+    #prof-controls, 
+    #interactive-routine-section, 
+    #interactive-nutrition-section, 
+    #nav-bar-tabs, 
+    #tab-content-history, 
+    #tab-content-analytics,
+    #prof-actions, 
+    #logout-btn, 
+    .no-print {
+        display: none !important;
+    }
+
+    #full-pdf-print-area { 
+        display: block !important; 
+    }
+
+    body {
+        background-color: #ffffff !important;
+        color: #0f172a !important;
+        padding: 0 !important;
+        margin: 0 !important;
+    }
+
+    .pdf-avoid-break {
+        page-break-inside: avoid;
+        break-inside: avoid;
+    }
 }

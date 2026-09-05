@@ -1,29 +1,52 @@
+import html2pdf from 'html2pdf.js';
+
 /**
- * Exportador PDF profesional a costo $0.
- * Utiliza html2pdf.js en el cliente sin requerir servidores de pago.
+ * Generador de Reportes PDF Profesionales a Costo $0
+ * Convierte el nodo DOM indicado en un documento optimizado para impresión.
+ *
+ * @param {string} elementId - ID del contenedor HTML a exportar.
+ * @param {string} filename - Nombre por defecto del archivo descargado.
  */
-export function exportToPDF(elementId, filename = 'Rutina_FrancoFit.pdf') {
+export async function exportToPDF(elementId, filename = 'Rutina_FrancoFit.pdf') {
   const element = document.getElementById(elementId);
-  
+
   if (!element) {
-    console.error('Elemento no encontrado para PDF');
+    console.error(`[pdfGenerator] Elemento con ID "${elementId}" no encontrado.`);
     return;
   }
 
-  const opt = {
-    margin:       [0.3, 0.3, 0.3, 0.3],
-    filename:     filename,
-    image:        { type: 'jpeg', quality: 0.98 },
-    html2canvas:  { scale: 2, useCORS: true, logging: false },
-    jsPDF:        { unit: 'in', format: 'letter', orientation: 'portrait' }
+  // Ocultar botones y elementos interactivos marcados como .no-print
+  const noPrintElements = document.querySelectorAll('.no-print');
+  noPrintElements.forEach(el => el.classList.add('hidden'));
+
+  // Aplicar temporalmente tema claro para ahorro de tinta y alta resolución
+  element.classList.add('pdf-mode-active');
+
+  const options = {
+    margin: [0.4, 0.4, 0.4, 0.4], // Margen superior, izquierdo, inferior, derecho en pulgadas
+    filename: filename,
+    image: { type: 'jpeg', quality: 0.98 },
+    html2canvas: {
+      scale: 2,               // Alta resolución de renderizado
+      useCORS: true,         // Permite cargar imágenes/logos alojados externamente
+      logging: false,
+      backgroundColor: '#ffffff' // Fondo blanco garantizado
+    },
+    jsPDF: {
+      unit: 'in',
+      format: 'a4',
+      orientation: 'portrait'
+    }
   };
 
-  // Ocultar botones interactivos durante la captura
-  const actionButtons = document.querySelectorAll('.no-print');
-  actionButtons.forEach(btn => btn.style.display = 'none');
-
-  window.html2pdf().set(opt).from(element).save().then(() => {
-    // Restaurar botones tras generar PDF
-    actionButtons.forEach(btn => btn.style.display = '');
-  });
+  try {
+    // Generar y descargar el PDF de forma asíncrona
+    await html2pdf().set(options).from(element).save();
+  } catch (error) {
+    console.error('[pdfGenerator] Error al exportar el documento PDF:', error);
+  } finally {
+    // Restaurar los elementos ocultos y remover estilos de impresión
+    noPrintElements.forEach(el => el.classList.remove('hidden'));
+    element.classList.remove('pdf-mode-active');
+  }
 }

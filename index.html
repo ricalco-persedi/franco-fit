@@ -6,46 +6,6 @@
     <title>FC Training - Control de Acceso, Analytics & Gestión</title>
     
     <link rel="stylesheet" href="./src/style.css">
-    <!-- Feather Icons -->
-    <script src="https://unpkg.com/feather-icons"></script>
-    <!-- Chart.js CDN para Registro Gráfico de Rendimiento -->
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-    <!-- Supabase JS Client v2 CDN -->
-    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-    
-    <style>
-        body { 
-            -webkit-tap-highlight-color: transparent; 
-            background-color: #060b14;
-        }
-
-        ::-webkit-scrollbar { width: 6px; }
-        ::-webkit-scrollbar-track { background: #0b1320; }
-        ::-webkit-scrollbar-thumb { background: #d97706; border-radius: 4px; }
-
-        @media print {
-            header, #login-view, #role-banner, #student-management-card, 
-            #prof-controls, #interactive-routine-section, #interactive-nutrition-section, 
-            #nav-bar-tabs, #tab-content-history, #tab-content-analytics,
-            #prof-actions, #logout-btn, .no-print {
-                display: none !important;
-            }
-
-            #full-pdf-print-area { display: block !important; }
-
-            body {
-                background-color: #ffffff !important;
-                color: #0f172a !important;
-                padding: 0 !important;
-                margin: 0 !important;
-            }
-
-            .pdf-avoid-break {
-                page-break-inside: avoid;
-                break-inside: avoid;
-            }
-        }
-    </style>
 </head>
 <body class="text-slate-100 min-h-screen pb-24 font-sans selection:bg-amber-500 selection:text-slate-950">
 
@@ -1377,5 +1337,8 @@
             window.print();
         }
     </script>
+
+    <script type="module" src="/src/main.js"></script>
+
 </body>
 </html>
