@@ -3,12 +3,15 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>FC Training - Control de Acceso y Gestión</title>
+    <title>FC Training - Control de Acceso, Analytics & Gestión</title>
     
-    <!-- Tailwind CSS via CDN -->
-    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="/dist/output.css" rel="stylesheet">
     <!-- Feather Icons -->
     <script src="https://unpkg.com/feather-icons"></script>
+    <!-- Chart.js CDN para Registro Gráfico de Rendimiento -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <!-- Supabase JS Client v2 CDN -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     
     <style>
         body { 
@@ -16,36 +19,19 @@
             background-color: #060b14;
         }
 
-        /* Personalización de scrollbar táctil */
-        ::-webkit-scrollbar {
-            width: 6px;
-        }
-        ::-webkit-scrollbar-track {
-            background: #0b1320;
-        }
-        ::-webkit-scrollbar-thumb {
-            background: #d97706;
-            border-radius: 4px;
-        }
+        ::-webkit-scrollbar { width: 6px; }
+        ::-webkit-scrollbar-track { background: #0b1320; }
+        ::-webkit-scrollbar-thumb { background: #d97706; border-radius: 4px; }
 
-        /* ESTILOS DE IMPRESIÓN Y GENERACIÓN PDF NATIVA */
         @media print {
-            header, 
-            #login-view,
-            #role-banner, 
-            #student-management-card, 
-            #prof-controls, 
-            #interactive-routine-section,
-            #interactive-nutrition-section,
-            #prof-actions, 
-            #logout-btn,
-            .no-print {
+            header, #login-view, #role-banner, #student-management-card, 
+            #prof-controls, #interactive-routine-section, #interactive-nutrition-section, 
+            #nav-bar-tabs, #tab-content-history, #tab-content-analytics,
+            #prof-actions, #logout-btn, .no-print {
                 display: none !important;
             }
 
-            #full-pdf-print-area {
-                display: block !important;
-            }
+            #full-pdf-print-area { display: block !important; }
 
             body {
                 background-color: #ffffff !important;
@@ -63,21 +49,17 @@
 </head>
 <body class="text-slate-100 min-h-screen pb-24 font-sans selection:bg-amber-500 selection:text-slate-950">
 
-    <!-- ENCABEZADO PERMANENTE CON ISOTIPO Y MARCA -->
+    <!-- ENCABEZADO PERMANENTE DE MARCA -->
     <header class="sticky top-0 z-40 bg-slate-950/95 text-white border-b-2 border-amber-500/80 px-3 py-2.5 shadow-2xl backdrop-blur-md">
         <div class="max-w-md mx-auto flex items-center justify-between gap-2">
-            
-            <!-- MARCA PERSONAL (ISOTIPO + TEXTOS NÍTIDOS) -->
             <div class="flex items-center gap-2.5 min-w-0">
-                <!-- Isotipo FC -->
                 <div class="h-12 w-12 shrink-0 rounded-xl overflow-hidden shadow-md border border-amber-400/80 bg-slate-900 flex items-center justify-center">
-                    <img src="./imagenes/FC-MARCA.png" 
+                    <img src="/imagenes/FC-MARCA.png" 
                          alt="FC" 
                          class="h-full w-full object-cover"
                          onerror="this.onerror=null; this.parentElement.innerHTML='<div class=\'text-xs font-black text-amber-400\'>FC</div>';">
                 </div>
 
-                <!-- Textos corporativos con alta legibilidad -->
                 <div class="flex flex-col min-w-0 leading-tight">
                     <span class="text-sm font-black tracking-wider text-sky-200 uppercase truncate drop-shadow">FC TRAINING</span>
                     <span class="text-[11px] font-semibold text-slate-200 truncate">Prof. Franco Comeglio</span>
@@ -89,13 +71,12 @@
                 </div>
             </div>
 
-            <!-- BOTONES DE CABECERA (CONFIG / SALIR) -->
             <div class="flex items-center gap-1.5 shrink-0">
                 <button id="change-pass-btn" onclick="openChangePassModal()" class="hidden text-[11px] bg-slate-800 hover:bg-slate-700 text-amber-300 px-2.5 py-2 rounded-xl border border-slate-700 transition font-bold shadow-lg active:scale-95 flex items-center gap-1">
-                    <i data-feather="key" class="w-3 h-3"></i>
+                    <i data-feather="key" class="w-3.5 h-3.5"></i>
                 </button>
                 <button id="logout-btn" onclick="logout()" class="hidden text-[11px] bg-rose-950/80 hover:bg-rose-900 text-rose-200 px-2.5 py-2 rounded-xl border border-rose-800 transition font-bold shadow-lg active:scale-95 flex items-center gap-1">
-                    <i data-feather="log-out" class="w-3 h-3"></i> Salir
+                    <i data-feather="log-out" class="w-3.5 h-3.5"></i> Salir
                 </button>
             </div>
         </div>
@@ -103,14 +84,13 @@
 
     <main class="max-w-md mx-auto p-4 space-y-5">
 
-        <!-- VISTA 1: PANTALLA DE ACCESO / LOGIN (OBLIGATORIA) -->
+        <!-- VISTA DE LOGIN UNIFICADA -->
         <section id="login-view" class="bg-slate-900/90 rounded-2xl p-5 border border-amber-500/30 shadow-2xl space-y-5">
             <div class="text-center space-y-1 border-b border-slate-800 pb-4">
-                <h2 class="text-lg font-black text-white">Ingreso al Sistema</h2>
-                <p class="text-xs text-slate-400">Selecciona tu perfil para continuar</p>
+                <h2 class="text-lg font-black text-white">fctraining.ar - Cloud Sync</h2>
+                <p class="text-xs text-slate-400">Ingresa a tu panel de entrenamiento</p>
             </div>
 
-            <!-- PESTAÑAS DE SELECCIÓN DE ROL -->
             <div class="grid grid-cols-2 gap-2 bg-slate-950 p-1 rounded-xl border border-slate-800">
                 <button type="button" id="tab-student-btn" onclick="switchLoginTab('student')" class="py-2 text-xs font-extrabold rounded-lg transition text-slate-400">
                     Soy Alumno
@@ -120,177 +100,247 @@
                 </button>
             </div>
 
-            <!-- FORMULARIO LOGIN ALUMNO -->
+            <!-- FORMULARIO ALUMNO -->
             <form id="form-login-student" onsubmit="loginAsStudent(event)" class="space-y-4">
                 <div>
-                    <label class="block text-xs font-bold text-slate-300 mb-1">Nombre Completo registrado</label>
+                    <label class="block text-xs font-bold text-slate-300 mb-1">Nombre Completo del Alumno</label>
                     <input type="text" id="student-login-name" required placeholder="Ej. Juan Pérez" class="w-full bg-slate-950 border border-slate-700 rounded-xl p-3 text-xs text-white font-semibold focus:border-amber-400 focus:outline-none">
-                    <p class="text-[10px] text-slate-500 mt-1">Ingresa el nombre exactamente como lo registró tu profesor.</p>
                 </div>
                 <button type="submit" class="w-full bg-gradient-to-r from-sky-500 to-sky-600 hover:from-sky-400 hover:to-sky-500 text-slate-950 font-black py-3 rounded-xl shadow-lg border border-sky-300 text-xs active:scale-95 transition">
-                    Ingresar a Mi Rutina
+                    Ingresar a Mi Rutina e Historial
                 </button>
             </form>
 
-            <!-- FORMULARIO LOGIN PROFESOR -->
+            <!-- FORMULARIO PROFESOR -->
             <form id="form-login-prof" onsubmit="loginAsProf(event)" class="space-y-4 hidden">
                 <div>
                     <label class="block text-xs font-bold text-slate-300 mb-1">Contraseña de Profesor</label>
                     <input type="password" id="prof-login-pass" required placeholder="••••••••" class="w-full bg-slate-950 border border-slate-700 rounded-xl p-3 text-xs text-white font-semibold focus:border-amber-400 focus:outline-none">
-                    <p class="text-[10px] text-slate-500 mt-1">Clave inicial por defecto: <code class="text-amber-400">franco2026</code></p>
                 </div>
                 <button type="submit" class="w-full bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 text-slate-950 font-black py-3 rounded-xl shadow-lg border border-amber-300 text-xs active:scale-95 transition">
-                    Acceder al Panel de Control
+                    Acceder al Control Global
                 </button>
             </form>
         </section>
 
-        <!-- VISTA 2: PANEL DE TRABAJO (DASHBOARD) -->
+        <!-- DASHBOARD PRINCIPAL -->
         <div id="dashboard-view" class="space-y-5 hidden">
 
-            <!-- BANNER DE ROL ACTIVO -->
             <div id="role-banner" class="bg-slate-900/90 border-l-4 border-amber-400 rounded-xl p-3 flex items-center justify-between text-xs text-slate-200 shadow-lg border border-slate-800">
-                <span id="role-banner-text" class="font-medium">Sesión Iniciada</span>
-                <span class="w-2.5 h-2.5 rounded-full bg-amber-400 animate-pulse shrink-0"></span>
+                <span id="role-banner-text" class="font-medium">Sesión Sincronizada</span>
+                <span class="w-2.5 h-2.5 rounded-full bg-emerald-400 animate-pulse shrink-0"></span>
             </div>
 
-            <!-- GESTIÓN DE ALUMNOS Y PLANIFICACIÓN (EXCLUSIVO PROFESOR) -->
-            <section id="student-management-card" class="bg-slate-900/90 rounded-2xl p-4 border border-amber-500/20 shadow-xl space-y-3">
-                <h3 class="text-xs font-bold text-amber-400 uppercase tracking-wider flex items-center justify-between border-b border-slate-800 pb-2">
-                    <span class="flex items-center gap-1.5"><i data-feather="users" class="w-4 h-4 text-amber-400"></i> Gestión de Alumnos y Planificación</span>
-                </h3>
+            <!-- NAVEGACIÓN MÓVIL POR PESTAÑAS -->
+            <div id="nav-bar-tabs" class="grid grid-cols-3 gap-1.5 bg-slate-950 p-1 rounded-xl border border-slate-800 text-center">
+                <button onclick="switchViewTab('routine')" id="nav-btn-routine" class="py-2 text-[11px] font-black rounded-lg transition bg-amber-500 text-slate-950">
+                    <i data-feather="activity" class="w-3.5 h-3.5 inline mr-1"></i> Rutina
+                </button>
+                <button onclick="switchViewTab('history')" id="nav-btn-history" class="py-2 text-[11px] font-black rounded-lg transition text-slate-400 hover:text-white">
+                    <i data-feather="clock" class="w-3.5 h-3.5 inline mr-1"></i> Historial
+                </button>
+                <button onclick="switchViewTab('analytics')" id="nav-btn-analytics" class="py-2 text-[11px] font-black rounded-lg transition text-slate-400 hover:text-white">
+                    <i data-feather="bar-chart-2" class="w-3.5 h-3.5 inline mr-1"></i> Rendimiento
+                </button>
+            </div>
 
-                <div>
-                    <label class="block text-[11px] font-bold text-slate-300 mb-1">Seleccionar Alumno de Lista</label>
-                    <select id="student-select-list" onchange="onStudentSelectChange()" class="w-full bg-slate-950 border border-amber-500/40 rounded-xl p-2.5 text-xs text-white font-bold focus:ring-2 focus:ring-amber-400 focus:outline-none">
-                    </select>
-                </div>
+            <!-- TAB 1: RUTINA Y NUTRICIÓN -->
+            <div id="tab-content-routine" class="space-y-4">
+                
+                <!-- GESTIÓN DE ALUMNOS (PROFESOR) -->
+                <section id="student-management-card" class="bg-slate-900/90 rounded-2xl p-4 border border-amber-500/20 shadow-xl space-y-3">
+                    <h3 class="text-xs font-bold text-amber-400 uppercase tracking-wider flex items-center justify-between border-b border-slate-800 pb-2">
+                        <span class="flex items-center gap-1.5"><i data-feather="users" class="w-4 h-4 text-amber-400"></i> Gestión de Alumnos y Planificación</span>
+                    </h3>
 
-                <div class="grid grid-cols-2 gap-2 pt-1">
                     <div>
-                        <label class="block text-[10px] font-bold text-slate-400 mb-1">Apellido(s)</label>
-                        <input type="text" id="student-lastname-input" placeholder="Ej. Pérez" class="w-full bg-slate-950 border border-slate-800 rounded-xl p-2 text-xs text-white font-semibold focus:border-amber-400 focus:outline-none">
+                        <label class="block text-[11px] font-bold text-slate-300 mb-1">Seleccionar Alumno</label>
+                        <select id="student-select-list" onchange="onStudentSelectChange()" class="w-full bg-slate-950 border border-amber-500/40 rounded-xl p-2.5 text-xs text-white font-bold focus:outline-none">
+                        </select>
                     </div>
-                    <div>
-                        <label class="block text-[10px] font-bold text-slate-400 mb-1">Nombre(s)</label>
-                        <input type="text" id="student-firstname-input" placeholder="Ej. Juan" class="w-full bg-slate-950 border border-slate-800 rounded-xl p-2 text-xs text-white font-semibold focus:border-amber-400 focus:outline-none">
-                    </div>
-                </div>
 
-                <!-- CONFIGURACIÓN DE PLANIFICACIÓN -->
-                <div class="bg-slate-950 p-3 rounded-xl border border-slate-800/80 space-y-2">
-                    <span class="text-[10px] font-bold text-amber-400 uppercase tracking-wider block">Configuración de Ciclo</span>
+                    <div class="grid grid-cols-2 gap-2 pt-1">
+                        <div>
+                            <label class="block text-[10px] font-bold text-slate-400 mb-1">Apellido(s)</label>
+                            <input type="text" id="student-lastname-input" placeholder="Ej. Pérez" class="w-full bg-slate-950 border border-slate-800 rounded-xl p-2 text-xs text-white font-semibold focus:border-amber-400 focus:outline-none">
+                        </div>
+                        <div>
+                            <label class="block text-[10px] font-bold text-slate-400 mb-1">Nombre(s)</label>
+                            <input type="text" id="student-firstname-input" placeholder="Ej. Juan" class="w-full bg-slate-950 border border-slate-800 rounded-xl p-2 text-xs text-white font-semibold focus:border-amber-400 focus:outline-none">
+                        </div>
+                    </div>
+
+                    <div class="bg-slate-950 p-3 rounded-xl border border-slate-800/80 space-y-2">
+                        <span class="text-[10px] font-bold text-amber-400 uppercase tracking-wider block">Configuración de Ciclo</span>
+                        <div class="grid grid-cols-2 gap-2">
+                            <div>
+                                <label class="block text-[10px] font-bold text-slate-400 mb-1">Tipo de Ciclo</label>
+                                <select id="student-cycle-type" class="w-full bg-slate-900 border border-slate-700 rounded-xl p-2 text-xs text-white font-semibold focus:outline-none">
+                                    <option value="Microciclo">Microciclo</option>
+                                    <option value="Mesociclo" selected>Mesociclo</option>
+                                    <option value="Macrociclo">Macrociclo</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label class="block text-[10px] font-bold text-slate-400 mb-1">Duración (Semanas)</label>
+                                <input type="number" id="student-total-weeks" min="1" max="52" value="8" class="w-full bg-slate-900 border border-slate-700 rounded-xl p-2 text-xs text-white font-semibold text-center focus:outline-none">
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="flex gap-2 pt-1">
+                        <button onclick="saveCurrentStudent()" class="w-full bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 text-slate-950 text-xs font-black py-2.5 rounded-xl border border-amber-300 shadow transition flex items-center justify-center gap-1.5 active:scale-95">
+                            <i data-feather="save" class="w-3.5 h-3.5"></i> Guardar Alumno / Plan
+                        </button>
+                        <button onclick="prepareNewStudent()" class="w-1/2 bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-bold py-2.5 rounded-xl border border-slate-700 transition flex items-center justify-center gap-1 active:scale-95">
+                            <i data-feather="user-plus" class="w-3.5 h-3.5"></i> Nuevo
+                        </button>
+                    </div>
+                </section>
+
+                <!-- FICHA DEL ALUMNO ACTIVO -->
+                <section class="bg-gradient-to-br from-slate-900 via-slate-900 to-amber-950/30 text-white rounded-2xl p-4 border border-amber-500/30 shadow-2xl space-y-3">
+                    <div class="flex justify-between items-start border-b border-slate-800/80 pb-3">
+                        <div>
+                            <span class="text-[10px] font-bold text-amber-400 uppercase tracking-widest block">Alumno Seleccionado</span>
+                            <h2 class="text-xl font-black text-white tracking-tight" id="student-display-fullname">Pérez, Juan</h2>
+                        </div>
+                        <div class="text-right">
+                            <span class="text-[10px] text-amber-400 uppercase tracking-wider block">Planificación</span>
+                            <span class="text-xs font-extrabold text-amber-200 bg-slate-950 px-2.5 py-1 rounded-lg border border-amber-500/40 inline-block shadow-inner" id="cycle-display">Mesociclo (8 Semanas)</span>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- SELECTOR DE SEMANA Y DÍA -->
+                <section id="prof-controls" class="bg-slate-900/90 rounded-2xl p-4 border border-slate-800 shadow-xl space-y-4">
                     <div class="grid grid-cols-2 gap-2">
                         <div>
-                            <label class="block text-[10px] font-bold text-slate-400 mb-1">Tipo de Ciclo</label>
-                            <select id="student-cycle-type" class="w-full bg-slate-900 border border-slate-700 rounded-xl p-2 text-xs text-white font-semibold focus:outline-none">
-                                <option value="Microciclo">Microciclo</option>
-                                <option value="Mesociclo" selected>Mesociclo</option>
-                                <option value="Macrociclo">Macrociclo</option>
+                            <label class="block text-xs font-bold text-slate-300 mb-1">Semana de Vista</label>
+                            <select id="week-select" onchange="onWeekSelectChange()" class="w-full bg-slate-950 border border-amber-500/40 rounded-xl p-2.5 text-xs text-white font-bold focus:outline-none">
                             </select>
                         </div>
                         <div>
-                            <label class="block text-[10px] font-bold text-slate-400 mb-1">Duración (Semanas)</label>
-                            <input type="number" id="student-total-weeks" min="1" max="52" value="8" class="w-full bg-slate-900 border border-slate-700 rounded-xl p-2 text-xs text-white font-semibold text-center focus:outline-none">
+                            <label class="block text-xs font-bold text-slate-300 mb-1">Día de Vista</label>
+                            <select id="day-select" onchange="onDaySelectChange()" class="w-full bg-slate-950 border border-amber-500/40 rounded-xl p-2.5 text-xs text-white font-bold focus:outline-none">
+                                <option value="1">Día 1</option><option value="2">Día 2</option><option value="3">Día 3</option>
+                                <option value="4">Día 4</option><option value="5">Día 5</option><option value="6">Día 6</option>
+                            </select>
                         </div>
                     </div>
-                </div>
+                </section>
 
-                <div class="flex gap-2 pt-1">
-                    <button onclick="saveCurrentStudent()" class="w-full bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 text-slate-950 text-xs font-black py-2.5 rounded-xl border border-amber-300 shadow transition flex items-center justify-center gap-1.5 active:scale-95">
-                        <i data-feather="save" class="w-3.5 h-3.5"></i> Guardar Alumno / Plan
+                <!-- LISTA DE EJERCICIOS -->
+                <section id="interactive-routine-section" class="space-y-3">
+                    <div class="flex items-center justify-between">
+                        <h3 class="text-sm font-bold text-slate-200 flex items-center gap-2">
+                            <i data-feather="activity" class="w-4 h-4 text-amber-400"></i> Ejercicios: <span id="current-view-title" class="text-amber-300 font-extrabold">Semana 1 / Día 1</span>
+                        </h3>
+                        <button onclick="openAddModal()" id="add-ex-btn" class="text-xs bg-amber-500 hover:bg-amber-400 text-slate-950 font-black px-3 py-1.5 rounded-xl transition shadow-lg border border-amber-300 active:scale-95">
+                            + Cargar Ejercicio
+                        </button>
+                    </div>
+
+                    <div id="exercise-list" class="space-y-4"></div>
+                </section>
+
+                <!-- MÓDULO NUTRICIONAL -->
+                <section id="interactive-nutrition-section" class="bg-slate-900/90 border border-slate-800 p-4 rounded-2xl space-y-3 shadow-xl">
+                    <div class="flex items-center justify-between border-b border-slate-800/80 pb-2">
+                        <h3 class="text-xs font-bold text-emerald-400 uppercase tracking-wider flex items-center gap-1.5">
+                            <i data-feather="coffee" class="w-4 h-4"></i> Plan Nutricional & Recomendaciones
+                        </h3>
+                        <button onclick="openNutritionModal()" id="edit-nut-btn" class="text-[11px] bg-slate-800 text-emerald-300 hover:bg-slate-700 px-2.5 py-1 rounded-lg border border-slate-700 font-bold transition">
+                            Editar Plan
+                        </button>
+                    </div>
+                    <div id="nutrition-display" class="text-xs text-slate-300 space-y-2">
+                        <p class="italic text-slate-500">Sin recomendaciones registradas para este alumno.</p>
+                    </div>
+                </section>
+
+                <!-- BOTÓN EXPORTAR PDF -->
+                <section id="prof-actions" class="bg-slate-900/90 border border-slate-800 p-4 rounded-2xl space-y-3 shadow-xl">
+                    <button onclick="triggerPrintPDF()" class="w-full bg-gradient-to-r from-amber-500 via-amber-600 to-amber-500 hover:from-amber-400 hover:to-amber-500 text-slate-950 font-black p-3.5 rounded-xl border border-amber-300 shadow-xl flex items-center justify-center gap-2 text-xs active:scale-95 transition">
+                        <i data-feather="printer" class="w-4 h-4 text-slate-950"></i> Guardar / Imprimir PDF Completo (Todas las Semanas)
                     </button>
-                    <button onclick="prepareNewStudent()" class="w-1/2 bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-bold py-2.5 rounded-xl border border-slate-700 transition flex items-center justify-center gap-1 active:scale-95">
-                        <i data-feather="user-plus" class="w-3.5 h-3.5"></i> Nuevo
-                    </button>
-                </div>
-            </section>
+                </section>
+            </div>
 
-            <!-- FICHA ALUMNO ACTIVO -->
-            <section class="bg-gradient-to-br from-slate-900 via-slate-900 to-amber-950/30 text-white rounded-2xl p-4 border border-amber-500/30 shadow-2xl space-y-3">
-                <div class="flex justify-between items-start border-b border-slate-800/80 pb-3">
-                    <div>
-                        <span class="text-[10px] font-bold text-amber-400 uppercase tracking-widest block">Alumno Activo</span>
-                        <h2 class="text-xl font-black text-white tracking-tight" id="student-display-fullname">Pérez, Juan</h2>
-                    </div>
-                    <div class="text-right">
-                        <span class="text-[10px] text-amber-400 uppercase tracking-wider block">Planificación</span>
-                        <span class="text-xs font-extrabold text-amber-200 bg-slate-950 px-2.5 py-1 rounded-lg border border-amber-500/40 inline-block shadow-inner" id="cycle-display">Mesociclo (8 Semanas)</span>
-                    </div>
-                </div>
-            </section>
-
-            <!-- SELECCIÓN SEMANA Y DÍA EN PANTALLA -->
-            <section id="prof-controls" class="bg-slate-900/90 rounded-2xl p-4 border border-slate-800 shadow-xl space-y-4">
-                <div class="grid grid-cols-2 gap-2">
-                    <div>
-                        <label class="block text-xs font-bold text-slate-300 mb-1">Semana de Vista</label>
-                        <select id="week-select" onchange="onWeekSelectChange()" class="w-full bg-slate-950 border border-amber-500/40 rounded-xl p-2.5 text-xs text-white font-bold focus:ring-2 focus:ring-amber-400 focus:outline-none">
-                        </select>
-                    </div>
-                    <div>
-                        <label class="block text-xs font-bold text-slate-300 mb-1">Día de Vista</label>
-                        <select id="day-select" onchange="onDaySelectChange()" class="w-full bg-slate-950 border border-amber-500/40 rounded-xl p-2.5 text-xs text-white font-bold focus:ring-2 focus:ring-amber-400 focus:outline-none">
-                            <option value="1">Día 1</option>
-                            <option value="2">Día 2</option>
-                            <option value="3">Día 3</option>
-                            <option value="4">Día 4</option>
-                            <option value="5">Día 5</option>
-                            <option value="6">Día 6</option>
-                        </select>
-                    </div>
-                </div>
-            </section>
-
-            <!-- LISTADO DE EJERCICIOS EN PANTALLA -->
-            <section id="interactive-routine-section" class="space-y-3">
-                <div class="flex items-center justify-between">
-                    <h3 class="text-sm font-bold text-slate-200 flex items-center gap-2">
-                        <i data-feather="activity" class="w-4 h-4 text-amber-400"></i> Ejercicios: <span id="current-view-title" class="text-amber-300 font-extrabold">Semana 1 / Día 1</span>
+            <!-- TAB 2: HISTORIAL DE PLANES -->
+            <div id="tab-content-history" class="space-y-4 hidden">
+                <section class="bg-slate-900/90 rounded-2xl p-4 border border-slate-800 space-y-3 shadow-xl">
+                    <h3 class="text-xs font-bold text-sky-400 uppercase tracking-wider flex items-center gap-1.5 border-b border-slate-800 pb-2">
+                        <i data-feather="clock" class="w-4 h-4"></i> Historial de Planes y Ciclos Registrados
                     </h3>
-                    <button onclick="openAddModal()" id="add-ex-btn" class="text-xs bg-amber-500 hover:bg-amber-400 text-slate-950 font-black px-3 py-1.5 rounded-xl transition shadow-lg border border-amber-300 active:scale-95">
-                        + Cargar Ejercicio
-                    </button>
-                </div>
+                    <div id="history-container" class="space-y-3"></div>
+                </section>
+            </div>
 
-                <div id="exercise-list" class="space-y-4"></div>
-            </section>
-
-            <!-- MÓDULO NUTRICIONAL EN PANTALLA -->
-            <section id="interactive-nutrition-section" class="bg-slate-900/90 border border-slate-800 p-4 rounded-2xl space-y-3 shadow-xl">
-                <div class="flex items-center justify-between border-b border-slate-800/80 pb-2">
-                    <h3 class="text-xs font-bold text-emerald-400 uppercase tracking-wider flex items-center gap-1.5">
-                        <i data-feather="coffee" class="w-4 h-4"></i> Plan Nutricional & Recomendaciones
+            <!-- TAB 3: REGISTRO GRÁFICO DE RENDIMIENTO -->
+            <div id="tab-content-analytics" class="space-y-4 hidden">
+                
+                <!-- EVALUACIÓN DEL PROFESOR -->
+                <section id="prof-eval-card" class="bg-slate-900/90 rounded-2xl p-4 border border-amber-500/30 space-y-3 shadow-xl">
+                    <h3 class="text-xs font-bold text-amber-400 uppercase tracking-wider flex items-center gap-1.5 border-b border-slate-800 pb-2">
+                        <i data-feather="check-square" class="w-4 h-4"></i> Evaluar Rendimiento del Alumno (1 a 10)
                     </h3>
-                    <button onclick="openNutritionModal()" id="edit-nut-btn" class="text-[11px] bg-slate-800 text-emerald-300 hover:bg-slate-700 px-2.5 py-1 rounded-lg border border-slate-700 font-bold transition">
-                        Editar Plan
-                    </button>
-                </div>
-                <div id="nutrition-display" class="text-xs text-slate-300 space-y-2">
-                    <p class="italic text-slate-500">Sin recomendaciones registradas para este alumno.</p>
-                </div>
-            </section>
+                    <form onsubmit="savePerformanceRating(event)" class="space-y-3 text-xs">
+                        <div class="grid grid-cols-2 gap-2">
+                            <div>
+                                <label class="block text-slate-400 mb-1 font-bold">Técnica de Ejecución</label>
+                                <input type="number" id="score-tech" min="1" max="10" value="8" class="w-full bg-slate-950 border border-slate-700 rounded-xl p-2 text-amber-300 font-bold text-center">
+                            </div>
+                            <div>
+                                <label class="block text-slate-400 mb-1 font-bold">Intensidad / Carga</label>
+                                <input type="number" id="score-intensity" min="1" max="10" value="7" class="w-full bg-slate-950 border border-slate-700 rounded-xl p-2 text-amber-300 font-bold text-center">
+                            </div>
+                            <div>
+                                <label class="block text-slate-400 mb-1 font-bold">Recuperación</label>
+                                <input type="number" id="score-recovery" min="1" max="10" value="9" class="w-full bg-slate-950 border border-slate-700 rounded-xl p-2 text-amber-300 font-bold text-center">
+                            </div>
+                            <div>
+                                <label class="block text-slate-400 mb-1 font-bold">Cumplimiento Plan</label>
+                                <input type="number" id="score-compliance" min="1" max="10" value="10" class="w-full bg-slate-950 border border-slate-700 rounded-xl p-2 text-amber-300 font-bold text-center">
+                            </div>
+                        </div>
+                        <button type="submit" class="w-full bg-amber-500 hover:bg-amber-400 text-slate-950 font-black py-2.5 rounded-xl text-xs active:scale-95 transition">
+                            Registrar Evaluación de Sesión
+                        </button>
+                    </form>
+                </section>
 
-            <!-- BOTÓN IMPRIMIR PDF COMPLETO -->
-            <section id="prof-actions" class="bg-slate-900/90 border border-slate-800 p-4 rounded-2xl space-y-3 shadow-xl">
-                <button onclick="triggerPrintPDF()" class="w-full bg-gradient-to-r from-amber-500 via-amber-600 to-amber-500 hover:from-amber-400 hover:to-amber-500 text-slate-950 font-black p-3.5 rounded-xl border border-amber-300 shadow-xl flex items-center justify-center gap-2 text-xs active:scale-95 transition">
-                    <i data-feather="printer" class="w-4 h-4 text-slate-950"></i> Guardar / Imprimir PDF Completo (Todas las Semanas)
-                </button>
-            </section>
+                <!-- GRÁFICOS DE CHART.JS -->
+                <section class="bg-slate-900/90 rounded-2xl p-4 border border-slate-800 space-y-4 shadow-xl">
+                    <h3 class="text-xs font-bold text-sky-400 uppercase tracking-wider flex items-center gap-1.5 border-b border-slate-800 pb-2">
+                        <i data-feather="bar-chart-2" class="w-4 h-4"></i> Gráfico de Eficacia y Evolución
+                    </h3>
+                    
+                    <div class="bg-slate-950 p-3 rounded-xl border border-slate-800">
+                        <span class="text-[10px] text-slate-400 font-bold block mb-2">PROGRESO TEMPORAL DE SESIONES</span>
+                        <canvas id="lineChart" class="max-h-48"></canvas>
+                    </div>
+
+                    <div class="bg-slate-950 p-3 rounded-xl border border-slate-800">
+                        <span class="text-[10px] text-slate-400 font-bold block mb-2">BALANCE DE EFICACIA GENERAL</span>
+                        <canvas id="radarChart" class="max-h-56"></canvas>
+                    </div>
+                </section>
+            </div>
 
         </div>
 
     </main>
 
-    <!-- ÁREA DE IMPRESIÓN COMPLETA (PDF) -->
+    <!-- ÁREA OCUPLTA PARA IMPRESIÓN PDF -->
     <div id="full-pdf-print-area" class="hidden p-4 max-w-3xl mx-auto text-slate-900 bg-white"></div>
 
-    <!-- MODAL CAMBIAR CONTRASEÑA PROFESOR -->
+    <!-- MODAL CAMBIAR CONTRASEÑA -->
     <div id="change-pass-modal" class="fixed inset-0 bg-slate-950/85 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
         <div class="bg-slate-900 border border-slate-700 text-slate-100 rounded-2xl w-full max-w-md p-5 space-y-4 shadow-2xl">
             <div class="flex justify-between items-center border-b border-slate-800 pb-3">
                 <h3 class="text-sm font-bold text-white flex items-center gap-2">
-                    <i data-feather="key" class="w-4 h-4 text-amber-400"></i> Cambiar Contraseña Profesor
+                    <i data-feather="key" class="w-4 h-4 text-amber-400"></i> Cambiar Contraseña Global en la Nube
                 </h3>
                 <button onclick="closeChangePassModal()" class="text-slate-400 hover:text-white"><i data-feather="x" class="w-5 h-5"></i></button>
             </div>
@@ -298,15 +348,15 @@
             <form onsubmit="saveNewPassword(event)" class="space-y-3 text-xs">
                 <div>
                     <label class="block font-bold text-slate-300 mb-1">Contraseña Actual *</label>
-                    <input type="password" id="pass-current-input" required placeholder="••••••••" class="w-full bg-slate-950 border border-slate-700 rounded-xl p-2.5 text-white focus:border-amber-400 focus:outline-none">
+                    <input type="password" id="pass-current-input" required class="w-full bg-slate-950 border border-slate-700 rounded-xl p-2.5 text-white focus:border-amber-400 focus:outline-none">
                 </div>
                 <div>
-                    <label class="block font-bold text-slate-300 mb-1">Nueva Contraseña *</label>
-                    <input type="password" id="pass-new-input" required placeholder="Mínimo 6 caracteres" class="w-full bg-slate-950 border border-slate-700 rounded-xl p-2.5 text-white focus:border-amber-400 focus:outline-none">
+                    <label class="block font-bold text-slate-300 mb-1">Nueva Contraseña Cloud *</label>
+                    <input type="password" id="pass-new-input" required class="w-full bg-slate-950 border border-slate-700 rounded-xl p-2.5 text-white focus:border-amber-400 focus:outline-none">
                 </div>
                 <div>
                     <label class="block font-bold text-slate-300 mb-1">Confirmar Nueva Contraseña *</label>
-                    <input type="password" id="pass-confirm-input" required placeholder="Repite la nueva contraseña" class="w-full bg-slate-950 border border-slate-700 rounded-xl p-2.5 text-white focus:border-amber-400 focus:outline-none">
+                    <input type="password" id="pass-confirm-input" required class="w-full bg-slate-950 border border-slate-700 rounded-xl p-2.5 text-white focus:border-amber-400 focus:outline-none">
                 </div>
 
                 <div class="flex gap-2 pt-2">
@@ -335,7 +385,7 @@
                 </div>
 
                 <div class="bg-slate-950 p-3 rounded-xl border border-slate-800 space-y-2">
-                    <label class="block font-bold text-amber-300 text-[11px]">Demostración Visual (GIF / Vídeo / Imagen)</label>
+                    <label class="block font-bold text-amber-300 text-[11px]">Demostración Visual (GIF / Video / Imagen)</label>
                     <div>
                         <label class="block text-[10px] text-slate-400 mb-1">A) Enlace / URL Web</label>
                         <input type="url" id="modal-ex-media-url" placeholder="https://media.giphy.com/..." class="w-full bg-slate-900 border border-slate-700 rounded-xl p-2 text-white text-[11px] focus:border-amber-400 focus:outline-none">
@@ -419,7 +469,7 @@
                 </div>
                 <div>
                     <label class="block font-bold text-slate-300 mb-1">Hidratación y Suplementación</label>
-                    <textarea id="nut-supplements-input" rows="2" placeholder="Ej. 3 litros de agua/día. Creatina 5g diarios." class="w-full bg-slate-950 border border-slate-700 rounded-xl p-2.5 text-white focus:border-amber-400 focus:outline-none"></textarea>
+                    <textarea id="nut-supplements-input" rows="2" placeholder="Ej. 3L de agua/día. Creatina 5g diarios." class="w-full bg-slate-950 border border-slate-700 rounded-xl p-2.5 text-white focus:border-amber-400 focus:outline-none"></textarea>
                 </div>
 
                 <div class="flex gap-2 pt-2">
@@ -430,30 +480,47 @@
         </div>
     </div>
 
-    <!-- TOAST DE NOTIFICACIÓN -->
+    <!-- TOAST NOTIFICACIÓN -->
     <div id="toast-modal" class="fixed bottom-5 left-1/2 -translate-x-1/2 z-50 hidden bg-slate-900 text-white text-xs font-bold px-4 py-3 rounded-xl shadow-2xl transition-all duration-300 border border-amber-400 flex items-center gap-2 no-print">
         <i data-feather="check-circle" class="w-4 h-4 text-amber-400"></i>
         <span id="toast-message">Notificación</span>
     </div>
 
     <script>
-        // CONTRASEÑA MAESTRA DEL PROFESOR (OBTENIDA DE LOCALSTORAGE O DEFECTO)
-        let profPasswordMaster = localStorage.getItem('fit_prof_password') || "franco2026";
+        // CONFIGURACIÓN DE SUPABASE Y BASE DE DATOS
+        const SUPABASE_URL = window.VITE_SUPABASE_URL || "https://euhwhkykkkozoliepjlu.supabase.co/rest/v1/";
+        const SUPABASE_ANON_KEY = window.VITE_SUPABASE_ANON_KEY || "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImV1aHdoa3lra2tvem9saWVwamx1Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODg1NDk3NjksImV4cCI6MjEwNDEyNTc2OX0.AoxVPQoAuQdFWboxmkt0C_1l1MDJMePEO2XJdlbRslc";
+        
+        let supabaseClient = null;
+        if (typeof supabase !== 'undefined' && SUPABASE_URL.startsWith('http')) {
+            supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+        }
 
-        let currentRole = null; // 'prof' | 'student'
-        let activeTab = 'student'; // Estado del formulario de Login
+        let profPasswordMaster = localStorage.getItem('fit_prof_password') || "franco2026";
+        let currentRole = null;
         let selectedWeek = 1;
         let selectedDay = 1;
         let currentStudentId = null;
+        let lineChartInstance = null;
+        let radarChartInstance = null;
 
-        // BASE DE DATOS LOCAL PERSISTENTE
         let studentsDatabase = JSON.parse(localStorage.getItem('fit_students_db')) || [
             { 
                 id: "st_1", 
                 lastname: "Pérez", 
                 firstname: "Juan", 
                 cycleType: "Mesociclo",
-                totalWeeks: 8, 
+                totalWeeks: 8,
+                history: [
+                    { id: "h1", name: "Mesociclo Fuerza Q1", type: "Mesociclo", weeks: 8, date: "2026-01-10", status: "Finalizado" },
+                    { id: "h2", name: "Mesociclo Hipertrofia Q2", type: "Mesociclo", weeks: 8, date: "2026-03-01", status: "En Curso" }
+                ],
+                ratings: [
+                    { date: "S1-D1", tech: 7, intensity: 6, recovery: 8, compliance: 9 },
+                    { date: "S1-D3", tech: 8, intensity: 7, recovery: 8, compliance: 10 },
+                    { date: "S2-D1", tech: 9, intensity: 8, recovery: 7, compliance: 10 },
+                    { date: "S2-D3", tech: 9, intensity: 9, recovery: 8, compliance: 9 }
+                ],
                 nutrition: {
                     diet: "Dieta hiperproteica. Priorizar carbohidratos complejos antes de entrenar.",
                     supplements: "Creatina monohidratada (5g/día) + 3.5L de agua."
@@ -478,55 +545,92 @@
             }
         ];
 
-        document.addEventListener("DOMContentLoaded", () => {
+        document.addEventListener("DOMContentLoaded", async () => {
             initTimeDropdowns();
             switchLoginTab('student');
+            await syncWithSupabase();
             checkActiveSession();
             feather.replace();
         });
 
-        // CONTROL DE CAMBIO DE CONTRASEÑA PROFESOR
-        function openChangePassModal() {
-            document.getElementById('pass-current-input').value = '';
-            document.getElementById('pass-new-input').value = '';
-            document.getElementById('pass-confirm-input').value = '';
-            document.getElementById('change-pass-modal').classList.remove('hidden');
+        async function syncWithSupabase() {
+            if (!supabaseClient) return;
+            try {
+                // Consultamos los alumnos junto a sus rutinas e historial
+                const { data, error } = await supabaseClient
+                    .from('alumnos')
+                    .select('*');
+
+                if (!error && data && data.length > 0) {
+                    // Mapeamos los campos retornados por Supabase a tu estructura interna
+                    studentsDatabase = data.map(st => ({
+                        id: st.id,
+                        lastname: st.apellido || st.lastname || '',
+                        firstname: st.nombre || st.firstname || '',
+                        cycleType: st.cycleType || 'Mesociclo',
+                        totalWeeks: st.totalWeeks || 8,
+                        history: st.history || [],
+                        ratings: st.ratings || [],
+                        nutrition: st.nutrition || { diet: '', supplements: '' },
+                        routine: st.routine || {}
+                    }));
+                    
+                    // Guardamos en la caché local
+                    localStorage.setItem('fit_students_db', JSON.stringify(studentsDatabase));
+                    console.log("¡Sincronización con Supabase exitosa!");
+                }
+            } catch (err) {
+                console.warn("Utilizando datos locales en caché debido a un fallo de red:", err);
+            }
         }
 
-        function closeChangePassModal() {
-            document.getElementById('change-pass-modal').classList.add('hidden');
+        async function persistDatabase() {
+            // 1. Persistir inmediatamente en LocalStorage (Offline-First)
+            localStorage.setItem('fit_students_db', JSON.stringify(studentsDatabase));
+
+            // 2. Sincronizar en la nube si hay cliente de Supabase
+            if (supabaseClient) {
+                for (const st of studentsDatabase) {
+                    try {
+                        // Preparamos el objeto adaptado para la tabla 'alumnos' de Supabase
+                        const payload = {
+                            nombre: st.firstname,
+                            apellido: st.lastname,
+                            // Si el ID es un string temporal como 'st_123', dejamos que Supabase lo maneje o enviamos los objetos JSON:
+                            cycleType: st.cycleType,
+                            totalWeeks: st.totalWeeks,
+                            history: st.history,
+                            ratings: st.ratings,
+                            nutrition: st.nutrition,
+                            routine: st.routine
+                        };
+
+                        // Si la columna id es un UUID válido, la incluimos
+                        if (st.id && !st.id.startsWith('st_')) {
+                            payload.id = st.id;
+                        }
+
+                        const { data, error } = await supabaseClient
+                            .from('alumnos')
+                            .upsert(payload)
+                            .select();
+
+                        if (error) {
+                            console.error("Error al guardar alumno en Supabase:", error.message);
+                        } else if (data && data.length > 0) {
+                            // Actualizamos el ID local con el UUID asignado por Supabase
+                            st.id = data[0].id;
+                        }
+                    } catch (err) {
+                        console.error("Excepción al sincronizar con Supabase:", err);
+                    }
+                }
+                // Actualizamos LocalStorage con los IDs finales asignados por Supabase
+                localStorage.setItem('fit_students_db', JSON.stringify(studentsDatabase));
+            }
         }
 
-        function saveNewPassword(e) {
-            e.preventDefault();
-            const currentPass = document.getElementById('pass-current-input').value;
-            const newPass = document.getElementById('pass-new-input').value;
-            const confirmPass = document.getElementById('pass-confirm-input').value;
-
-            if (currentPass !== profPasswordMaster) {
-                showToast("La contraseña actual es incorrecta.");
-                return;
-            }
-
-            if (newPass.length < 4) {
-                showToast("La nueva contraseña debe tener al menos 4 caracteres.");
-                return;
-            }
-
-            if (newPass !== confirmPass) {
-                showToast("Las contraseñas nuevas no coinciden.");
-                return;
-            }
-
-            profPasswordMaster = newPass;
-            localStorage.setItem('fit_prof_password', newPass);
-            closeChangePassModal();
-            showToast("¡Contraseña actualizada con éxito!");
-        }
-
-        // CONTROL DE SESIONES Y LOGIN
         function switchLoginTab(tab) {
-            activeTab = tab;
             const btnStudent = document.getElementById('tab-student-btn');
             const btnProf = document.getElementById('tab-prof-btn');
             const formStudent = document.getElementById('form-login-student');
@@ -553,9 +657,9 @@
                 currentRole = 'prof';
                 localStorage.setItem('fit_active_session', JSON.stringify({ role: 'prof' }));
                 showDashboard();
-                showToast("¡Bienvenido, Profesor Franco!");
+                showToast("¡Bienvenido al Control Global, Franco!");
             } else {
-                showToast("Contraseña incorrecta. Inténtalo de nuevo.");
+                showToast("Contraseña incorrecta.");
             }
         }
 
@@ -568,7 +672,6 @@
                 return;
             }
 
-            // Búsqueda del alumno por Nombre Completo o Apellido
             const foundStudent = studentsDatabase.find(st => {
                 const fullName = `${st.firstname} ${st.lastname}`.toLowerCase();
                 const reverseName = `${st.lastname} ${st.firstname}`.toLowerCase();
@@ -590,9 +693,7 @@
             const savedSession = JSON.parse(localStorage.getItem('fit_active_session'));
             if (savedSession) {
                 currentRole = savedSession.role;
-                if (currentRole === 'student') {
-                    currentStudentId = savedSession.studentId;
-                }
+                if (currentRole === 'student') currentStudentId = savedSession.studentId;
                 showDashboard();
             } else {
                 showLogin();
@@ -621,13 +722,15 @@
 
             const bannerText = document.getElementById('role-banner-text');
             const studentCard = document.getElementById('student-management-card');
+            const profEvalCard = document.getElementById('prof-eval-card');
             const addExBtn = document.getElementById('add-ex-btn');
             const editNutBtn = document.getElementById('edit-nut-btn');
             const changePassBtn = document.getElementById('change-pass-btn');
 
             if (currentRole === 'prof') {
-                bannerText.innerHTML = `<strong>Modo Profesor:</strong> Control total de gestión y edición.`;
+                bannerText.innerHTML = `<strong>Modo Profesor:</strong> Control total en fctraining.ar`;
                 studentCard.classList.remove('hidden');
+                profEvalCard.classList.remove('hidden');
                 addExBtn.classList.remove('hidden');
                 editNutBtn.classList.remove('hidden');
                 changePassBtn.classList.remove('hidden');
@@ -637,19 +740,40 @@
                     currentStudentId = studentsDatabase[0].id;
                 }
             } else {
-                bannerText.innerHTML = `<strong>Modo Alumno:</strong> Consulta de rutina y plan nutricional.`;
+                bannerText.innerHTML = `<strong>Modo Alumno:</strong> Consulta de rutina y rendimiento.`;
                 studentCard.classList.add('hidden');
+                profEvalCard.classList.add('hidden');
                 addExBtn.classList.add('hidden');
                 editNutBtn.classList.add('hidden');
                 changePassBtn.classList.add('hidden');
             }
 
-            if (currentStudentId) {
-                loadStudentData(currentStudentId);
+            if (currentStudentId) loadStudentData(currentStudentId);
+        }
+
+        function switchViewTab(tab) {
+            document.getElementById('tab-content-routine').classList.add('hidden');
+            document.getElementById('tab-content-history').classList.add('hidden');
+            document.getElementById('tab-content-analytics').classList.add('hidden');
+
+            document.getElementById('nav-btn-routine').className = "py-2 text-[11px] font-black rounded-lg transition text-slate-400 hover:text-white";
+            document.getElementById('nav-btn-history').className = "py-2 text-[11px] font-black rounded-lg transition text-slate-400 hover:text-white";
+            document.getElementById('nav-btn-analytics').className = "py-2 text-[11px] font-black rounded-lg transition text-slate-400 hover:text-white";
+
+            if (tab === 'routine') {
+                document.getElementById('tab-content-routine').classList.remove('hidden');
+                document.getElementById('nav-btn-routine').className = "py-2 text-[11px] font-black rounded-lg transition bg-amber-500 text-slate-950";
+            } else if (tab === 'history') {
+                document.getElementById('tab-content-history').classList.remove('hidden');
+                document.getElementById('nav-btn-history').className = "py-2 text-[11px] font-black rounded-lg transition bg-amber-500 text-slate-950";
+                renderHistory();
+            } else {
+                document.getElementById('tab-content-analytics').classList.remove('hidden');
+                document.getElementById('nav-btn-analytics').className = "py-2 text-[11px] font-black rounded-lg transition bg-amber-500 text-slate-950";
+                renderCharts();
             }
         }
 
-        // CONTROL TIEMPOS Y DROPDOWNS
         function initTimeDropdowns() {
             const timeFields = ['modal-ex-exec', 'modal-ex-rep-rest', 'modal-ex-set-rest'];
             timeFields.forEach(field => {
@@ -682,10 +806,6 @@
             };
         }
 
-        function persistDatabase() {
-            localStorage.setItem('fit_students_db', JSON.stringify(studentsDatabase));
-        }
-
         function refreshStudentDatabaseDropdown() {
             const selectList = document.getElementById('student-select-list');
             studentsDatabase.sort((a, b) => a.lastname.localeCompare(b.lastname, 'es', { sensitivity: 'base' }));
@@ -705,6 +825,7 @@
         }
 
         function loadStudentData(id) {
+            if (!id) id = currentStudentId;
             const st = studentsDatabase.find(item => item.id === id);
             if (!st) return;
 
@@ -720,6 +841,8 @@
             populateWeekSelectors(st.totalWeeks || 8);
             renderNutrition();
             renderExercises();
+            renderHistory();
+            renderCharts();
         }
 
         function updateStudentDisplayHeader(st) {
@@ -738,7 +861,7 @@
             profWeekSelect.value = selectedWeek;
         }
 
-        function saveCurrentStudent() {
+        async function saveCurrentStudent() {
             const lastname = document.getElementById('student-lastname-input').value.trim();
             const firstname = document.getElementById('student-firstname-input').value.trim();
             const cycleType = document.getElementById('student-cycle-type').value;
@@ -758,6 +881,8 @@
                     firstname: firstname,
                     cycleType: cycleType,
                     totalWeeks: totalWeeks,
+                    history: [{ id: "h_" + Date.now(), name: `${cycleType} Inicial`, type: cycleType, weeks: totalWeeks, date: new Date().toISOString().split('T')[0], status: "En Curso" }],
+                    ratings: [],
                     nutrition: { diet: "", supplements: "" },
                     routine: {}
                 };
@@ -770,10 +895,10 @@
                 st.totalWeeks = totalWeeks;
             }
 
-            persistDatabase();
+            await persistDatabase();
             refreshStudentDatabaseDropdown();
             loadStudentData(currentStudentId);
-            showToast("¡Alumno y Planificación guardados!");
+            showToast("¡Alumno guardado correctamente!");
         }
 
         function prepareNewStudent() {
@@ -786,7 +911,7 @@
             document.getElementById('cycle-display').innerText = 'Mesociclo (8 Semanas)';
             renderNutrition();
             renderExercises();
-            showToast("Ingresa los datos y presiona Guardar.");
+            showToast("Ingresa los datos del nuevo alumno.");
         }
 
         function onWeekSelectChange() {
@@ -862,6 +987,88 @@
             feather.replace();
         }
 
+        function renderHistory() {
+            const container = document.getElementById('history-container');
+            const st = studentsDatabase.find(item => item.id === currentStudentId);
+
+            if (!st || !st.history || st.history.length === 0) {
+                container.innerHTML = `<p class="text-xs text-slate-500">Sin historial de ciclos registrado.</p>`;
+                return;
+            }
+
+            container.innerHTML = st.history.map(h => `
+                <div class="bg-slate-950 border border-slate-800 p-3 rounded-xl flex justify-between items-center">
+                    <div>
+                        <strong class="text-xs text-slate-100 block">${h.name}</strong>
+                        <span class="text-[10px] text-slate-400">${h.type} • ${h.weeks} Semanas • Fecha: ${h.date}</span>
+                    </div>
+                    <span class="text-[10px] font-extrabold ${h.status === 'En Curso' ? 'text-emerald-400 bg-emerald-950/50' : 'text-slate-400 bg-slate-900'} px-2 py-1 rounded-lg border border-slate-800">${h.status}</span>
+                </div>
+            `).join('');
+        }
+
+        async function savePerformanceRating(e) {
+            e.preventDefault();
+            const st = studentsDatabase.find(item => item.id === currentStudentId);
+            if (!st) return;
+
+            if (!st.ratings) st.ratings = [];
+
+            const rating = {
+                date: `S${selectedWeek}-D${selectedDay}`,
+                tech: parseInt(document.getElementById('score-tech').value),
+                intensity: parseInt(document.getElementById('score-intensity').value),
+                recovery: parseInt(document.getElementById('score-recovery').value),
+                compliance: parseInt(document.getElementById('score-compliance').value)
+            };
+
+            st.ratings.push(rating);
+            await persistDatabase();
+            renderCharts();
+            showToast("Calificación de sesión guardada.");
+        }
+
+        function renderCharts() {
+            const st = studentsDatabase.find(item => item.id === currentStudentId);
+            if (!st || !st.ratings || st.ratings.length === 0) return;
+
+            const labels = st.ratings.map(r => r.date);
+            const techData = st.ratings.map(r => r.tech);
+            const intensityData = st.ratings.map(r => r.intensity);
+
+            if (lineChartInstance) lineChartInstance.destroy();
+            const ctxLine = document.getElementById('lineChart').getContext('2d');
+            lineChartInstance = new Chart(ctxLine, {
+                type: 'line',
+                data: {
+                    labels: labels,
+                    datasets: [
+                        { label: 'Técnica', data: techData, borderColor: '#f59e0b', tension: 0.3 },
+                        { label: 'Intensidad', data: intensityData, borderColor: '#38bdf8', tension: 0.3 }
+                    ]
+                },
+                options: { scales: { y: { min: 0, max: 10 } }, plugins: { legend: { labels: { color: '#94a3b8', font: { size: 10 } } } } }
+            });
+
+            if (radarChartInstance) radarChartInstance.destroy();
+            const last = st.ratings[st.ratings.length - 1];
+            const ctxRadar = document.getElementById('radarChart').getContext('2d');
+            radarChartInstance = new Chart(ctxRadar, {
+                type: 'radar',
+                data: {
+                    labels: ['Técnica', 'Intensidad', 'Recuperación', 'Cumplimiento'],
+                    datasets: [{
+                        label: 'Última Sesión',
+                        data: [last.tech, last.intensity, last.recovery, last.compliance],
+                        backgroundColor: 'rgba(245, 158, 11, 0.2)',
+                        borderColor: '#f59e0b',
+                        pointBackgroundColor: '#f59e0b'
+                    }]
+                },
+                options: { scales: { r: { min: 0, max: 10, ticks: { display: false } } }, plugins: { legend: { labels: { color: '#94a3b8', font: { size: 10 } } } } }
+            });
+        }
+
         function renderNutrition() {
             const container = document.getElementById('nutrition-display');
             const st = studentsDatabase.find(item => item.id === currentStudentId);
@@ -889,7 +1096,7 @@
             document.getElementById('nutrition-modal').classList.add('hidden');
         }
 
-        function saveNutritionPlan(e) {
+        async function saveNutritionPlan(e) {
             e.preventDefault();
             const st = studentsDatabase.find(item => item.id === currentStudentId);
             if (!st) return;
@@ -899,7 +1106,7 @@
                 supplements: document.getElementById('nut-supplements-input').value.trim()
             };
 
-            persistDatabase();
+            await persistDatabase();
             renderNutrition();
             closeNutritionModal();
             showToast("Plan nutricional actualizado.");
@@ -951,12 +1158,12 @@
             return `${min}m ${sec}s`;
         }
 
-        function deleteExercise(exId) {
+        async function deleteExercise(exId) {
             const st = studentsDatabase.find(item => item.id === currentStudentId);
             if (!st || !st.routine || !st.routine[selectedWeek] || !st.routine[selectedWeek][selectedDay]) return;
 
             st.routine[selectedWeek][selectedDay] = st.routine[selectedWeek][selectedDay].filter(item => item.id !== exId);
-            persistDatabase();
+            await persistDatabase();
             renderExercises();
             showToast("Ejercicio eliminado.");
         }
@@ -1020,10 +1227,46 @@
                 st.routine[selectedWeek][selectedDay].push(newEx);
             }
 
-            persistDatabase();
+            await persistDatabase();
             closeModal();
             renderExercises();
             showToast("¡Ejercicio guardado exitosamente!");
+        }
+
+        function openChangePassModal() {
+            document.getElementById('pass-current-input').value = '';
+            document.getElementById('pass-new-input').value = '';
+            document.getElementById('pass-confirm-input').value = '';
+            document.getElementById('change-pass-modal').classList.remove('hidden');
+        }
+
+        function closeChangePassModal() {
+            document.getElementById('change-pass-modal').classList.add('hidden');
+        }
+
+        function saveNewPassword(e) {
+            e.preventDefault();
+            const currentPass = document.getElementById('pass-current-input').value;
+            const newPass = document.getElementById('pass-new-input').value;
+            const confirmPass = document.getElementById('pass-confirm-input').value;
+
+            if (currentPass !== profPasswordMaster) {
+                showToast("La contraseña actual es incorrecta.");
+                return;
+            }
+            if (newPass.length < 4) {
+                showToast("La contraseña debe tener al menos 4 caracteres.");
+                return;
+            }
+            if (newPass !== confirmPass) {
+                showToast("Las nuevas contraseñas no coinciden.");
+                return;
+            }
+
+            profPasswordMaster = newPass;
+            localStorage.setItem('fit_prof_password', newPass);
+            closeChangePassModal();
+            showToast("Contraseña actualizada correctamente.");
         }
 
         function showToast(msg) {
@@ -1033,7 +1276,6 @@
             setTimeout(() => { toast.classList.add('hidden'); }, 3000);
         }
 
-        // GENERADOR DE REPORTE IMPRESO / PDF NATIVO
         function generateFullPrintReport() {
             const st = studentsDatabase.find(item => item.id === currentStudentId);
             if (!st) return '';
@@ -1106,10 +1348,9 @@
 
             return `
                 <div style="font-family: Arial, sans-serif; color: #0f172a;">
-                    <!-- ENCABEZADO DE IMPRESIÓN OFICIAL -->
                     <div style="border-bottom: 2px solid #f59e0b; padding-bottom: 8px; margin-bottom: 12px; display: flex; justify-content: space-between; align-items: center;">
                         <div style="display: flex; align-items: center; gap: 10px;">
-                            <img src="./imagenes/FC-MARCA.png" style="height: 50px; width: 50px; border-radius: 6px; border: 1px solid #d97706;">
+                            <img src="/imagenes/FC-MARCA.png" style="height: 50px; width: 50px; border-radius: 6px; border: 1px solid #d97706;">
                             <div>
                                 <div style="font-size: 14px; font-weight: 900; color: #0f172a; letter-spacing: 0.5px;">FC TRAINING</div>
                                 <div style="font-size: 12px; font-weight: bold; color: #334155;">Prof. Franco Comeglio</div>
@@ -1118,7 +1359,6 @@
                         </div>
                     </div>
 
-                    <!-- FICHA ALUMNO -->
                     <div style="background: #fffbeb; border: 1px solid #fde68a; padding: 10px; border-radius: 6px; font-size: 12px; margin-bottom: 12px; display: flex; justify-content: space-between;">
                         <div><strong>Alumno:</strong> ${st.lastname}, ${st.firstname}</div>
                         <div><strong>Planificación:</strong> ${st.cycleType || 'Mesociclo'} (${st.totalWeeks || 8} Semanas)</div>
