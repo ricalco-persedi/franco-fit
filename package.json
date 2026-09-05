@@ -3,6 +3,8 @@
   "private": true,
   "version": "1.0.0",
   "type": "module",
+  "description": "PWA Franco Fit - Entrenamientos & Nutricion",
+  "main": "index.html",
   "scripts": {
     "dev": "vite",
     "build": "vite build",
@@ -19,8 +21,6 @@
     "html2pdf.js": "^0.10.1",
     "lucide": "^0.344.0"
   },
-  "description": "\"# franco-fit\"",
-  "main": "vite.config.js",
   "repository": {
     "type": "git",
     "url": "git+https://github.com/ricalco-persedi/franco-fit.git"
