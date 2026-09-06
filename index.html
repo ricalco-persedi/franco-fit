@@ -5,7 +5,18 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>FC Training - Control de Acceso, Analytics & Gestión</title>
     
-    <link rel="stylesheet" href="./src/style.css">
+    <!-- Estilos procesados por Vite -->
+    <link href="/src/style.css" rel="stylesheet">
+
+    <!-- CDNs indispensables para el funcionamiento monolítico de index.html -->
+    <!-- 1. Supabase Client -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <!-- 2. Feather Icons -->
+    <script src="https://cdn.jsdelivr.net/npm/feather-icons/dist/feather.min.js"></script>
+    <!-- 3. Chart.js (para los gráficos de rendimiento) -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+
 </head>
 <body class="text-slate-100 min-h-screen pb-24 font-sans selection:bg-amber-500 selection:text-slate-950">
 
@@ -447,10 +458,21 @@
     </div>
 
     <script>
-        // CONFIGURACIÓN DE SUPABASE Y BASE DE DATOS
-        const SUPABASE_URL = window.VITE_SUPABASE_URL || "https://euhwhkykkkozoliepjlu.supabase.co";
-        const SUPABASE_ANON_KEY = window.VITE_SUPABASE_ANON_KEY || "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImV1aHdoa3lra2tvem9saWVwamx1Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODg1NDk3NjksImV4cCI6MjEwNDEyNTc2OX0.AoxVPQoAuQdFWboxmkt0C_1l1MDJMePEO2XJdlbRslc";
-        
+    // Desregistrar cualquier Service Worker remanente en el navegador del cliente
+    if ('serviceWorker' in navigator) {
+    navigator.serviceWorker.getRegistrations().then(function(registrations) {
+        for (let registration of registrations) {
+        registration.unregister().then(function(success) {
+            if (success) console.log('Service Worker antiguo eliminado con éxito.');
+        });
+        }
+    });
+    }
+    
+    // CONFIGURACIÓN DE SUPABASE Y BASE DE DATOS
+        const SUPABASE_URL = "%VITE_SUPABASE_URL%";
+        const SUPABASE_ANON_KEY = "%VITE_SUPABASE_ANON_KEY%";    
+
         let supabaseClient = null;
         if (typeof supabase !== 'undefined' && SUPABASE_URL.startsWith('http')) {
             supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
@@ -1337,8 +1359,6 @@
             window.print();
         }
     </script>
-
-    <script type="module" src="/src/main.js"></script>
 
 </body>
 </html>

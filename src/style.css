@@ -1,7 +1,5 @@
 /* Importación de capas de Tailwind CSS (CLI) */
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
+@import "tailwindcss";
 
 /* Estilos de interfaz base y optimización táctil */
 body { 
