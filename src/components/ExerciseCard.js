@@ -1,12 +1,32 @@
 /**
+ * Procesa enlaces de YouTube para convertirlos en URLs de iframe embebible.
+ * @param {string} url - URL original del video.
+ * @returns {string|null} URL para iframe o null si no es de YouTube.
+ */
+function getYouTubeEmbedUrl(url) {
+  if (!url) return null;
+  
+  const regExp = /^.*(youtu.be\/|v\/|u\/\w\/|embed\/|watch\?v=|\&v=)([^#\&\?]*).*/;
+  const match = url.match(regExp);
+
+  if (match && match[2].length === 11) {
+    const videoId = match[2];
+    // Parámetros clave: autoplay, mute, loop (requiere playlist con el mismo ID), controls=0 y playsinline
+    return `https://www.youtube.com/embed/${videoId}?autoplay=1&mute=1&loop=1&playlist=${videoId}&controls=0&playsinline=1&rel=0&modestbranding=1`;
+  }
+  return null;
+}
+
+/**
  * Genera la tarjeta HTML para un ejercicio individual.
- * Soporta fuentes de video MP4/WebM o GIF animados en bucle.
+ * Soporta YouTube (Embed autoejecutable), MP4/WebM nativos o GIF/Imágenes.
  * 
  * @param {Object} ex - Objeto del ejercicio (name, sets, reps, videoUrl, notes)
- * @returns {string} Cadena HTML optimizada para Tailwind.
+ * @returns {string} Cadena HTML optimizada para Tailwind CSS.
  */
 export function renderExerciseCard(ex) {
-  const isVideo = ex.videoUrl && (ex.videoUrl.endsWith('.mp4') || ex.videoUrl.endsWith('.webm'));
+  const ytEmbedUrl = getYouTubeEmbedUrl(ex.videoUrl);
+  const isDirectVideo = ex.videoUrl && (ex.videoUrl.endsWith('.mp4') || ex.videoUrl.endsWith('.webm'));
 
   return `
     <div class="bg-slate-900 border border-slate-800 rounded-2xl p-4 shadow-xl space-y-3 pdf-avoid-break">
@@ -19,7 +39,15 @@ export function renderExerciseCard(ex) {
 
       ${ex.videoUrl ? `
         <div class="relative w-full aspect-video bg-slate-950 rounded-xl overflow-hidden border border-slate-800/80 shadow-inner">
-          ${isVideo ? `
+          ${ytEmbedUrl ? `
+            <iframe 
+              src="${ytEmbedUrl}" 
+              title="${ex.name || 'Demostración de ejercicio'}"
+              class="w-full h-full border-0 pointer-events-none"
+              allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+              allowfullscreen
+            ></iframe>
+          ` : isDirectVideo ? `
             <video 
               src="${ex.videoUrl}" 
               autoplay 
