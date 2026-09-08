@@ -6,6 +6,14 @@ import { renderHistoryView } from './components/HistoryView.js';
 import { renderAnalyticsView } from './components/AnalyticsView.js';
 import { localDB } from './services/supabase.js';
 import { exportToPDF } from './utils/pdfGenerator.js';
+import { renderExerciseCard } from './components/ExerciseCard.js';
+import { generateStudentPDF } from './utils/pdfGenerator.js';
+
+// Ejemplo al renderizar en el DOM:
+const listContainer = document.getElementById('exercise-list');
+if (listContainer) {
+  listContainer.innerHTML = state.routine.exercises.map(ex => renderExerciseCard(ex)).join('');
+}
 
 /**
  * Estado Global de la Aplicación PWA
@@ -150,6 +158,9 @@ function renderApp() {
   });
 
   bindGlobalEvents();
+  document.getElementById('export-pdf-btn')?.addEventListener('click', () => {
+    generateStudentPDF('full-pdf-print-area', state.routine.studentName);
+  });
 }
 
 /**
