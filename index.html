@@ -540,19 +540,23 @@
             
             const cleanUrl = url.trim();
             
-            // Filtro rápido: si no es enlace de YouTube, salir rápido para optimizar rendimiento
+            // Filtro rápido para no procesar URLs que no sean de YouTube
             if (!cleanUrl.includes('youtube.com') && !cleanUrl.includes('youtu.be')) {
                 return null;
             }
             
-            // Expresión regular robusta de tu ExerciseCard.js
-            const regExp = /^.*(youtu.be\/|v\/|u\/\w\/|embed\/|watch\?v=|\&v=)([^#\&\?]*).*/;
-            const match = cleanUrl.match(regExp);
-            
-            // match[3] contiene el ID exacto de 11 caracteres del video de YouTube
-            if (match && match[3] && match[3].trim().length === 11) {
-                const videoId = match[3].trim();
-                return `https://www.youtube.com/embed/${videoId}?autoplay=1&mute=1&loop=1&playlist=${videoId}&controls=1&playsinline=1&rel=0&modestbranding=1`;
+            try {
+                // Expresión regular idéntica a tu ExerciseCard.js
+                const regExp = /^.*(youtu.be\/|v\/|u\/\w\/|embed\/|watch\?v=|\&v=)([^#\&\?]*).*/;
+                const match = cleanUrl.match(regExp);
+                
+                // match[2] contiene el ID exacto de 11 caracteres del video de YouTube
+                if (match && match[2] && match[2].trim().length === 11) {
+                    const videoId = match[2].trim();
+                    return `https://www.youtube.com/embed/${videoId}?autoplay=1&mute=1&loop=1&playlist=${videoId}&controls=1&playsinline=1&rel=0&modestbranding=1`;
+                }
+            } catch (error) {
+                console.error("Error al extraer el ID de YouTube:", error);
             }
             
             return null;
