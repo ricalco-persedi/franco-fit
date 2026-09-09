@@ -534,8 +534,8 @@
             feather.replace();
         });
 
-        // Procesa enlaces de YouTube para convertirlos en URLs de iframe embebible de forma 100% segura
-        function getYouTubeEmbedUrl(url) {
+       // Procesa enlaces de YouTube para convertirlos en URLs de iframe embebible de forma 100% segura
+       function getYouTubeEmbedUrl(url) {
             if (!url || typeof url !== 'string') return null;
             
             const cleanUrl = url.trim();
@@ -546,11 +546,11 @@
             }
             
             try {
-                // Expresión regular idéntica a tu ExerciseCard.js
+                // Expresión regular idéntica a tu original en ExerciseCard.js
                 const regExp = /^.*(youtu.be\/|v\/|u\/\w\/|embed\/|watch\?v=|\&v=)([^#\&\?]*).*/;
                 const match = cleanUrl.match(regExp);
                 
-                // match[2] contiene el ID exacto de 11 caracteres del video de YouTube
+                // match[2] contiene exactamente el ID de 11 caracteres del video
                 if (match && match[2] && match[2].trim().length === 11) {
                     const videoId = match[2].trim();
                     return `https://www.youtube.com/embed/${videoId}?autoplay=1&mute=1&loop=1&playlist=${videoId}&controls=1&playsinline=1&rel=0&modestbranding=1`;
@@ -560,7 +560,7 @@
             }
             
             return null;
-        }
+        } 
         
         async function syncWithSupabase() {
             if (!supabaseClient) return;
