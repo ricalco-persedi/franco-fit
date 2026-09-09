@@ -547,25 +547,17 @@
             if (isYouTube) {
                 let videoId = null;
                 try {
-                    if (cleanUrl.includes('shorts/')) {
-                        const part = cleanUrl.split('shorts/')[1];
-                        videoId = part.split('?').split('&').split('#').split('/');
-                    } else if (cleanUrl.includes('youtu.be/')) {
-                        const part = cleanUrl.split('youtu.be/')[1];
-                        videoId = part.split('?').split('&').split('#').split('/');
-                    } else if (cleanUrl.includes('v=')) {
-                        const part = cleanUrl.split('v=')[1];
-                        videoId = part.split('&').split('#').split('?').split('/');
-                    } else if (cleanUrl.includes('embed/')) {
-                        const part = cleanUrl.split('embed/')[1];
-                        videoId = part.split('?').split('&').split('#').split('/');
+                    // Expresión regular que aísla exactamente los 11 caracteres del ID del video
+                    const match = cleanUrl.match(/(?:v=|shorts\/|embed\/|youtu\.be\/|v\/)([^#&?/\s]{11})/);
+                    if (match && match[2]) {
+                        videoId = match[2];
                     }
                 } catch (e) {
                     console.warn("Error parseando enlace de YouTube:", e);
                 }
 
-                // Si se extrajo un ID válido de video
-                if (videoId && videoId.length >= 5) {
+                // Si se extrajo un ID válido de 11 caracteres
+                if (videoId && videoId.length === 11) {
                     return {
                         type: 'youtube',
                         videoId: videoId,
@@ -575,7 +567,7 @@
                     };
                 }
                 
-                // Respaldo de seguridad si es enlace de YouTube
+                // Respaldo de seguridad si es enlace de YouTube pero no se extrajo ID
                 return {
                     type: 'youtube_link_only',
                     watchUrl: cleanUrl,
