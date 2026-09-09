@@ -547,10 +547,10 @@
             if (isYouTube) {
                 let videoId = null;
                 try {
-                    // Expresión regular que aísla exactamente los 11 caracteres del ID del video
+                    // Captura limpia de exactamente 11 caracteres ignorando watch, shorts, embed o youtu.be
                     const match = cleanUrl.match(/(?:v=|shorts\/|embed\/|youtu\.be\/|v\/)([^#&?/\s]{11})/);
-                    if (match && match[2]) {
-                        videoId = match[2];
+                    if (match && match[1]) {
+                        videoId = match[1];
                     }
                 } catch (e) {
                     console.warn("Error parseando enlace de YouTube:", e);
@@ -567,7 +567,7 @@
                     };
                 }
                 
-                // Respaldo de seguridad si es enlace de YouTube pero no se extrajo ID
+                // Respaldo de seguridad si es enlace de YouTube pero no se pudo extraer ID
                 return {
                     type: 'youtube_link_only',
                     watchUrl: cleanUrl,
