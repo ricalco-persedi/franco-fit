@@ -534,29 +534,64 @@
             feather.replace();
         });
 
-       // Procesa enlaces de YouTube para convertirlos en URLs de iframe embebible de forma 100% segura
-       function getYouTubeEmbedUrl(url) {
+        // Procesa enlaces de YouTube (incluyendo Shorts) para convertirlos en iframes de forma 100% segura
+        function getYouTubeEmbedUrl(url) {
             if (!url || typeof url !== 'string') return null;
             
             const cleanUrl = url.trim();
             
-            // Filtro rápido para no procesar URLs que no sean de YouTube
+            // Filtro rápido: si no es un enlace de YouTube, salir de inmediato
             if (!cleanUrl.includes('youtube.com') && !cleanUrl.includes('youtu.be')) {
                 return null;
             }
             
             try {
-                // Expresión regular idéntica a tu original en ExerciseCard.js
-                const regExp = /^.*(youtu.be\/|v\/|u\/\w\/|embed\/|watch\?v=|\&v=)([^#\&\?]*).*/;
-                const match = cleanUrl.match(regExp);
+                let videoId = null;
                 
-                // match[2] contiene exactamente el ID de 11 caracteres del video
-                if (match && match[2] && match[2].trim().length === 11) {
-                    const videoId = match[2].trim();
-                    return `https://www.youtube.com/embed/${videoId}?autoplay=1&mute=1&loop=1&playlist=${videoId}&controls=1&playsinline=1&rel=0&modestbranding=1`;
+                // Caso A: YouTube Shorts (youtube.com/shorts/VIDEO_ID)
+                if (cleanUrl.includes('youtube.com/shorts/')) {
+                    const parts = cleanUrl.split('youtube.com/shorts/');
+                    if (parts[4]) {
+                        videoId = parts[4].split(/[?#&]/);
+                    }
+                }
+                // Caso B: Formato corto compartido (youtu.be/VIDEO_ID)
+                else if (cleanUrl.includes('youtu.be/')) {
+                    const parts = cleanUrl.split('youtu.be/');
+                    if (parts[4]) {
+                        videoId = parts[4].split(/[?#&]/);
+                    }
+                } 
+                // Caso C: Formato estándar (youtube.com/watch?v=VIDEO_ID)
+                else if (cleanUrl.includes('watch?v=')) {
+                    const parts = cleanUrl.split('watch?v=');
+                    if (parts[4]) {
+                        videoId = parts[4].split('&').split(/[?#&]/);
+                    }
+                }
+                // Caso D: Formato de inserción clásico (/embed/VIDEO_ID)
+                else if (cleanUrl.includes('/embed/')) {
+                    const parts = cleanUrl.split('/embed/');
+                    if (parts[4]) {
+                        videoId = parts[4].split(/[?#&]/);
+                    }
+                }
+                // Caso E: Fallback usando expresión de ExerciseCard.js por si es otro formato
+                else {
+                    const regExp = /^.*(youtu.be\/|v\/|u\/\w\/|embed\/|watch\?v=|\&v=)([^#\&\?]*).*/;
+                    const match = cleanUrl.match(regExp);
+                    if (match && match[2] && match[2].trim().length === 11) {
+                        videoId = match[2].trim();
+                    }
+                }
+                
+                // Si logramos extraer un ID válido de 11 caracteres, generamos el enlace seguro de inserción
+                if (videoId && videoId.trim().length === 11) {
+                    const cleanId = videoId.trim();
+                    return `https://www.youtube.com/embed/${cleanId}?autoplay=1&mute=1&loop=1&playlist=${cleanId}&controls=1&playsinline=1&rel=0&modestbranding=1`;
                 }
             } catch (error) {
-                console.error("Error al extraer el ID de YouTube:", error);
+                console.warn("Error al procesar la URL de YouTube:", error);
             }
             
             return null;
