@@ -1018,6 +1018,8 @@
 
         function refreshStudentDatabaseDropdown() {
             const selectList = document.getElementById('student-select-list');
+            
+            if (!selectList) return; // <--- LÍNEA DE SEGURIDAD (Evita el error de null)
             studentsDatabase.sort((a, b) => a.lastname.localeCompare(b.lastname, 'es', { sensitivity: 'base' }));
 
             let html = '';
