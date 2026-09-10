@@ -70,16 +70,68 @@
                 </button>
             </div>
 
-            <!-- FORMULARIO ALUMNO -->
-            <form id="form-login-student" onsubmit="loginAsStudent(event)" class="space-y-4">
+            <!-- FORMULARIO ALUMNO EN 2 CAPAS -->
+            <div id="form-login-student-wrapper" class="space-y-4">
+                <!-- CAPA 1: BUSCADOR SENSIBLE AL TIPEO -->
                 <div>
-                    <label class="block text-xs font-bold text-slate-300 mb-1">Nombre Completo del Alumno</label>
-                    <input type="text" id="student-login-name" required placeholder="Ej. Juan Pérez" class="w-full bg-slate-950 border border-slate-700 rounded-xl p-3 text-xs text-white font-semibold focus:border-amber-400 focus:outline-none">
+                    <label class="block text-xs font-bold text-slate-300 mb-1">Buscar por Nombre, Apellido o DNI</label>
+                    <div class="relative">
+                        <input 
+                            type="text" 
+                            id="student-search-input" 
+                            oninput="onStudentSearchInput()" 
+                            placeholder="Escribe tu Nombre, Apellido o DNI..." 
+                            autocomplete="off" 
+                            class="w-full bg-slate-950 border border-slate-700 rounded-xl p-3 text-xs text-white font-semibold focus:border-amber-400 focus:outline-none"
+                        >
+                        <i data-feather="search" class="w-4 h-4 text-slate-500 absolute right-3 top-3.5"></i>
+                    </div>
+                    <!-- Lista desplegable de sugerencias -->
+                    <div id="student-search-results" class="hidden mt-1 max-h-48 overflow-y-auto bg-slate-950 border border-slate-800 rounded-xl shadow-2xl divide-y divide-slate-900 z-50"></div>
                 </div>
-                <button type="submit" class="w-full bg-gradient-to-r from-sky-500 to-sky-600 hover:from-sky-400 hover:to-sky-500 text-slate-950 font-black py-3 rounded-xl shadow-lg border border-sky-300 text-xs active:scale-95 transition">
-                    Ingresar a Mi Rutina e Historial
-                </button>
-            </form>
+            </div>
+
+            <!-- CAPA 2: MODAL / VENTANA EMERGENTE LEGAL DE CONFIRMACIÓN -->
+            <div id="legal-confirm-modal" class="fixed inset-0 bg-slate-950/90 backdrop-blur-md z-50 hidden flex items-center justify-center p-4">
+                <div class="bg-slate-900 border border-amber-500/40 text-slate-100 rounded-2xl w-full max-w-md p-5 space-y-4 shadow-2xl">
+                    
+                    <div class="text-center border-b border-slate-800 pb-3">
+                        <span class="text-[10px] font-black text-amber-400 uppercase tracking-widest block">Verificación de Identidad</span>
+                        <h3 class="text-base font-black text-white" id="legal-student-fullname">Ricardo Comeglio</h3>
+                        <span class="text-xs text-sky-400 font-bold" id="legal-student-dni">DNI: 32.XXX.XXX</span>
+                    </div>
+
+                    <!-- ADVERTENCIA LEGAL Y TÉRMINOS -->
+                    <div class="bg-slate-950/80 border border-amber-500/30 p-3.5 rounded-xl space-y-2 text-[11px] text-slate-300">
+                        <div class="flex items-center gap-1.5 text-amber-400 font-bold uppercase text-[10px] tracking-wider">
+                            <i data-feather="alert-triangle" class="w-4 h-4 text-amber-400 shrink-0"></i>
+                            <span>Advertencia Legal & Privacidad</span>
+                        </div>
+                        <p class="leading-relaxed text-slate-300">
+                            El acceso a datos personales de entrenamiento o salud correspondientes a terceros vulnera el derecho a la privacidad protegido por la <strong>Ley N° 25.326 de Protección de Datos Personales</strong>. 
+                            Declarar datos falsos o acceder a cuentas ajenas constituye una falta grave sujeta a las consecuencias legales correspondientes.
+                        </p>
+                    </div>
+
+                    <!-- CHECKBOX OBLIGATORIO DE ACEPTACIÓN -->
+                    <label class="flex items-start gap-2.5 bg-slate-950 p-3 rounded-xl border border-slate-800 cursor-pointer text-xs">
+                        <input type="checkbox" id="legal-terms-checkbox" onchange="toggleLegalButton()" class="mt-0.5 rounded text-amber-500 focus:ring-amber-400 bg-slate-900 border-slate-700">
+                        <span class="text-[11px] text-slate-300 font-medium leading-tight">
+                            Confirmo bajo juramento que estos datos corresponden a mi persona y acepto los <strong>Términos, Condiciones y Políticas de Privacidad</strong> de FC Training.
+                        </span>
+                    </label>
+
+                    <!-- BOTONES DE ACCIÓN -->
+                    <div class="flex gap-2 pt-1">
+                        <button type="button" onclick="closeLegalModal()" class="w-1/3 bg-slate-800 hover:bg-slate-700 text-slate-300 font-bold py-3 rounded-xl text-xs transition">
+                            Cancelar
+                        </button>
+                        <button type="button" id="legal-confirm-btn" disabled onclick="confirmAndLoginStudent()" class="w-2/3 bg-gradient-to-r from-sky-500 to-sky-600 opacity-50 cursor-not-allowed text-slate-950 font-black py-3 rounded-xl shadow-lg border border-sky-300 text-xs transition">
+                            Sí, Confirmar e Ingresar
+                        </button>
+                    </div>
+                </div>
+            </div>
 
             <!-- FORMULARIO PROFESOR -->
             <form id="form-login-prof" onsubmit="loginAsProf(event)" class="space-y-4 hidden">
@@ -485,6 +537,8 @@
         let lineChartInstance = null;
         let radarChartInstance = null;
 
+        let pendingStudentId = null; // Guarda temporalmente el ID del alumno antes de confirmar el modal legal
+
         let studentsDatabase = JSON.parse(localStorage.getItem('fit_students_db')) || [
             { 
                 id: "st_1", 
@@ -605,6 +659,7 @@
                         id: st.id,
                         lastname: st.apellido || st.lastname || '',
                         firstname: st.nombre || st.firstname || '',
+                        dni: st.dni || '', // <--- Mapeo del DNI
                         cycleType: st.cycleType || 'Mesociclo',
                         totalWeeks: st.totalWeeks || 8,
                         history: st.history || [],
@@ -668,22 +723,119 @@
             }
         }
 
+        // Control de pestañas de Login (Alumno vs Profesor)
         function switchLoginTab(tab) {
             const btnStudent = document.getElementById('tab-student-btn');
             const btnProf = document.getElementById('tab-prof-btn');
-            const formStudent = document.getElementById('form-login-student');
+            const formStudent = document.getElementById('form-login-student-wrapper');
             const formProf = document.getElementById('form-login-prof');
 
             if (tab === 'student') {
                 btnStudent.className = "py-2 text-xs font-extrabold rounded-lg transition bg-sky-500 text-slate-950 shadow";
                 btnProf.className = "py-2 text-xs font-extrabold rounded-lg transition text-slate-400 hover:text-white";
-                formStudent.classList.remove('hidden');
-                formProf.classList.add('hidden');
+                if (formStudent) formStudent.classList.remove('hidden');
+                if (formProf) formProf.classList.add('hidden');
             } else {
                 btnProf.className = "py-2 text-xs font-extrabold rounded-lg transition bg-amber-500 text-slate-950 shadow";
                 btnStudent.className = "py-2 text-xs font-extrabold rounded-lg transition text-slate-400 hover:text-white";
-                formProf.classList.remove('hidden');
-                formStudent.classList.add('hidden');
+                if (formProf) formProf.classList.remove('hidden');
+                if (formStudent) formStudent.classList.add('hidden');
+            }
+        }
+
+        // 1. Buscador en tiempo real de alumnos (sensible al tipeo de Nombre, Apellido o DNI)
+        function onStudentSearchInput() {
+            const query = document.getElementById('student-search-input').value.trim().toLowerCase();
+            const resultsContainer = document.getElementById('student-search-results');
+
+            if (!query || query.length < 1) {
+                resultsContainer.innerHTML = '';
+                resultsContainer.classList.add('hidden');
+                return;
+            }
+
+            const filtered = studentsDatabase.filter(st => {
+                const full = `${st.firstname} ${st.lastname}`.toLowerCase();
+                const reverse = `${st.lastname} ${st.firstname}`.toLowerCase();
+                const dni = (st.dni || '').toString().toLowerCase();
+                return full.includes(query) || reverse.includes(query) || dni.includes(query);
+            });
+
+            if (filtered.length === 0) {
+                resultsContainer.innerHTML = `
+                    <div class="p-3 text-xs text-slate-500 text-center italic">
+                        No se encontraron alumnos con ese dato.
+                    </div>`;
+            } else {
+                resultsContainer.innerHTML = filtered.map(st => `
+                    <div onclick="openLegalModalForStudent('${st.id}')" class="p-3 hover:bg-slate-900 cursor-pointer flex justify-between items-center text-xs text-white transition border-b border-slate-900 last:border-0">
+                        <div>
+                            <strong class="block font-bold">${st.lastname}, ${st.firstname}</strong>
+                            <span class="text-[10px] text-slate-400">${st.cycleType || 'Mesociclo'}</span>
+                        </div>
+                        <span class="text-[10px] bg-slate-900 text-amber-400 font-bold px-2 py-1 rounded-md border border-slate-800">
+                            DNI: ${st.dni || 'Sin reg.'}
+                        </span>
+                    </div>
+                `).join('');
+            }
+
+            resultsContainer.classList.remove('hidden');
+        }
+
+        // 2. Abre la ventana emergente legal de confirmación para el alumno seleccionado
+        function openLegalModalForStudent(studentId) {
+            const st = studentsDatabase.find(item => item.id === studentId);
+            if (!st) return;
+
+            pendingStudentId = st.id;
+            document.getElementById('legal-student-fullname').innerText = `${st.lastname}, ${st.firstname}`;
+            document.getElementById('legal-student-dni').innerText = `DNI: ${st.dni || 'Sin registrar'}`;
+            
+            // Resetear el checkbox de aceptación y deshabilitar el botón
+            document.getElementById('legal-terms-checkbox').checked = false;
+            toggleLegalButton();
+            
+            // Ocultar resultados de búsqueda y desplegar el modal emergente
+            document.getElementById('student-search-results').classList.add('hidden');
+            document.getElementById('legal-confirm-modal').classList.remove('hidden');
+            if (typeof feather !== 'undefined') feather.replace();
+        }
+
+        // 3. Activa o inhabilita el botón de confirmación según la casilla de aceptación
+        function toggleLegalButton() {
+            const checkbox = document.getElementById('legal-terms-checkbox');
+            const btn = document.getElementById('legal-confirm-btn');
+
+            if (checkbox.checked) {
+                btn.disabled = false;
+                btn.classList.remove('opacity-50', 'cursor-not-allowed');
+                btn.classList.add('hover:from-sky-400', 'hover:to-sky-500', 'active:scale-95');
+            } else {
+                btn.disabled = true;
+                btn.classList.add('opacity-50', 'cursor-not-allowed');
+                btn.classList.remove('hover:from-sky-400', 'hover:to-sky-500', 'active:scale-95');
+            }
+        }
+
+        // 4. Cierra la ventana emergente
+        function closeLegalModal() {
+            pendingStudentId = null;
+            document.getElementById('legal-confirm-modal').classList.add('hidden');
+        }
+
+        // 5. Inicia la sesión del alumno tras confirmar bajo juramento
+        function confirmAndLoginStudent() {
+            if (!pendingStudentId) return;
+
+            const st = studentsDatabase.find(item => item.id === pendingStudentId);
+            if (st) {
+                currentRole = 'student';
+                currentStudentId = st.id;
+                localStorage.setItem('fit_active_session', JSON.stringify({ role: 'student', studentId: st.id }));
+                closeLegalModal();
+                showDashboard();
+                showToast(`¡Bienvenido, ${st.firstname}!`);
             }
         }
 
