@@ -169,19 +169,32 @@
             <!-- TAB 1: RUTINA Y NUTRICIÓN -->
             <div id="tab-content-routine" class="space-y-4">
                 
-                <!-- GESTIÓN DE ALUMNOS (PROFESOR) -->
+                <!-- GESTIÓN DE ALUMNOS (PROFESOR) CON BUSCADOR Y CAMPO DNI -->
                 <section id="student-management-card" class="bg-slate-900/90 rounded-2xl p-4 border border-amber-500/20 shadow-xl space-y-3">
                     <h3 class="text-xs font-bold text-amber-400 uppercase tracking-wider flex items-center justify-between border-b border-slate-800 pb-2">
                         <span class="flex items-center gap-1.5"><i data-feather="users" class="w-4 h-4 text-amber-400"></i> Gestión de Alumnos y Planificación</span>
                     </h3>
 
+                    <!-- BUSCADOR SENSIBLE AL TIPEO PARA EL PROFESOR -->
                     <div>
-                        <label class="block text-[11px] font-bold text-slate-300 mb-1">Seleccionar Alumno</label>
-                        <select id="student-select-list" onchange="onStudentSelectChange()" class="w-full bg-slate-950 border border-amber-500/40 rounded-xl p-2.5 text-xs text-white font-bold focus:outline-none">
-                        </select>
+                        <label class="block text-[11px] font-bold text-slate-300 mb-1">Buscar / Seleccionar Alumno</label>
+                        <div class="relative">
+                            <input 
+                                type="text" 
+                                id="prof-student-search-input" 
+                                oninput="profOnStudentSearchInput()" 
+                                placeholder="Escribe Nombre, Apellido o DNI para buscar..." 
+                                autocomplete="off" 
+                                class="w-full bg-slate-950 border border-amber-500/40 rounded-xl p-2.5 text-xs text-white font-bold focus:border-amber-400 focus:outline-none"
+                            >
+                            <i data-feather="search" class="w-4 h-4 text-slate-500 absolute right-3 top-3"></i>
+                        </div>
+                        <!-- Lista de resultados coincidentes -->
+                        <div id="prof-student-search-results" class="hidden mt-1 max-h-48 overflow-y-auto bg-slate-950 border border-slate-800 rounded-xl shadow-2xl divide-y divide-slate-900 z-50"></div>
                     </div>
 
-                    <div class="grid grid-cols-2 gap-2 pt-1">
+                    <!-- CAMPOS DE EDICIÓN DEL ALUMNO (APELLIDO, NOMBRE, DNI) -->
+                    <div class="grid grid-cols-3 gap-2 pt-1">
                         <div>
                             <label class="block text-[10px] font-bold text-slate-400 mb-1">Apellido(s)</label>
                             <input type="text" id="student-lastname-input" placeholder="Ej. Pérez" class="w-full bg-slate-950 border border-slate-800 rounded-xl p-2 text-xs text-white font-semibold focus:border-amber-400 focus:outline-none">
@@ -190,8 +203,13 @@
                             <label class="block text-[10px] font-bold text-slate-400 mb-1">Nombre(s)</label>
                             <input type="text" id="student-firstname-input" placeholder="Ej. Juan" class="w-full bg-slate-950 border border-slate-800 rounded-xl p-2 text-xs text-white font-semibold focus:border-amber-400 focus:outline-none">
                         </div>
+                        <div>
+                            <label class="block text-[10px] font-bold text-slate-400 mb-1">DNI / Doc.</label>
+                            <input type="text" id="student-dni-input" placeholder="Ej. 32123456" class="w-full bg-slate-950 border border-slate-800 rounded-xl p-2 text-xs text-white font-semibold focus:border-amber-400 focus:outline-none">
+                        </div>
                     </div>
 
+                    <!-- CONFIGURACIÓN DE CICLO -->
                     <div class="bg-slate-950 p-3 rounded-xl border border-slate-800/80 space-y-2">
                         <span class="text-[10px] font-bold text-amber-400 uppercase tracking-wider block">Configuración de Ciclo</span>
                         <div class="grid grid-cols-2 gap-2">
@@ -210,6 +228,7 @@
                         </div>
                     </div>
 
+                    <!-- BOTONES DE ACCIÓN -->
                     <div class="flex gap-2 pt-1">
                         <button onclick="saveCurrentStudent()" class="w-full bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 text-slate-950 text-xs font-black py-2.5 rounded-xl border border-amber-300 shadow transition flex items-center justify-center gap-1.5 active:scale-95">
                             <i data-feather="save" class="w-3.5 h-3.5"></i> Guardar Alumno / Plan
@@ -689,6 +708,7 @@
                         const payload = {
                             nombre: st.firstname,
                             apellido: st.lastname,
+                            dni: st.dni || '', // <--- Sincroniza el DNI en Supabase
                             // Si el ID es un string temporal como 'st_123', dejamos que Supabase lo maneje o enviamos los objetos JSON:
                             cycleType: st.cycleType,
                             totalWeeks: st.totalWeeks,
@@ -1014,6 +1034,53 @@
             loadStudentData(id);
         }
 
+        // Buscador en tiempo real de alumnos para el Profesor (sensible al tipeo)
+        function profOnStudentSearchInput() {
+            const query = document.getElementById('prof-student-search-input').value.trim().toLowerCase();
+            const resultsContainer = document.getElementById('prof-student-search-results');
+
+            if (!query) {
+                resultsContainer.innerHTML = '';
+                resultsContainer.classList.add('hidden');
+                return;
+            }
+
+            const filtered = studentsDatabase.filter(st => {
+                const full = `${st.firstname} ${st.lastname}`.toLowerCase();
+                const reverse = `${st.lastname} ${st.firstname}`.toLowerCase();
+                const dni = (st.dni || '').toString().toLowerCase();
+                return full.includes(query) || reverse.includes(query) || dni.includes(query);
+            });
+
+            if (filtered.length === 0) {
+                resultsContainer.innerHTML = `
+                    <div class="p-3 text-xs text-slate-500 text-center italic">
+                        No se encontraron alumnos coincidentes.
+                    </div>`;
+            } else {
+                resultsContainer.innerHTML = filtered.map(st => `
+                    <div onclick="selectStudentByProf('${st.id}')" class="p-2.5 hover:bg-slate-900 cursor-pointer flex justify-between items-center text-xs text-white transition border-b border-slate-900 last:border-0">
+                        <div>
+                            <strong class="block font-bold">${st.lastname}, ${st.firstname}</strong>
+                            <span class="text-[10px] text-slate-400">${st.cycleType || 'Mesociclo'}</span>
+                        </div>
+                        <span class="text-[10px] bg-slate-900 text-amber-400 font-bold px-2 py-1 rounded-md border border-slate-800">
+                            DNI: ${st.dni || 'Sin reg.'}
+                        </span>
+                    </div>
+                `).join('');
+            }
+
+            resultsContainer.classList.remove('hidden');
+        }
+
+        // Selecciona el alumno desde la lista de resultados del Profesor
+        function selectStudentByProf(studentId) {
+            document.getElementById('prof-student-search-results').classList.add('hidden');
+            loadStudentData(studentId);
+        }
+
+
         function loadStudentData(id) {
             if (!id) id = currentStudentId;
             const st = studentsDatabase.find(item => item.id === id);
@@ -1021,8 +1088,12 @@
 
             currentStudentId = st.id;
             if (currentRole === 'prof') {
-                document.getElementById('student-lastname-input').value = st.lastname;
-                document.getElementById('student-firstname-input').value = st.firstname;
+                const profSearchInput = document.getElementById('prof-student-search-input');
+                if (profSearchInput) profSearchInput.value = `${st.lastname}, ${st.firstname}`;
+
+                document.getElementById('student-lastname-input').value = st.lastname || '';
+                document.getElementById('student-firstname-input').value = st.firstname || '';
+                document.getElementById('student-dni-input').value = st.dni || '';
                 document.getElementById('student-cycle-type').value = st.cycleType || "Mesociclo";
                 document.getElementById('student-total-weeks').value = st.totalWeeks || 8;
             }
@@ -1054,6 +1125,7 @@
         async function saveCurrentStudent() {
             const lastname = document.getElementById('student-lastname-input').value.trim();
             const firstname = document.getElementById('student-firstname-input').value.trim();
+            const dni = document.getElementById('student-dni-input').value.trim();
             const cycleType = document.getElementById('student-cycle-type').value;
             const totalWeeks = parseInt(document.getElementById('student-total-weeks').value) || 4;
 
@@ -1069,9 +1141,10 @@
                     id: 'st_' + Date.now(),
                     lastname: lastname,
                     firstname: firstname,
+                    dni: dni,
                     cycleType: cycleType,
                     totalWeeks: totalWeeks,
-                    history: [{ id: "h_" + Date.now(), name: `${cycleType} Inicial`, type: cycleType, weeks: totalWeeks, date: new Date().toISOString().split('T')[0], status: "En Curso" }],
+                    history: [{ id: "h_" + Date.now(), name: `${cycleType} Inicial`, type: cycleType, weeks: totalWeeks, date: new Date().toISOString().split('T'), status: "En Curso" }],
                     ratings: [],
                     nutrition: { diet: "", supplements: "" },
                     routine: {}
@@ -1081,20 +1154,24 @@
             } else {
                 st.lastname = lastname;
                 st.firstname = firstname;
+                st.dni = dni;
                 st.cycleType = cycleType;
                 st.totalWeeks = totalWeeks;
             }
 
             await persistDatabase();
-            refreshStudentDatabaseDropdown();
             loadStudentData(currentStudentId);
             showToast("¡Alumno guardado correctamente!");
         }
 
         function prepareNewStudent() {
             currentStudentId = null;
+            const profSearchInput = document.getElementById('prof-student-search-input');
+            if (profSearchInput) profSearchInput.value = '';
+
             document.getElementById('student-lastname-input').value = '';
             document.getElementById('student-firstname-input').value = '';
+            document.getElementById('student-dni-input').value = '';
             document.getElementById('student-cycle-type').value = 'Mesociclo';
             document.getElementById('student-total-weeks').value = 8;
             document.getElementById('student-display-fullname').innerText = 'Nuevo Alumno';
