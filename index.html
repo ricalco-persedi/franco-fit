@@ -885,6 +885,22 @@
         }
 
         // 2. Abre la ventana emergente legal de confirmación para el alumno seleccionado
+        function openLegalModalForStudent(studentId) {
+            const st = studentsDatabase.find(item => String(item.id) === String(studentId));
+            if (!st) return;
+
+            pendingStudentId = st.id;
+            document.getElementById('legal-student-fullname').innerText = `${st.lastname}, ${st.firstname}`;
+            document.getElementById('legal-student-dni').innerText = `DNI: ${st.dni || 'Sin registrar'}`;
+            
+            document.getElementById('legal-terms-checkbox').checked = false;
+            toggleLegalButton();
+            
+            document.getElementById('student-search-results').classList.add('hidden');
+            document.getElementById('legal-confirm-modal').classList.remove('hidden');
+            if (typeof feather !== 'undefined') feather.replace();
+        }
+        
         // Buscador en tiempo real para el Profesor (Deduplicado)
         function profOnStudentSearchInput() {
             const query = document.getElementById('prof-student-search-input').value.trim().toLowerCase();
