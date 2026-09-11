@@ -420,16 +420,53 @@
 
             <form id="ex-form" onsubmit="saveExercise(event)" class="space-y-4 text-xs">
                 <input type="hidden" id="modal-ex-id" value="">
-                <div>
-                    <label class="block font-bold text-slate-300 mb-1">Nombre del Ejercicio *</label>
-                    <input type="text" id="modal-ex-name" required placeholder="Ej. Press Banca Plano" class="w-full bg-slate-950 border border-slate-700 rounded-xl p-2.5 text-white focus:border-amber-400 focus:outline-none">
+
+                <!-- ESTRUCTURA DE 2 CAPAS EN PARALELO -->
+                <div class="grid grid-cols-2 gap-2">
+                    <!-- CAPA 1: CATEGORÍA SENSIBLE AL TIPEO -->
+                    <div class="relative">
+                        <label class="block font-bold text-amber-400 mb-1">1. Categoría *</label>
+                        <input 
+                            type="text" 
+                            id="modal-ex-category" 
+                            oninput="onCategorySearchInput()" 
+                            onfocus="onCategorySearchInput()"
+                            placeholder="Ej. Peso Libre..." 
+                            autocomplete="off"
+                            required
+                            class="w-full bg-slate-950 border border-amber-500/40 rounded-xl p-2.5 text-white font-semibold focus:border-amber-400 focus:outline-none"
+                        >
+                        <!-- Lista desplegable de Categorías -->
+                        <div id="category-search-results" class="hidden absolute left-0 right-0 top-full mt-1 max-h-36 overflow-y-auto bg-slate-950 border border-slate-800 rounded-xl shadow-2xl divide-y divide-slate-900 z-50"></div>
+                    </div>
+
+                    <!-- CAPA 2: NOMBRE DEL EJERCICIO SENSIBLE AL TIPEO -->
+                    <div class="relative">
+                        <label class="block font-bold text-amber-400 mb-1">2. Ejercicio *</label>
+                        <input 
+                            type="text" 
+                            id="modal-ex-name" 
+                            oninput="onExerciseSearchInput()" 
+                            onfocus="onExerciseSearchInput()"
+                            placeholder="Ej. Press Banca..." 
+                            autocomplete="off"
+                            required
+                            class="w-full bg-slate-950 border border-amber-500/40 rounded-xl p-2.5 text-white font-semibold focus:border-amber-400 focus:outline-none"
+                        >
+                        <!-- Lista desplegable de Ejercicios -->
+                        <div id="exercise-search-results" class="hidden absolute left-0 right-0 top-full mt-1 max-h-36 overflow-y-auto bg-slate-950 border border-slate-800 rounded-xl shadow-2xl divide-y divide-slate-900 z-50"></div>
+                    </div>
                 </div>
 
+                <!-- DEMOSTRACIÓN VISUAL (ENLACE AUTO-COMPLETADO) -->
                 <div class="bg-slate-950 p-3 rounded-xl border border-slate-800 space-y-2">
-                    <label class="block font-bold text-amber-300 text-[11px]">Demostración Visual (GIF / Video / Imagen)</label>
+                    <div class="flex justify-between items-center">
+                        <label class="block font-bold text-amber-300 text-[11px]">Demostración Visual (GIF / Video / Imagen)</label>
+                        <span id="auto-linked-badge" class="hidden text-[9px] bg-emerald-950 text-emerald-400 font-bold px-2 py-0.5 rounded border border-emerald-800 animate-pulse">✓ Link Vinculado</span>
+                    </div>
                     <div>
-                        <label class="block text-[10px] text-slate-400 mb-1">A) Enlace / URL Web</label>
-                        <input type="url" id="modal-ex-media-url" placeholder="https://media.giphy.com/..." class="w-full bg-slate-900 border border-slate-700 rounded-xl p-2 text-white text-[11px] focus:border-amber-400 focus:outline-none">
+                        <label class="block text-[10px] text-slate-400 mb-1">A) Enlace / URL Web (YouTube, GIF, MP4)</label>
+                        <input type="url" id="modal-ex-media-url" placeholder="https://www.youtube.com/watch?v=..." class="w-full bg-slate-900 border border-slate-700 rounded-xl p-2 text-white text-[11px] focus:border-amber-400 focus:outline-none">
                     </div>
                     <div class="text-center text-[10px] font-bold text-slate-500 uppercase">- O -</div>
                     <div>
@@ -557,6 +594,30 @@
         let radarChartInstance = null;
 
         let pendingStudentId = null; // Guarda temporalmente el ID del alumno antes de confirmar el modal legal
+
+        // Biblioteca Global de Ejercicios y Categorías vinculadas
+        let exerciseCatalog = JSON.parse(localStorage.getItem('fit_exercise_catalog')) || {
+            "Movilidad": [
+                { name: "Movilidad de Cadera", mediaUrl: "https://www.youtube.com/shorts/Sb4y8gASMNk" },
+                { name: "Rotación Torácica", mediaUrl: "" }
+            ],
+            "Peso Libre": [
+                { name: "Press de Banca Plano con Barra", mediaUrl: "https://www.youtube.com/watch?v=GeLq8cMODLc" },
+                { name: "Sentadilla Trasera con Barra", mediaUrl: "" }
+            ],
+            "Máquina": [
+                { name: "Sillón Cuádriceps", mediaUrl: "" },
+                { name: "Prensa 45°", mediaUrl: "" }
+            ],
+            "Peso corporal": [
+                { name: "Dominadas", mediaUrl: "" },
+                { name: "Flexiones de Brazo", mediaUrl: "" }
+            ],
+            "Cardio": [
+                { name: "Cinta de Correr", mediaUrl: "" },
+                { name: "Remo Ergómetro", mediaUrl: "" }
+            ]
+        };
 
         let studentsDatabase = JSON.parse(localStorage.getItem('fit_students_db')) || [
             { 
@@ -1438,17 +1499,109 @@
             showToast("Plan nutricional actualizado.");
         }
 
+        // Capa 1: Búsqueda sensible al tipeo para Categorías
+        function onCategorySearchInput() {
+            const query = document.getElementById('modal-ex-category').value.trim().toLowerCase();
+            const container = document.getElementById('category-search-results');
+            const categories = Object.keys(exerciseCatalog);
+
+            const filtered = categories.filter(cat => cat.toLowerCase().includes(query));
+
+            if (filtered.length === 0) {
+                container.innerHTML = `<div class="p-2 text-[11px] text-slate-500 italic text-center">Nueva categoría...</div>`;
+            } else {
+                container.innerHTML = filtered.map(cat => `
+                    <div onclick="selectCategory('${cat.replace(/'/g, "\\'")}')" class="p-2 hover:bg-slate-900 cursor-pointer text-xs text-amber-400 font-bold transition">
+                        ${cat}
+                    </div>
+                `).join('');
+            }
+
+            container.classList.remove('hidden');
+        }
+
+        function selectCategory(catName) {
+            document.getElementById('modal-ex-category').value = catName;
+            document.getElementById('category-search-results').classList.add('hidden');
+            document.getElementById('modal-ex-name').focus();
+            onExerciseSearchInput();
+        }
+
+        // Capa 2: Búsqueda sensible al tipeo para Ejercicios filtrados por Categoría
+        function onExerciseSearchInput() {
+            const categoryName = document.getElementById('modal-ex-category').value.trim();
+            const query = document.getElementById('modal-ex-name').value.trim().toLowerCase();
+            const container = document.getElementById('exercise-search-results');
+
+            let availableExercises = [];
+
+            if (categoryName && exerciseCatalog[categoryName]) {
+                availableExercises = exerciseCatalog[categoryName];
+            } else {
+                Object.values(exerciseCatalog).forEach(list => {
+                    availableExercises = availableExercises.concat(list);
+                });
+            }
+
+            const filtered = availableExercises.filter(ex => ex.name.toLowerCase().includes(query));
+
+            if (filtered.length === 0) {
+                container.innerHTML = `<div class="p-2 text-[11px] text-slate-500 italic text-center">Nuevo ejercicio...</div>`;
+            } else {
+                container.innerHTML = filtered.map(ex => `
+                    <div onclick="selectExerciseFromCatalog('${ex.name.replace(/'/g, "\\'")}', '${ex.mediaUrl || ''}')" class="p-2 hover:bg-slate-900 cursor-pointer text-xs text-white transition flex justify-between items-center">
+                        <span class="font-bold">${ex.name}</span>
+                        ${ex.mediaUrl ? '<span class="text-[9px] text-emerald-400 font-semibold">▶ Con Video</span>' : ''}
+                    </div>
+                `).join('');
+            }
+
+            container.classList.remove('hidden');
+        }
+
+        // Selecciona ejercicio y AUTO-COMPLETA el link del video si ya existe vinculación
+        function selectExerciseFromCatalog(exName, mediaUrl) {
+            document.getElementById('modal-ex-name').value = exName;
+            document.getElementById('exercise-search-results').classList.add('hidden');
+
+            const badge = document.getElementById('auto-linked-badge');
+
+            if (mediaUrl) {
+                document.getElementById('modal-ex-media-url').value = mediaUrl;
+                if (badge) badge.classList.remove('hidden');
+            } else {
+                if (badge) badge.classList.add('hidden');
+            }
+        }
+
+        // Cierra sugerencias al hacer clic fuera
+        document.addEventListener('click', (e) => {
+            const catInput = document.getElementById('modal-ex-category');
+            const exInput = document.getElementById('modal-ex-name');
+            if (catInput && !catInput.contains(e.target)) {
+                document.getElementById('category-search-results')?.classList.add('hidden');
+            }
+            if (exInput && !exInput.contains(e.target)) {
+                document.getElementById('exercise-search-results')?.classList.add('hidden');
+            }
+        });
+
         function openAddModal() {
             document.getElementById('modal-ex-id').value = '';
             document.getElementById('ex-form').reset();
             
+            document.getElementById('modal-ex-category').value = 'Peso Libre';
+            document.getElementById('modal-ex-name').value = '';
+            document.getElementById('modal-ex-media-url').value = '';
+            document.getElementById('auto-linked-badge').classList.add('hidden');
+                        
             setDropdownTimeValues('modal-ex-exec', "00m 45s");
             setDropdownTimeValues('modal-ex-rep-rest', "00m 00s");
             setDropdownTimeValues('modal-ex-set-rest', "01m 30s");
 
             document.getElementById('modal-title').innerHTML = `<i data-feather="plus-circle" class="w-4 h-4 text-amber-400"></i> Cargar Ejercicio`;
             document.getElementById('exercise-modal').classList.remove('hidden');
-            feather.replace();
+            if (typeof feather !== 'undefined') feather.replace();
         }
 
         function editExercise(exId) {
@@ -1457,11 +1610,16 @@
             if (!ex) return;
 
             document.getElementById('modal-ex-id').value = ex.id;
+            document.getElementById('modal-ex-category').value = ex.category || 'Peso Libre';
             document.getElementById('modal-ex-name').value = ex.name;
             document.getElementById('modal-ex-media-url').value = ex.mediaUrl || '';
             document.getElementById('modal-ex-type').value = ex.type;
             document.getElementById('modal-ex-sets').value = ex.sets;
             document.getElementById('modal-ex-reps').value = ex.reps;
+
+            const badge = document.getElementById('auto-linked-badge');
+            if (ex.mediaUrl && badge) badge.classList.remove('hidden');
+            else if (badge) badge.classList.add('hidden');
 
             setDropdownTimeValues('modal-ex-exec', ex.execTime);
             setDropdownTimeValues('modal-ex-rep-rest', ex.repRestTime);
@@ -1469,7 +1627,7 @@
 
             document.getElementById('modal-title').innerHTML = `<i data-feather="edit" class="w-4 h-4 text-amber-400"></i> Editar Ejercicio`;
             document.getElementById('exercise-modal').classList.remove('hidden');
-            feather.replace();
+            if (typeof feather !== 'undefined') feather.replace();
         }
 
         function setDropdownTimeValues(fieldPrefix, timeString) {
@@ -1506,8 +1664,10 @@
             if (!st) return;
 
             const exId = document.getElementById('modal-ex-id').value;
+            const categoryName = document.getElementById('modal-ex-category').value.trim() || 'Peso Libre';
+            const exName = document.getElementById('modal-ex-name').value.trim();
             const urlInput = document.getElementById('modal-ex-media-url').value.trim();
-            const fileInput = document.getElementById('modal-ex-file').files[0];
+            const fileInput = document.getElementById('modal-ex-file').files;
             let mediaResultUrl = urlInput || "";
 
             if (fileInput) {
@@ -1518,6 +1678,23 @@
                 });
             }
 
+            // 1. MEMORIZAR / VINCULAR EN EL CATÁLOGO GLOBAL
+            if (!exerciseCatalog[categoryName]) {
+                exerciseCatalog[categoryName] = [];
+            }
+
+            const existingInCatalog = exerciseCatalog[categoryName].find(item => item.name.toLowerCase() === exName.toLowerCase());
+            if (existingInCatalog) {
+                if (mediaResultUrl) existingInCatalog.mediaUrl = mediaResultUrl;
+            } else {
+                exerciseCatalog[categoryName].push({
+                    name: exName,
+                    mediaUrl: mediaResultUrl
+                });
+            }
+            localStorage.setItem('fit_exercise_catalog', JSON.stringify(exerciseCatalog));
+
+            // 2. GUARDAR EN LA RUTINA DEL ALUMNO
             const formattedExec = getDropdownFormattedTime('modal-ex-exec');
             const formattedRepRest = getDropdownFormattedTime('modal-ex-rep-rest');
             const formattedSetRest = getDropdownFormattedTime('modal-ex-set-rest');
@@ -1529,7 +1706,8 @@
             if (exId) {
                 const ex = st.routine[selectedWeek][selectedDay].find(item => item.id == exId);
                 if (ex) {
-                    ex.name = document.getElementById('modal-ex-name').value;
+                    ex.category = categoryName;
+                    ex.name = exName;
                     if (mediaResultUrl) ex.mediaUrl = mediaResultUrl;
                     ex.type = document.getElementById('modal-ex-type').value;
                     ex.sets = parseInt(document.getElementById('modal-ex-sets').value);
@@ -1541,7 +1719,8 @@
             } else {
                 const newEx = {
                     id: Date.now(),
-                    name: document.getElementById('modal-ex-name').value,
+                    category: categoryName,
+                    name: exName,
                     mediaUrl: mediaResultUrl,
                     type: document.getElementById('modal-ex-type').value,
                     sets: parseInt(document.getElementById('modal-ex-sets').value),
@@ -1556,7 +1735,7 @@
             await persistDatabase();
             closeModal();
             renderExercises();
-            showToast("¡Ejercicio guardado exitosamente!");
+            showToast("¡Ejercicio y vinculación de video guardados!");
         }
 
         function openChangePassModal() {
