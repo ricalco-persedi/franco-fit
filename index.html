@@ -728,18 +728,16 @@
         async function syncWithSupabase() {
             if (!supabaseClient) return;
             try {
-                // Consultamos los alumnos junto a sus rutinas e historial
                 const { data, error } = await supabaseClient
                     .from('alumnos')
                     .select('*');
 
                 if (!error && data && data.length > 0) {
-                    // Mapeamos los campos retornados por Supabase a tu estructura interna
                     studentsDatabase = data.map(st => ({
-                        id: st.id,
+                        id: st.id, // ID oficial de Supabase (UUID)
                         lastname: st.apellido || st.lastname || '',
                         firstname: st.nombre || st.firstname || '',
-                        dni: st.dni || '', // <--- Mapeo del DNI
+                        dni: st.dni || '',
                         cycleType: st.cycleType || 'Mesociclo',
                         totalWeeks: st.totalWeeks || 8,
                         history: st.history || [],
@@ -747,8 +745,7 @@
                         nutrition: st.nutrition || { diet: '', supplements: '' },
                         routine: st.routine || {}
                     }));
-                    
-                    // Guardamos en la caché local
+
                     localStorage.setItem('fit_students_db', JSON.stringify(studentsDatabase));
                     console.log("¡Sincronización con Supabase exitosa!");
                 }
@@ -790,8 +787,8 @@
                         if (error) {
                             console.error("Error al guardar alumno en Supabase:", error.message);
                         } else if (data && data.length > 0) {
+                            // CORRECCIÓN: data.id accede al ID devuelto por Supabase
                             const newId = data.id;
-                            // Mantener sincronizado el ID activo si era un alumno recién creado
                             if (currentStudentId === oldId) {
                                 currentStudentId = newId;
                             }
