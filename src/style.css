@@ -1,6 +1,19 @@
 /* Importación de capas de Tailwind CSS (CLI) */
 @import "tailwindcss";
 
+/* Scroll táctil fluido y sin frenos para móviles */
+html, body {
+    overflow-x: hidden;
+    -webkit-overflow-scrolling: touch;
+    scroll-behavior: smooth;
+}
+
+/* Desplazamiento optimizado en listas emergentes */
+.overflow-y-auto {
+    -webkit-overflow-scrolling: touch;
+    overscroll-behavior: contain;
+}
+
 /* Estilos de interfaz base y optimización táctil */
 body { 
     -webkit-tap-highlight-color: transparent; 
