@@ -148,9 +148,21 @@
         <!-- DASHBOARD PRINCIPAL -->
         <div id="dashboard-view" class="space-y-5 hidden">
 
-            <div id="role-banner" class="bg-slate-900/90 border-l-4 border-amber-400 rounded-xl p-3 flex items-center justify-between text-xs text-slate-200 shadow-lg border border-slate-800">
-                <span id="role-banner-text" class="font-medium">Sesión Sincronizada</span>
-                <span class="w-2.5 h-2.5 rounded-full bg-emerald-400 animate-pulse shrink-0"></span>
+            <!-- BANNER DE IDENTIDAD Y ESTADO MÓVIL (PROFESOR Y ALUMNO) -->
+            <div id="role-banner" class="bg-gradient-to-r from-slate-900 via-slate-900 to-amber-950/40 border-l-4 border-amber-400 rounded-2xl p-3.5 shadow-xl border border-slate-800 space-y-1.5 transition-all">
+                <div class="flex items-center justify-between">
+                    <span id="role-banner-title" class="text-[10px] font-black uppercase tracking-widest text-amber-400 block">
+                        Sesión Activa
+                    </span>
+                    <span class="flex items-center gap-1.5 text-[10px] font-bold text-emerald-400 bg-emerald-950/60 px-2 py-0.5 rounded-full border border-emerald-800">
+                        <span class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
+                        En Línea
+                    </span>
+                </div>
+                <!-- Muestra el Nombre y DNI en grande y destacado -->
+                <div id="role-banner-text" class="text-xs text-white font-bold flex items-center justify-between">
+                    <span>Cargando datos de usuario...</span>
+                </div>
             </div>
 
             <!-- NAVEGACIÓN MÓVIL POR PESTAÑAS -->
@@ -169,73 +181,80 @@
             <!-- TAB 1: RUTINA Y NUTRICIÓN -->
             <div id="tab-content-routine" class="space-y-4">
                 
-                <!-- GESTIÓN DE ALUMNOS (PROFESOR) CON BUSCADOR Y CAMPO DNI -->
-                <section id="student-management-card" class="bg-slate-900/90 rounded-2xl p-4 border border-amber-500/20 shadow-xl space-y-3">
-                    <h3 class="text-xs font-bold text-amber-400 uppercase tracking-wider flex items-center justify-between border-b border-slate-800 pb-2">
-                        <span class="flex items-center gap-1.5"><i data-feather="users" class="w-4 h-4 text-amber-400"></i> Gestión de Alumnos y Planificación</span>
-                    </h3>
-
-                    <!-- BUSCADOR SENSIBLE AL TIPEO PARA EL PROFESOR -->
-                    <div>
-                        <label class="block text-[11px] font-bold text-slate-300 mb-1">Buscar / Seleccionar Alumno</label>
-                        <div class="relative">
-                            <input 
-                                type="text" 
-                                id="prof-student-search-input" 
-                                oninput="profOnStudentSearchInput()" 
-                                placeholder="Escribe Nombre, Apellido o DNI para buscar..." 
-                                autocomplete="off" 
-                                class="w-full bg-slate-950 border border-amber-500/40 rounded-xl p-2.5 text-xs text-white font-bold focus:border-amber-400 focus:outline-none"
-                            >
-                            <i data-feather="search" class="w-4 h-4 text-slate-500 absolute right-3 top-3"></i>
-                        </div>
-                        <!-- Lista de resultados coincidentes -->
-                        <div id="prof-student-search-results" class="hidden mt-1 max-h-48 overflow-y-auto bg-slate-950 border border-slate-800 rounded-xl shadow-2xl divide-y divide-slate-900 z-50"></div>
+                <!-- GESTIÓN DE ALUMNOS (PROFESOR) COMPACTA Y FLUIDA -->
+                <section id="student-management-card" class="bg-slate-900/90 rounded-2xl p-3.5 border border-amber-500/30 shadow-xl space-y-3">
+                    <!-- Encabezado con Botón Colapsable para Ahorrar Scroll -->
+                    <div class="flex items-center justify-between border-b border-slate-800 pb-2">
+                        <span class="text-xs font-bold text-amber-400 uppercase tracking-wider flex items-center gap-1.5">
+                            <i data-feather="users" class="w-4 h-4 text-amber-400"></i> Selector de Alumno
+                        </span>
+                        <button type="button" onclick="toggleProfSearchBox()" id="toggle-search-btn" class="text-[10px] bg-slate-800 hover:bg-slate-700 text-amber-300 font-bold px-2.5 py-1 rounded-lg border border-slate-700 transition">
+                            🔍 Buscar / Cambiar
+                        </button>
                     </div>
 
-                    <!-- CAMPOS DE EDICIÓN DEL ALUMNO (APELLIDO, NOMBRE, DNI) -->
-                    <div class="grid grid-cols-3 gap-2 pt-1">
+                    <!-- BUSCADOR MÓVIL (SE PUEDE OCULTAR/MOSTRAR) -->
+                    <div id="prof-search-box-container" class="space-y-3">
                         <div>
-                            <label class="block text-[10px] font-bold text-slate-400 mb-1">Apellido(s)</label>
-                            <input type="text" id="student-lastname-input" placeholder="Ej. Pérez" class="w-full bg-slate-950 border border-slate-800 rounded-xl p-2 text-xs text-white font-semibold focus:border-amber-400 focus:outline-none">
+                            <label class="block text-[11px] font-bold text-slate-300 mb-1">Buscar por Nombre o DNI</label>
+                            <div class="relative">
+                                <input 
+                                    type="text" 
+                                    id="prof-student-search-input" 
+                                    oninput="profOnStudentSearchInput()" 
+                                    placeholder="Escribe Nombre, Apellido o DNI..." 
+                                    autocomplete="off" 
+                                    class="w-full bg-slate-950 border border-amber-500/40 rounded-xl p-2.5 text-xs text-white font-bold focus:border-amber-400 focus:outline-none"
+                                >
+                                <i data-feather="search" class="w-4 h-4 text-slate-500 absolute right-3 top-3"></i>
+                            </div>
+                            <!-- Lista desplegable de resultados -->
+                            <div id="prof-student-search-results" class="hidden mt-1 max-h-40 overflow-y-auto bg-slate-950 border border-slate-800 rounded-xl shadow-2xl divide-y divide-slate-900 z-50"></div>
                         </div>
-                        <div>
-                            <label class="block text-[10px] font-bold text-slate-400 mb-1">Nombre(s)</label>
-                            <input type="text" id="student-firstname-input" placeholder="Ej. Juan" class="w-full bg-slate-950 border border-slate-800 rounded-xl p-2 text-xs text-white font-semibold focus:border-amber-400 focus:outline-none">
-                        </div>
-                        <div>
-                            <label class="block text-[10px] font-bold text-slate-400 mb-1">DNI / Doc.</label>
-                            <input type="text" id="student-dni-input" placeholder="Ej. 32123456" class="w-full bg-slate-950 border border-slate-800 rounded-xl p-2 text-xs text-white font-semibold focus:border-amber-400 focus:outline-none">
-                        </div>
-                    </div>
 
-                    <!-- CONFIGURACIÓN DE CICLO -->
-                    <div class="bg-slate-950 p-3 rounded-xl border border-slate-800/80 space-y-2">
-                        <span class="text-[10px] font-bold text-amber-400 uppercase tracking-wider block">Configuración de Ciclo</span>
-                        <div class="grid grid-cols-2 gap-2">
+                        <!-- CAMPOS DE EDICIÓN RÁPIDA (APELLIDO, NOMBRE, DNI) -->
+                        <div class="grid grid-cols-3 gap-2 pt-1">
                             <div>
-                                <label class="block text-[10px] font-bold text-slate-400 mb-1">Tipo de Ciclo</label>
-                                <select id="student-cycle-type" class="w-full bg-slate-900 border border-slate-700 rounded-xl p-2 text-xs text-white font-semibold focus:outline-none">
-                                    <option value="Microciclo">Microciclo</option>
-                                    <option value="Mesociclo" selected>Mesociclo</option>
-                                    <option value="Macrociclo">Macrociclo</option>
-                                </select>
+                                <label class="block text-[10px] font-bold text-slate-400 mb-1">Apellido</label>
+                                <input type="text" id="student-lastname-input" placeholder="Ej. Pérez" class="w-full bg-slate-950 border border-slate-800 rounded-xl p-2 text-xs text-white font-semibold focus:outline-none">
                             </div>
                             <div>
-                                <label class="block text-[10px] font-bold text-slate-400 mb-1">Duración (Semanas)</label>
-                                <input type="number" id="student-total-weeks" min="1" max="52" value="8" class="w-full bg-slate-900 border border-slate-700 rounded-xl p-2 text-xs text-white font-semibold text-center focus:outline-none">
+                                <label class="block text-[10px] font-bold text-slate-400 mb-1">Nombre</label>
+                                <input type="text" id="student-firstname-input" placeholder="Ej. Juan" class="w-full bg-slate-950 border border-slate-800 rounded-xl p-2 text-xs text-white font-semibold focus:outline-none">
+                            </div>
+                            <div>
+                                <label class="block text-[10px] font-bold text-slate-400 mb-1">DNI</label>
+                                <input type="text" id="student-dni-input" placeholder="Ej. 32123456" class="w-full bg-slate-950 border border-slate-800 rounded-xl p-2 text-xs text-white font-semibold focus:outline-none">
                             </div>
                         </div>
-                    </div>
 
-                    <!-- BOTONES DE ACCIÓN -->
-                    <div class="flex gap-2 pt-1">
-                        <button onclick="saveCurrentStudent()" class="w-full bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 text-slate-950 text-xs font-black py-2.5 rounded-xl border border-amber-300 shadow transition flex items-center justify-center gap-1.5 active:scale-95">
-                            <i data-feather="save" class="w-3.5 h-3.5"></i> Guardar Alumno / Plan
-                        </button>
-                        <button onclick="prepareNewStudent()" class="w-1/2 bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-bold py-2.5 rounded-xl border border-slate-700 transition flex items-center justify-center gap-1 active:scale-95">
-                            <i data-feather="user-plus" class="w-3.5 h-3.5"></i> Nuevo
-                        </button>
+                        <!-- CONFIGURACIÓN DE CICLO -->
+                        <div class="bg-slate-950 p-2.5 rounded-xl border border-slate-800/80 space-y-2">
+                            <div class="grid grid-cols-2 gap-2">
+                                <div>
+                                    <label class="block text-[10px] font-bold text-slate-400 mb-1">Tipo de Ciclo</label>
+                                    <select id="student-cycle-type" class="w-full bg-slate-900 border border-slate-700 rounded-xl p-2 text-xs text-white font-semibold focus:outline-none">
+                                        <option value="Microciclo">Microciclo</option>
+                                        <option value="Mesociclo" selected>Mesociclo</option>
+                                        <option value="Macrociclo">Macrociclo</option>
+                                    </select>
+                                </div>
+                                <div>
+                                    <label class="block text-[10px] font-bold text-slate-400 mb-1">Duración (Semanas)</label>
+                                    <input type="number" id="student-total-weeks" min="1" max="52" value="8" class="w-full bg-slate-900 border border-slate-700 rounded-xl p-2 text-xs text-white font-semibold text-center focus:outline-none">
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- BOTONES DE ACCIÓN -->
+                        <div class="flex gap-2 pt-1">
+                            <button onclick="saveCurrentStudent()" class="w-full bg-amber-500 hover:bg-amber-400 text-slate-950 text-xs font-black py-2.5 rounded-xl border border-amber-300 shadow transition flex items-center justify-center gap-1.5 active:scale-95">
+                                <i data-feather="save" class="w-3.5 h-3.5"></i> Guardar Alumno / Plan
+                            </button>
+                            <button onclick="prepareNewStudent()" class="w-1/2 bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-bold py-2.5 rounded-xl border border-slate-700 transition flex items-center justify-center gap-1 active:scale-95">
+                                <i data-feather="user-plus" class="w-3.5 h-3.5"></i> Nuevo
+                            </button>
+                        </div>
                     </div>
                 </section>
 
@@ -901,55 +920,6 @@
             if (typeof feather !== 'undefined') feather.replace();
         }
         
-        // Buscador en tiempo real para el Profesor (Deduplicado)
-        function profOnStudentSearchInput() {
-            const query = document.getElementById('prof-student-search-input').value.trim().toLowerCase();
-            const resultsContainer = document.getElementById('prof-student-search-results');
-
-            if (!query) {
-                resultsContainer.innerHTML = '';
-                resultsContainer.classList.add('hidden');
-                return;
-            }
-
-            const seen = new Set();
-            const filtered = studentsDatabase.filter(st => {
-                if (!st.id || st.id === 'undefined') return false;
-                const full = `${st.firstname} ${st.lastname}`.toLowerCase();
-                const reverse = `${st.lastname} ${st.firstname}`.toLowerCase();
-                const dni = (st.dni || '').toString().toLowerCase();
-                const matches = full.includes(query) || reverse.includes(query) || dni.includes(query);
-
-                const uniqueKey = (st.dni && st.dni.trim()) ? st.dni.trim() : `${st.lastname}_${st.firstname}`.toLowerCase();
-                if (matches && !seen.has(uniqueKey)) {
-                    seen.add(uniqueKey);
-                    return true;
-                }
-                return false;
-            });
-
-            if (filtered.length === 0) {
-                resultsContainer.innerHTML = `
-                    <div class="p-3 text-xs text-slate-500 text-center italic">
-                        No se encontraron alumnos coincidentes.
-                    </div>`;
-            } else {
-                resultsContainer.innerHTML = filtered.map(st => `
-                    <div onclick="selectStudentByProf('${st.id}')" class="p-2.5 hover:bg-slate-900 cursor-pointer flex justify-between items-center text-xs text-white transition border-b border-slate-900 last:border-0">
-                        <div>
-                            <strong class="block font-bold">${st.lastname}, ${st.firstname}</strong>
-                            <span class="text-[10px] text-slate-400">${st.cycleType || 'Mesociclo'}</span>
-                        </div>
-                        <span class="text-[10px] bg-slate-900 text-amber-400 font-bold px-2 py-1 rounded-md border border-slate-800">
-                            DNI: ${st.dni || 'Sin reg.'}
-                        </span>
-                    </div>
-                `).join('');
-            }
-
-            resultsContainer.classList.remove('hidden');
-        }
-
         // 3. Activa o inhabilita el botón de confirmación según la casilla de aceptación
         function toggleLegalButton() {
             const checkbox = document.getElementById('legal-terms-checkbox');
@@ -1213,18 +1183,41 @@
             resultsContainer.classList.remove('hidden');
         }
 
-        // Selecciona el alumno desde la lista de resultados del Profesor
-        function selectStudentByProf(studentId) {
-            document.getElementById('prof-student-search-results').classList.add('hidden');
-            loadStudentData(studentId);
+        // 1. Alternar visibilidad del buscador del profesor (ahorra espacio vertical en el celular)
+        function toggleProfSearchBox() {
+            const box = document.getElementById('prof-search-box-container');
+            const btn = document.getElementById('toggle-search-btn');
+            if (box.classList.contains('hidden')) {
+                box.classList.remove('hidden');
+                btn.innerText = '▲ Ocultar Buscador';
+            } else {
+                box.classList.add('hidden');
+                btn.innerText = '🔍 Buscar / Cambiar';
+            }
         }
 
+        // 2. Seleccionar alumno desde los resultados del profesor, ocultar la caja y hacer scroll suave
+        function selectStudentByProf(studentId) {
+            document.getElementById('prof-student-search-results').classList.add('hidden');
+            document.getElementById('prof-search-box-container').classList.add('hidden');
+            document.getElementById('toggle-search-btn').innerText = '🔍 Buscar / Cambiar';
+            
+            loadStudentData(studentId);
+
+            const routineSection = document.getElementById('interactive-routine-section');
+            if (routineSection) {
+                routineSection.scrollIntoView({ behavior: 'smooth' });
+            }
+        }
+
+        // 3. Cargar datos del alumno y actualizar el Banner de Identidad Activa (Alumno / Profesor)
         function loadStudentData(id) {
             if (!id) id = currentStudentId;
             const st = studentsDatabase.find(item => String(item.id) === String(id));
             if (!st) return;
 
             currentStudentId = st.id;
+
             if (currentRole === 'prof') {
                 const profSearchInput = document.getElementById('prof-student-search-input');
                 if (profSearchInput) profSearchInput.value = '';
@@ -1234,6 +1227,31 @@
                 document.getElementById('student-dni-input').value = st.dni || '';
                 document.getElementById('student-cycle-type').value = st.cycleType || "Mesociclo";
                 document.getElementById('student-total-weeks').value = st.totalWeeks || 8;
+
+                // Banner para Modo Profesor
+                document.getElementById('role-banner-title').innerText = "EDITANDO PLAN DE ALUMNO";
+                document.getElementById('role-banner-text').innerHTML = `
+                    <div class="flex items-center gap-2">
+                        <i data-feather="user-check" class="w-4 h-4 text-amber-400 shrink-0"></i>
+                        <div>
+                            <strong class="text-amber-300 text-sm block">${st.lastname}, ${st.firstname}</strong>
+                            <span class="text-[10px] text-slate-400 font-medium">DNI: ${st.dni || 'Sin registrar'}</span>
+                        </div>
+                    </div>
+                    <span class="text-[10px] bg-amber-500/20 text-amber-300 px-2 py-1 rounded-lg border border-amber-500/30 font-bold">${st.cycleType || 'Mesociclo'}</span>
+                `;
+            } else {
+                // Banner para Modo Alumno
+                document.getElementById('role-banner-title').innerText = "MI PERFIL Y RUTINA ACTIVA";
+                document.getElementById('role-banner-text').innerHTML = `
+                    <div class="flex items-center gap-2">
+                        <i data-feather="user" class="w-4 h-4 text-sky-400 shrink-0"></i>
+                        <div>
+                            <strong class="text-sky-300 text-sm block">¡Hola, ${st.firstname} ${st.lastname}!</strong>
+                            <span class="text-[10px] text-slate-300 font-medium">DNI: ${st.dni || 'Verificado'} • ${st.cycleType || 'Mesociclo'} (${st.totalWeeks || 8} Semanas)</span>
+                        </div>
+                    </div>
+                `;
             }
 
             updateStudentDisplayHeader(st);
@@ -1242,8 +1260,9 @@
             renderExercises();
             renderHistory();
             renderCharts();
+            if (typeof feather !== 'undefined') feather.replace();
         }
-
+        
         function updateStudentDisplayHeader(st) {
             document.getElementById('student-display-fullname').innerText = `${st.lastname}, ${st.firstname}`;
             document.getElementById('cycle-display').innerText = `${st.cycleType || 'Mesociclo'} (${st.totalWeeks || 8} Semanas)`;
