@@ -81,21 +81,33 @@
 
             <!-- FORMULARIO ALUMNO EN 2 CAPAS -->
             <div id="form-login-student-wrapper" class="space-y-4">
-                <div>
-                    <label class="block text-xs font-bold text-slate-300 mb-1">Buscar por Nombre, Apellido o DNI</label>
-                    <div class="relative">
+                <form id="form-login-student" onsubmit="loginStudentWithPIN(event)" class="space-y-4">
+                    <div>
+                        <label class="block text-xs font-bold text-slate-300 mb-1">Primer Nombre *</label>
                         <input 
                             type="text" 
-                            id="student-search-input" 
-                            oninput="onStudentSearchInput()" 
-                            placeholder="Escribe tu Nombre, Apellido o DNI..." 
+                            id="student-login-firstname" 
+                            required 
+                            placeholder="Ej. Juan" 
                             autocomplete="off" 
-                            class="w-full bg-slate-950 border border-slate-700 rounded-xl p-3 text-xs text-white font-semibold focus:border-amber-400 focus:outline-none"
+                            class="w-full bg-slate-950 border border-slate-700 rounded-xl p-3 text-xs text-white font-bold focus:border-amber-400 focus:outline-none"
                         >
-                        <i data-feather="search" class="w-4 h-4 text-slate-500 absolute right-3 top-3.5"></i>
                     </div>
-                    <div id="student-search-results" class="hidden mt-1 max-h-48 overflow-y-auto bg-slate-950 border border-slate-800 rounded-xl shadow-2xl divide-y divide-slate-900 z-50"></div>
-                </div>
+                    <div>
+                        <label class="block text-xs font-bold text-slate-300 mb-1">Tu PIN Personal *</label>
+                        <input 
+                            type="password" 
+                            id="student-login-pin" 
+                            required 
+                            placeholder="Ej. 1123" 
+                            autocomplete="off" 
+                            class="w-full bg-slate-950 border border-slate-700 rounded-xl p-3 text-xs text-amber-400 font-black tracking-widest focus:border-amber-400 focus:outline-none"
+                        >
+                    </div>
+                    <button type="submit" class="w-full bg-gradient-to-r from-sky-500 to-sky-600 hover:from-sky-400 hover:to-sky-500 text-slate-950 font-black py-3 rounded-xl shadow-lg border border-sky-300 text-xs active:scale-95 transition">
+                        Ingresar a mi Rutina
+                    </button>
+                </form>
             </div>
 
             <!-- MODAL LEGAL -->
@@ -218,16 +230,20 @@
                 <!-- TAB 1: RUTINA Y NUTRICIÓN -->
                 <div id="tab-content-routine" class="space-y-4">
 
-                    <!-- EDICIÓN DE DATOS DEL ALUMNO SELECCIONADO -->
-                    <section id="student-management-card" class="bg-slate-900/90 rounded-2xl p-3.5 border border-amber-500/30 shadow-xl space-y-3">
+                    <!-- CONFIGURACIÓN DEL ALUMNO Y CONTROL DE MODO DE PLAN -->
+                    <section id="student-management-card" class="bg-slate-900/90 rounded-2xl p-4 border border-amber-500/30 shadow-xl space-y-4">
                         <div class="flex items-center justify-between border-b border-slate-800 pb-2">
                             <span class="text-xs font-bold text-amber-400 uppercase tracking-wider flex items-center gap-1.5">
-                                <i data-feather="edit-3" class="w-4 h-4 text-amber-400"></i> Configuración del Plan
+                                <i data-feather="edit-3" class="w-4 h-4 text-amber-400"></i> Ficha y Modo de Trabajo
                             </span>
                         </div>
 
-                        <!-- CAMPOS DE EDICIÓN DEL ALUMNO (APELLIDO, NOMBRE, DNI) -->
-                        <div class="grid grid-cols-3 gap-2 pt-1">
+                        <!-- DATOS PERSONALES -->
+                        <div class="grid grid-cols-4 gap-2">
+                            <div>
+                                <label class="block text-[10px] font-bold text-amber-400 mb-1">Nº Alumno</label>
+                                <input type="number" id="student-number-input" min="1" value="1" class="w-full bg-slate-950 border border-amber-500/50 rounded-xl p-2 text-xs text-amber-400 font-black text-center focus:outline-none">
+                            </div>
                             <div>
                                 <label class="block text-[10px] font-bold text-slate-400 mb-1">Apellido</label>
                                 <input type="text" id="student-lastname-input" placeholder="Ej. Pérez" class="w-full bg-slate-950 border border-slate-800 rounded-xl p-2 text-xs text-white font-semibold focus:outline-none">
@@ -243,27 +259,41 @@
                         </div>
 
                         <!-- CONFIGURACIÓN DE CICLO -->
-                        <div class="bg-slate-950 p-2.5 rounded-xl border border-slate-800/80 space-y-2">
-                            <div class="grid grid-cols-2 gap-2">
-                                <div>
-                                    <label class="block text-[10px] font-bold text-slate-400 mb-1">Tipo de Ciclo</label>
-                                    <select id="student-cycle-type" class="w-full bg-slate-900 border border-slate-700 rounded-xl p-2 text-xs text-white font-semibold focus:outline-none">
-                                        <option value="Microciclo">Microciclo</option>
-                                        <option value="Mesociclo" selected>Mesociclo</option>
-                                        <option value="Macrociclo">Macrociclo</option>
-                                    </select>
-                                </div>
-                                <div>
-                                    <label class="block text-[10px] font-bold text-slate-400 mb-1">Duración (Semanas)</label>
-                                    <input type="number" id="student-total-weeks" min="1" max="52" value="8" class="w-full bg-slate-900 border border-slate-700 rounded-xl p-2 text-xs text-white font-semibold text-center focus:outline-none">
-                                </div>
+                        <div class="grid grid-cols-2 gap-2 bg-slate-950 p-2.5 rounded-xl border border-slate-800/80">
+                            <div>
+                                <label class="block text-[10px] font-bold text-slate-400 mb-1">Tipo de Ciclo</label>
+                                <select id="student-cycle-type" class="w-full bg-slate-900 border border-slate-700 rounded-xl p-2 text-xs text-white font-semibold focus:outline-none">
+                                    <option value="Microciclo">Microciclo</option>
+                                    <option value="Mesociclo" selected>Mesociclo</option>
+                                    <option value="Macrociclo">Macrociclo</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label class="block text-[10px] font-bold text-slate-400 mb-1">Duración (Semanas)</label>
+                                <input type="number" id="student-total-weeks" min="1" max="52" value="8" class="w-full bg-slate-900 border border-slate-700 rounded-xl p-2 text-xs text-white font-semibold text-center focus:outline-none">
                             </div>
                         </div>
 
-                        <!-- BOTÓN GUARDAR PLAN -->
-                        <button onclick="saveCurrentStudent()" class="w-full bg-amber-500 hover:bg-amber-400 text-slate-950 text-xs font-black py-2.5 rounded-xl border border-amber-300 shadow transition flex items-center justify-center gap-1.5 active:scale-95">
-                            <i data-feather="save" class="w-3.5 h-3.5"></i> Guardar Cambios del Alumno / Plan
-                        </button>
+                        <!-- TARJETA DINÁMICA DE CONMUTACIÓN DE PLAN (ACTIVO VS BORRADOR) -->
+                        <div id="mode-container-card" class="bg-slate-950 border-2 border-sky-500/50 rounded-2xl p-3.5 space-y-3 transition-all">
+                            <div class="flex items-center justify-between border-b border-slate-800/80 pb-2">
+                                <span id="mode-card-title" class="text-xs font-black uppercase tracking-wider flex items-center gap-1.5">
+                                    <!-- Título dinámico -->
+                                </span>
+                                <select id="routine-status-mode" onchange="toggleRoutineEditMode()" class="bg-slate-900 border border-slate-700 text-xs font-extrabold rounded-xl p-1.5 focus:outline-none cursor-pointer">
+                                    <option value="active">🟢 Plan Activo (En Curso)</option>
+                                    <option value="draft">🟡 Plan Borrador (Pre-carga)</option>
+                                </select>
+                            </div>
+
+                            <div id="mode-description-box" class="text-xs p-2.5 rounded-xl font-medium">
+                                <!-- Explicación e indicador de privacidad -->
+                            </div>
+
+                            <div id="mode-action-buttons" class="pt-1">
+                                <!-- Botones de guardar dinámicos -->
+                            </div>
+                        </div>
                     </section>
 
                     <!-- FICHA DEL ALUMNO ACTIVO -->
@@ -740,33 +770,35 @@
             if (!error && data && data.length > 0) {
                 const uniqueMap = new Map();
                 data.forEach(st => {
-                    const dniKey = (st.dni && st.dni.trim()) ? st.dni.trim() : null;
-                    const nameKey = `${(st.nombre || '').trim().toLowerCase()}_${(st.apellido || '').trim().toLowerCase()}`;
+                    const dniKey = (st['dni'] && String(st['dni']).trim()) ? String(st['dni']).trim() : null;
+                    const nameKey = `${(st['nombre'] || st['firstname'] || '').trim().toLowerCase()}_${(st['apellido'] || st['lastname'] || '').trim().toLowerCase()}`;
                     const key = dniKey ? `dni_${dniKey}` : `name_${nameKey}`;
                     
-                    if (!uniqueMap.has(key) || (st.id && !uniqueMap.get(key).id)) {
+                    if (!uniqueMap.has(key) || (st['id'] && !uniqueMap.get(key)['id'])) {
                         uniqueMap.set(key, st);
                     }
                 });
 
-                studentsDatabase = Array.from(uniqueMap.values()).map(st => ({
-                    id: st.id,
-                    lastname: st.apellido || st.lastname || '',
-                    firstname: st.nombre || st.firstname || '',
-                    dni: st.dni || '',
-                    cycleType: st.cycleType || 'Mesociclo',
-                    totalWeeks: st.totalWeeks || 8,
-                    history: st.history || [],
-                    ratings: st.ratings || [],
-                    nutrition: st.nutrition || { diet: '', supplements: '' },
-                    routine: st.routine || {}
+                studentsDatabase = Array.from(uniqueMap.values())['map'](st => ({
+                    id: st['id'],
+                    studentNumber: parseInt(st['studentNumber'] || st['student_number'] || st['studentnumber']) || 1,
+                    lastname: st['apellido'] || st['lastname'] || '',
+                    firstname: st['nombre'] || st['firstname'] || '',
+                    dni: st['dni'] || '',
+                    cycleType: st['cycleType'] || 'Mesociclo',
+                    totalWeeks: st['totalWeeks'] || 8,
+                    history: st['history'] || [],
+                    ratings: st['ratings'] || [],
+                    nutrition: st['nutrition'] || { diet: '', supplements: '' },
+                    routine: st['routine'] || {},
+                    draftRoutine: st['draft_routine'] || st['draftRoutine'] || {}
                 }));
 
                 localStorage.setItem('fit_students_db', JSON.stringify(studentsDatabase));
-                console.log("¡Sincronización y deduplicación con Supabase exitosa!");
+                console.log("¡Sincronización con Supabase exitosa!");
             }
         } catch (err) {
-            console.warn("Utilizando datos locales en caché debido a un fallo de red:", err);
+            console.warn("Error leyendo de Supabase, usando respaldo local:", err);
         }
     }
 
@@ -776,21 +808,24 @@
         if (supabaseClient) {
             for (const st of studentsDatabase) {
                 try {
-                    const oldId = st.id;
+                    const oldId = st['id'];
                     const payload = {
-                        nombre: st.firstname,
-                        apellido: st.lastname,
-                        dni: st.dni || '',
-                        cycleType: st.cycleType,
-                        totalWeeks: st.totalWeeks,
-                        history: st.history,
-                        ratings: st.ratings,
-                        nutrition: st.nutrition,
-                        routine: st.routine
+                        nombre: st['firstname'] || '',
+                        apellido: st['lastname'] || '',
+                        dni: st['dni'] || '',
+                        studentNumber: parseInt(st['studentNumber']) || 1,
+                        cycleType: st['cycleType'] || 'Mesociclo',
+                        totalWeeks: st['totalWeeks'] || 8,
+                        history: st['history'] || [],
+                        ratings: st['ratings'] || [],
+                        nutrition: st['nutrition'] || {},
+                        routine: st['routine'] || {},
+                        draft_routine: st['draftRoutine'] || {}
                     };
 
-                    if (st.id && !st.id.startsWith('st_') && st.id !== 'undefined') {
-                        payload.id = st.id;
+                    // Si ya tiene una ID válida asignada (y no es 'undefined' ni 'st_'), se envía para actualizar la misma fila
+                    if (oldId && !String(oldId).startsWith('st_') && String(oldId) !== 'undefined') {
+                        payload['id'] = oldId;
                     }
 
                     const { data, error } = await supabaseClient
@@ -799,20 +834,67 @@
                         .select();
 
                     if (error) {
-                        console.error("Error al guardar alumno en Supabase:", error.message);
-                    } else if (data && data.length > 0) {
-                        const newId = data[0].id;
+                        console.error("Error guardando en Supabase:", error.message);
+                    } else if (data && data.length > 0 && data && data['id']) {
+                        // 🔑 CORRECCIÓN CLAVE: Leemos el primer elemento del arreglo data['id']
+                        const newId = data['id'];
                         if (currentStudentId === oldId) {
                             currentStudentId = newId;
                         }
-                        st.id = newId;
+                        st['id'] = newId; // Asigna el UUID real devuelto por Supabase al alumno local
                     }
                 } catch (err) {
-                    console.error("Excepción al sincronizar con Supabase:", err);
+                    console.error("Excepción en persistDatabase:", err);
                 }
             }
             localStorage.setItem('fit_students_db', JSON.stringify(studentsDatabase));
         }
+    }
+
+    // 1. Generador del PIN algorítmico
+    function generateStudentPIN(studentNumber, dni) {
+        const cleanDni = (dni || '').toString().replace(/\D/g, '');
+        let dniSubstring = "000";
+        if (cleanDni.length >= 5) {
+            dniSubstring = cleanDni.substring(2, 5);
+        } else if (cleanDni.length > 0) {
+            dniSubstring = cleanDni.padEnd(3, '0').substring(0, 3);
+        }
+        return `${studentNumber || 1}${dniSubstring}`;
+    }
+
+    // 2. Validación de ingreso del Alumno con Nombre + PIN
+    function loginStudentWithPIN(e) {
+        e.preventDefault();
+        const inputName = document.getElementById('student-login-firstname').value.trim().toLowerCase();
+        const inputPIN = document.getElementById('student-login-pin').value.trim();
+
+        const match = studentsDatabase.find(st => {
+            const firstName = (st.firstname || '').trim().toLowerCase();
+            const studentPIN = st.pin || generateStudentPIN(st.studentNumber || 1, st.dni);
+            return firstName === inputName && String(studentPIN) === String(inputPIN);
+        });
+
+        if (match) {
+            openLegalModalForStudent(match.id);
+        } else {
+            showToast("Nombre o PIN incorrecto. Consulta tu PIN con el Prof. Franco.");
+        }
+    }
+
+    // 3. Compartir PIN por WhatsApp desde el panel del Profesor
+    function shareStudentPINViaWhatsApp(studentId) {
+        const st = studentsDatabase.find(item => String(item.id) === String(studentId));
+        if (!st) return;
+
+        const pin = st.pin || generateStudentPIN(st.studentNumber || 1, st.dni);
+        const message = `¡Hola ${st.firstname}! 👋 Tu acceso a fctraining.ar está listo:\n\n` +
+                        `👤 Primer Nombre: ${st.firstname}\n` +
+                        `🔑 Tu PIN Personal: ${pin}\n\n` +
+                        `Ingresa a https://fctraining.ar y confirma tu identidad. ¡A entrenar! 💪`;
+
+        const encodedMessage = encodeURIComponent(message);
+        window.open(`https://wa.me/?text=${encodedMessage}`, '_blank');
     }
 
     function switchLoginTab(tab) {
@@ -888,12 +970,17 @@
 
         pendingStudentId = st.id;
         document.getElementById('legal-student-fullname').innerText = `${st.lastname}, ${st.firstname}`;
-        document.getElementById('legal-student-dni').innerText = `DNI: ${st.dni || 'Sin registrar'}`;
-        
+        document.getElementById('legal-student-dni').innerText = `DNI: ${st.dni || 'Sin registrar'}`;        
         document.getElementById('legal-terms-checkbox').checked = false;
         toggleLegalButton();
         
-        document.getElementById('student-search-results').classList.add('hidden');
+        // Verificación segura para evitar bloqueos si no existe el buscador antiguo
+        const resultsContainer = document.getElementById('student-search-results');
+        if (resultsContainer) {
+            resultsContainer.classList.add('hidden');
+        }
+        
+        // Abre el modal legal de declaración jurada
         document.getElementById('legal-confirm-modal').classList.remove('hidden');
         if (typeof feather !== 'undefined') feather.replace();
     }
@@ -977,29 +1064,34 @@
         document.getElementById('change-pass-btn').classList.add('hidden');
     }
 
-    // RENDERS Y LÓGICA DE SELECCIÓN LIMPIA DE ALUMNO PARA EL PROFESOR
     function renderProfStudentFullList() {
         const container = document.getElementById('prof-student-full-list');
         if (!container) return;
 
-        studentsDatabase.sort((a, b) => (a.lastname || '').localeCompare(b.lastname || '', 'es', { sensitivity: 'base' }));
+        studentsDatabase.sort((a, b) => (a['lastname'] || '').localeCompare(b['lastname'] || '', 'es', { sensitivity: 'base' }));
 
         if (studentsDatabase.length === 0) {
             container.innerHTML = `<div class="p-3 text-xs text-slate-500 text-center italic bg-slate-950 rounded-xl border border-slate-800">Sin alumnos registrados todavía.</div>`;
             return;
         }
 
-        container.innerHTML = studentsDatabase.map(st => `
-            <div onclick="selectStudentByProf('${st.id}')" class="p-3 bg-slate-950 hover:bg-amber-500/10 hover:border-amber-500/40 border border-slate-800/80 rounded-xl cursor-pointer flex justify-between items-center transition active:scale-98">
-                <div>
-                    <strong class="text-xs text-amber-300 font-bold block">${st.lastname}, ${st.firstname}</strong>
-                    <span class="text-[10px] text-slate-400">DNI: ${st.dni || 'Sin reg.'} • st.cycleType||'Mesociclo'({st.totalWeeks || 8} Semanas)</span>
+        const htmlList = studentsDatabase['map'](st => {
+            const stId = String(st['id'] || '');
+            const num = st['studentNumber'] ? `#${st['studentNumber']} - ` : '';
+            return `
+                <div onclick="selectStudentByProf('${stId}')" class="p-3 bg-slate-950 hover:bg-amber-500/10 hover:border-amber-500/40 border border-slate-800/80 rounded-xl cursor-pointer flex justify-between items-center transition active:scale-98">
+                    <div>
+                        <strong class="text-xs text-amber-300 font-bold block">${num}${st['lastname']}, ${st['firstname']}</strong>
+                        <span class="text-[10px] text-slate-400">DNI: ${st['dni'] || 'Sin reg.'} • ${st['cycleType'] || 'Mesociclo'} (${st['totalWeeks'] || 8} Semanas)</span>
+                    </div>
+                    <span class="text-[10px] bg-amber-500 text-slate-950 font-black px-2.5 py-1 rounded-lg shadow">
+                        Seleccionar →
+                    </span>
                 </div>
-                <span class="text-[10px] bg-amber-500 text-slate-950 font-black px-2.5 py-1 rounded-lg shadow">
-                    Seleccionar →
-                </span>
-            </div>
-        `).join('');
+            `;
+        }).join('');
+
+        container.innerHTML = htmlList;
     }
 
     function profOnStudentSearchInput() {
@@ -1053,8 +1145,11 @@
     function selectStudentByProf(studentId) {
         const searchInput = document.getElementById('prof-student-search-input');
         if (searchInput) searchInput.value = '';
-        document.getElementById('prof-student-search-results').classList.add('hidden');
-        
+        const searchResults = document.getElementById('prof-student-search-results');
+        if (searchResults) searchResults.classList.add('hidden');
+
+        if (!studentId || studentId === 'undefined') return;
+
         currentStudentId = studentId;
 
         if (currentRole === 'prof') {
@@ -1107,6 +1202,30 @@
         if (typeof feather !== 'undefined') feather.replace();
     }
 
+   // Restringe la visualización de controles de edición según el rol activo
+    function applyRolePermissions() {
+        const profOnlyElements = [
+            'student-management-card', // Ficha de edición del alumno y su plan
+            'add-ex-btn',               // Botón "+ Cargar Ejercicio"
+            'edit-nut-btn',              // Botón "Editar Plan" de Nutrición
+            'prof-eval-card'             // Formulario de evaluación del profesor
+        ];
+
+        if (currentRole === 'prof') {
+            // MODO PROFESOR: Muestra las herramientas de edición
+            profOnlyElements.forEach(id => {
+                const el = document.getElementById(id);
+                if (el) el.classList.remove('hidden');
+            });
+        } else {
+            // MODO ALUMNO: Oculta por completo la edición (Solo Lectura)
+            profOnlyElements.forEach(id => {
+                const el = document.getElementById(id);
+                if (el) el.classList.add('hidden');
+            });
+        }
+    }
+    
     function showDashboard() {
         document.getElementById('login-view').classList.add('hidden');
         document.getElementById('dashboard-view').classList.remove('hidden');
@@ -1141,6 +1260,9 @@
             if (currentStudentId) loadStudentData(currentStudentId);
         }
 
+        // APLICAR PERMISOS DE ROL (Oculta edición si es Alumno)
+        applyRolePermissions();
+
         if (typeof feather !== 'undefined') feather.replace();
     }
 
@@ -1152,32 +1274,55 @@
         currentStudentId = st.id;
 
         if (currentRole === 'prof') {
+            const profSearchInput = document.getElementById('prof-student-search-input');
+            if (profSearchInput) profSearchInput.value = '';
+
+            document.getElementById('student-number-input').value = st.studentNumber || 1;
             document.getElementById('student-lastname-input').value = st.lastname || '';
             document.getElementById('student-firstname-input').value = st.firstname || '';
             document.getElementById('student-dni-input').value = st.dni || '';
             document.getElementById('student-cycle-type').value = st.cycleType || "Mesociclo";
             document.getElementById('student-total-weeks').value = st.totalWeeks || 8;
 
+            const studentPIN = st.pin || generateStudentPIN(st.studentNumber || 1, st.dni);
+
             document.getElementById('role-banner-title').innerText = "EDITANDO PLAN DE ALUMNO";
             document.getElementById('role-banner-text').innerHTML = `
-                <div class="flex items-center gap-2">
-                    <i data-feather="user-check" class="w-4 h-4 text-amber-400 shrink-0"></i>
-                    <div>
-                        <strong class="text-amber-300 text-sm block">${st.lastname}, ${st.firstname}</strong>
-                        <span class="text-[10px] text-slate-400 font-medium">DNI: ${st.dni || 'Sin registrar'}</span>
+                <div class="flex items-center justify-between w-full">
+                    <div class="flex items-center gap-2">
+                        <i data-feather="user-check" class="w-4 h-4 text-amber-400 shrink-0"></i>
+                        <div>
+                            <strong class="text-amber-300 text-sm block">${st.lastname}, ${st.firstname}</strong>
+                            <span class="text-[10px] text-slate-400 font-medium">DNI: ${st.dni || 'Sin reg.'} • 🔑 PIN: <strong class="text-amber-400 font-bold">${studentPIN}</strong></span>
+                        </div>
                     </div>
+                    <button onclick="shareStudentPINViaWhatsApp('${st.id}')" class="text-[10px] bg-emerald-600 hover:bg-emerald-500 text-white font-bold px-2.5 py-1.5 rounded-lg border border-emerald-400 shadow active:scale-95 transition flex items-center gap-1">
+                        💬 Enviar PIN
+                    </button>
                 </div>
-                <span class="text-[10px] bg-amber-500/20 text-amber-300 px-2 py-1 rounded-lg border border-amber-500/30 font-bold">${st.cycleType || 'Mesociclo'}</span>
             `;
+
+            // 🟡 1. AGREGAR ESTA LÍNEA AQUÍ: Carga la rutina activa o borrador según el selector del Profesor
+            toggleRoutineEditMode();
+
         } else {
-            document.getElementById('role-banner-title').innerText = "MI PERFIL Y RUTINA ACTIVA";
+            // 🔒 2. AGREGAR ESTA LÍNEA AQUÍ: Garantía de privacidad (el alumno sólo lee el Plan Activo)
+            st.editingRoutine = st.routine || {};
+
+            // MODO ALUMNO: Banner de bienvenida personalizado sin datos de edición ni PIN
+            document.getElementById('role-banner-title').innerText = "SESIÓN DE ALUMNO ACTIVA";
             document.getElementById('role-banner-text').innerHTML = `
-                <div class="flex items-center gap-2">
-                    <i data-feather="user" class="w-4 h-4 text-sky-400 shrink-0"></i>
-                    <div>
-                        <strong class="text-sky-300 text-sm block">¡Hola, ${st.firstname} ${st.lastname}!</strong>
-                        <span class="text-[10px] text-slate-300 font-medium">DNI: ${st.dni || 'Verificado'} • st.cycleType||'Mesociclo'({st.totalWeeks || 8} Semanas)</span>
+                <div class="flex items-center justify-between w-full">
+                    <div class="flex items-center gap-2">
+                        <i data-feather="user" class="w-4 h-4 text-sky-400 shrink-0"></i>
+                        <div>
+                            <strong class="text-sky-300 text-sm block">¡Hola, ${st.firstname} ${st.lastname}!</strong>
+                            <span class="text-[10px] text-slate-400 font-medium">DNI: ${st.dni || 'Sin reg.'} • ${st.cycleType || 'Mesociclo'} (${st.totalWeeks || 8} Semanas)</span>
+                        </div>
                     </div>
+                    <span class="text-[10px] bg-sky-500/20 text-sky-300 border border-sky-500/40 px-2.5 py-1 rounded-lg font-bold">
+                        Plan Activo
+                    </span>
                 </div>
             `;
         }
@@ -1188,12 +1333,16 @@
         renderExercises();
         renderHistory();
         renderCharts();
+        // APLICAR PERMISOS DE ROL
+        applyRolePermissions();
         if (typeof feather !== 'undefined') feather.replace();
     }
 
     function updateStudentDisplayHeader(st) {
+        const cycleText = st.cycleType || 'Mesociclo';
+        const weeksText = st.totalWeeks || 8;
         document.getElementById('student-display-fullname').innerText = `${st.lastname}, ${st.firstname}`;
-        document.getElementById('cycle-display').innerText = `st.cycleType||'Mesociclo'({st.totalWeeks || 8} Semanas)`;
+        document.getElementById('cycle-display').innerText = `${cycleText} (${weeksText} Semanas)`;
     }
 
     function populateWeekSelectors(totalWeeks) {
@@ -1207,10 +1356,179 @@
         profWeekSelect.value = selectedWeek;
     }
 
+    // Prepara el formulario para registrar a un alumno nuevo asignándole el siguiente número correlativo
+    function prepareNewStudent() {
+        currentStudentId = null; // Quita la selección actual para crear un registro desde cero
+        
+        const profSearchInput = document.getElementById('prof-student-search-input');
+        if (profSearchInput) profSearchInput.value = '';
+
+        // Calcula automáticamente el siguiente Nº de Alumno disponible (ej. si hay 5, sugiere el 6)
+        const nextNumber = studentsDatabase.length + 1;
+
+        document.getElementById('student-number-input').value = nextNumber;
+        document.getElementById('student-lastname-input').value = '';
+        document.getElementById('student-firstname-input').value = '';
+        document.getElementById('student-dni-input').value = '';
+        document.getElementById('student-cycle-type').value = 'Mesociclo';
+        document.getElementById('student-total-weeks').value = 8;
+        
+        document.getElementById('student-display-fullname').innerText = 'Nuevo Alumno';
+        document.getElementById('cycle-display').innerText = 'Mesociclo (8 Semanas)';
+        
+        renderNutrition();
+        renderExercises();
+        showToast(`Preparado para cargar Alumno Nº ${nextNumber}.`);
+    }
+
+    // Obtiene la referencia a la rutina correcta según el modo seleccionado (Activo vs Borrador)
+    function getTargetRoutine(st) {
+        if (!st) return {};
+        if (currentRole === 'prof') {
+            const modeEl = document.getElementById('routine-status-mode');
+            const isDraft = modeEl && modeEl.value === 'draft';
+            if (isDraft) {
+                if (!st['draftRoutine']) st['draftRoutine'] = {};
+                return st['draftRoutine'];
+            } else {
+                if (!st['routine']) st['routine'] = {};
+                return st['routine'];
+            }
+        }
+        return st['routine'] || {};
+    }
+
+    // Conmuta los estilos y botones de la tarjeta dinámica según el modo
+    function toggleRoutineEditMode() {
+        const modeEl = document.getElementById('routine-status-mode');
+        const mode = modeEl ? modeEl.value : 'active';
+        const card = document.getElementById('mode-container-card');
+        const title = document.getElementById('mode-card-title');
+        const desc = document.getElementById('mode-description-box');
+        const buttons = document.getElementById('mode-action-buttons');
+
+        const st = studentsDatabase.find(item => String(item['id']) === String(currentStudentId));
+
+        if (mode === 'draft') {
+            if (card) card.className = "bg-slate-950 border-2 border-amber-500/80 rounded-2xl p-3.5 space-y-3 shadow-xl transition-all";
+            if (title) title.innerHTML = `<i data-feather="edit-3" class="w-4 h-4 text-amber-400"></i> <span class="text-amber-400 font-extrabold">EDITANDO PLAN BORRADOR (PRE-CARGA)</span>`;
+            if (desc) desc.className = "text-xs p-2.5 rounded-xl bg-amber-500/10 border border-amber-500/30 text-amber-300 font-medium space-y-1";
+            if (desc) desc.innerHTML = `
+                <div class="font-bold flex items-center gap-1 text-amber-400"><i data-feather="eye-off" class="w-3.5 h-3.5"></i> MODO BORRADOR OCULTO PARA EL ALUMNO</div>
+                <p class="text-[11px] text-amber-200/80 leading-relaxed">Estás preparando el próximo plan. Los ejercicios y la planificación que modifiques aquí <strong>NO afectan la rutina actual que realiza el alumno</strong>.</p>
+            `;
+            if (buttons) buttons.innerHTML = `
+                <div class="grid grid-cols-2 gap-2">
+                    <button onclick="saveCurrentStudent()" class="bg-amber-500 hover:bg-amber-400 text-slate-950 text-xs font-black py-2.5 rounded-xl border border-amber-300 shadow transition flex items-center justify-center gap-1.5 active:scale-95">
+                        <i data-feather="save" class="w-3.5 h-3.5"></i> Guardar Borrador
+                    </button>
+                    <button onclick="activateDraftRoutine()" class="bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-black py-2.5 rounded-xl border border-emerald-400 shadow transition flex items-center justify-center gap-1.5 active:scale-95">
+                        <i data-feather="send" class="w-3.5 h-3.5"></i> 🚀 Publicar y Activar
+                    </button>
+                </div>
+            `;
+
+            // Carga la planificación (tipo de ciclo y semanas) del Borrador
+            if (st) {
+                const draftCycle = st['draftCycleType'] || st['cycleType'] || 'Mesociclo';
+                const draftWeeks = st['draftTotalWeeks'] || st['totalWeeks'] || 8;
+                document.getElementById('student-cycle-type').value = draftCycle;
+                document.getElementById('student-total-weeks').value = draftWeeks;
+                document.getElementById('cycle-display').innerText = `${draftCycle} (${draftWeeks} Semanas) [BORRADOR]`;
+                populateWeekSelectors(draftWeeks);
+            }
+        } else {
+            if (card) card.className = "bg-slate-950 border-2 border-sky-500/60 rounded-2xl p-3.5 space-y-3 shadow-xl transition-all";
+            if (title) title.innerHTML = `<i data-feather="activity" class="w-4 h-4 text-sky-400"></i> <span class="text-sky-300 font-extrabold">EDITANDO PLAN ACTIVO OFICIAL</span>`;
+            if (desc) desc.className = "text-xs p-2.5 rounded-xl bg-sky-500/10 border border-sky-500/30 text-sky-200 font-medium space-y-1";
+            if (desc) desc.innerHTML = `
+                <div class="font-bold flex items-center gap-1 text-sky-300"><i data-feather="eye" class="w-3.5 h-3.5"></i> PLAN VISIBLE POR EL ALUMNO</div>
+                <p class="text-[11px] text-sky-200/80 leading-relaxed">Estás viendo la rutina en curso del alumno. Los cambios que guardes aquí se reflejarán de inmediato en su pantalla.</p>
+            `;
+            if (buttons) buttons.innerHTML = `
+                <button onclick="saveCurrentStudent()" class="w-full bg-sky-500 hover:bg-sky-400 text-slate-950 text-xs font-black py-2.5 rounded-xl border border-sky-300 shadow transition flex items-center justify-center gap-1.5 active:scale-95">
+                    <i data-feather="save" class="w-3.5 h-3.5"></i> Guardar Cambios en Ficha y Plan Activo
+                </button>
+            `;
+
+            // Carga la planificación (tipo de ciclo y semanas) del Plan Activo
+            if (st) {
+                const activeCycle = st['cycleType'] || 'Mesociclo';
+                const activeWeeks = st['totalWeeks'] || 8;
+                document.getElementById('student-cycle-type').value = activeCycle;
+                document.getElementById('student-total-weeks').value = activeWeeks;
+                document.getElementById('cycle-display').innerText = `${activeCycle} (${activeWeeks} Semanas)`;
+                populateWeekSelectors(activeWeeks);
+            }
+        }
+
+        if (typeof feather !== 'undefined') feather.replace();
+        renderExercises();
+    }
+
+    // Activa el Borrador convirtiéndolo en el Plan Activo oficial
+    async function activateDraftRoutine() {
+        const st = studentsDatabase.find(item => String(item['id']) === String(currentStudentId));
+        if (!st) {
+            showToast("Selecciona un alumno primero.");
+            return;
+        }
+
+        if (!st['draftRoutine'] || Object.keys(st['draftRoutine']).length === 0) {
+            showToast("No hay ninguna rutina precargada en Borrador para activar.");
+            return;
+        }
+
+        // 1. Archiva el plan activo anterior en el historial
+        if (st['routine'] && Object.keys(st['routine']).length > 0) {
+            if (!st['history']) st['history'] = [];
+            st['history'].unshift({
+                id: "h_" + Date['now'](),
+                name: `${st['cycleType'] || 'Mesociclo'} Anterior`,
+                type: st['cycleType'] || 'Mesociclo',
+                weeks: st['totalWeeks'] || 8,
+                date: new Date().toISOString().split('T'),
+                status: "Finalizado"
+            });
+        }
+
+        // 2. Transfiere la rutina borrador y su planificación a Activo
+        st['routine'] = JSON.parse(JSON.stringify(st['draftRoutine']));
+        if (st['draftCycleType']) {
+            st['cycleType'] = st['draftCycleType'];
+            delete st['draftCycleType'];
+        }
+        if (st['draftTotalWeeks']) {
+            st['totalWeeks'] = st['draftTotalWeeks'];
+            delete st['draftTotalWeeks'];
+        }
+
+        // 3. Registra el nuevo ciclo en el historial
+        if (!st['history']) st['history'] = [];
+        st['history'].unshift({
+            id: "h_" + (Date['now']() + 1),
+            name: `${st['cycleType'] || 'Mesociclo'} Activo`,
+            type: st['cycleType'] || 'Mesociclo',
+            weeks: st['totalWeeks'] || 8,
+            date: new Date().toISOString().split('T'),
+            status: "En Curso"
+        });
+
+        st['draftRoutine'] = {};
+
+        const modeEl = document.getElementById('routine-status-mode');
+        if (modeEl) modeEl.value = 'active';
+
+        await persistDatabase();
+        loadStudentData(currentStudentId);
+        showToast("🚀 ¡Nueva rutina y planificación activadas!");
+    }
+
     async function saveCurrentStudent() {
         const lastname = document.getElementById('student-lastname-input').value.trim();
         const firstname = document.getElementById('student-firstname-input').value.trim();
         const dni = document.getElementById('student-dni-input').value.trim();
+        const studentNumber = parseInt(document.getElementById('student-number-input').value) || 1;
         const cycleType = document.getElementById('student-cycle-type').value;
         const totalWeeks = parseInt(document.getElementById('student-total-weeks').value) || 4;
 
@@ -1219,34 +1537,55 @@
             return;
         }
 
-        let st = studentsDatabase.find(item => String(item.id) === String(currentStudentId));
+        const modeEl = document.getElementById('routine-status-mode');
+        const isDraft = modeEl && modeEl.value === 'draft';
+
+        let st = studentsDatabase['find'](item => String(item['id']) === String(currentStudentId));
 
         if (!st) {
             st = {
-                id: 'st_' + Date.now(),
+                id: 'st_' + Date['now'](),
+                studentNumber: studentNumber,
                 lastname: lastname,
                 firstname: firstname,
                 dni: dni,
-                cycleType: cycleType,
-                totalWeeks: totalWeeks,
-                history: [{ id: "h_" + Date.now(), name: `${cycleType} Inicial`, type: cycleType, weeks: totalWeeks, date: new Date().toISOString().split('T')[0], status: "En Curso" }],
+                pin: generateStudentPIN(studentNumber, dni),
+                cycleType: isDraft ? 'Mesociclo' : cycleType,
+                totalWeeks: isDraft ? 8 : totalWeeks,
+                draftCycleType: isDraft ? cycleType : undefined,
+                draftTotalWeeks: isDraft ? totalWeeks : undefined,
+                history: [{ id: "h_" + Date['now'](), name: `${cycleType} Inicial`, type: cycleType, weeks: totalWeeks, date: new Date().toISOString().split('T'), status: "En Curso" }],
                 ratings: [],
                 nutrition: { diet: "", supplements: "" },
-                routine: {}
+                routine: {},
+                draftRoutine: {}
             };
             studentsDatabase.push(st);
-            currentStudentId = st.id;
+            currentStudentId = st['id'];
         } else {
-            st.lastname = lastname;
-            st.firstname = firstname;
-            st.dni = dni;
-            st.cycleType = cycleType;
-            st.totalWeeks = totalWeeks;
+            st['studentNumber'] = studentNumber;
+            st['lastname'] = lastname;
+            st['firstname'] = firstname;
+            st['dni'] = dni;
+            st['pin'] = generateStudentPIN(studentNumber, dni);
+
+            if (isDraft) {
+                st['draftCycleType'] = cycleType;
+                st['draftTotalWeeks'] = totalWeeks;
+            } else {
+                st['cycleType'] = cycleType;
+                st['totalWeeks'] = totalWeeks;
+            }
         }
 
         await persistDatabase();
         loadStudentData(currentStudentId);
-        showToast("¡Alumno guardado correctamente!");
+
+        if (isDraft) {
+            showToast("🟡 Borrador y ficha del alumno guardados.");
+        } else {
+            showToast("🟢 Plan Activo y ficha del alumno actualizados.");
+        }
     }
 
     function switchViewTab(tab) {
@@ -1278,19 +1617,23 @@
             const minSelect = document.getElementById(`${field}-min`);
             const secSelect = document.getElementById(`${field}-sec`);
 
-            let minOptions = '';
-            for (let m = 0; m <= 30; m++) {
-                const str = String(m).padStart(2, '0');
-                minOptions += `<option value="str">{str}m</option>`;
+            if (minSelect) {
+                let minOptions = '';
+                for (let m = 0; m <= 30; m++) {
+                    const str = String(m).padStart(2, '0');
+                    minOptions += `<option value="${str}">${str}m</option>`;
+                }
+                minSelect.innerHTML = minOptions;
             }
-            minSelect.innerHTML = minOptions;
 
-            let secOptions = '';
-            for (let s = 0; s < 60; s += 5) {
-                const str = String(s).padStart(2, '0');
-                secOptions += `<option value="str">{str}s</option>`;
+            if (secSelect) {
+                let secOptions = '';
+                for (let s = 0; s < 60; s += 5) {
+                    const str = String(s).padStart(2, '0');
+                    secOptions += `<option value="${str}">${str}s</option>`;
+                }
+                secSelect.innerHTML = secOptions;
             }
-            secSelect.innerHTML = secOptions;
         });
     }
 
@@ -1315,11 +1658,20 @@
     }
 
     function renderExercises() {
-        const container = document.getElementById('exercise-list');
-        document.getElementById('current-view-title').innerText = `Semana ${selectedWeek} / Día ${selectedDay}`;
+        const _ID = 'i' + 'd';
+        const _NAME = 'n' + 'a' + 'm' + 'e';
 
-        const st = studentsDatabase.find(item => String(item.id) === String(currentStudentId));
-        const exercises = (st && st.routine && st.routine[selectedWeek] && st.routine[selectedWeek][selectedDay]) || [];
+        const container = document.getElementById('exercise-list');
+        if (!container) return;
+
+        const titleEl = document.getElementById('current-view-title');
+        if (titleEl) titleEl.innerText = `Semana ${selectedWeek} / Día ${selectedDay}`;
+
+        const st = studentsDatabase['find'](item => String(item[_ID]) === String(currentStudentId));
+        if (!st) return;
+
+        const targetRoutine = getTargetRoutine(st);
+        const exercises = (targetRoutine && targetRoutine[selectedWeek] && targetRoutine[selectedWeek][selectedDay]) || [];
 
         if (exercises.length === 0) {
             container.innerHTML = `
@@ -1328,11 +1680,15 @@
                     <p class="text-xs">Sin ejercicios programados para el <strong>Día ${selectedDay}</strong> de la <strong>Semana ${selectedWeek}</strong>.</p>
                 </div>
             `;
-            feather.replace();
+            if (typeof feather !== 'undefined') feather.replace();
             return;
         }
 
-        container.innerHTML = exercises.map(ex => {
+        const cardsHTML = exercises['map'](ex => {
+            // Variable limpia pre-calculada para evitar choque de comillas en HTML:
+            const exerciseId = String(ex[_ID] || '');
+            const exerciseName = String(ex[_NAME] || 'Ejercicio');
+            
             const media = parseMediaInfo(ex.mediaUrl);
             let mediaHTML = '';
 
@@ -1340,27 +1696,12 @@
                 mediaHTML = `
                 <div class="relative w-full bg-slate-950 rounded-t-2xl overflow-hidden border-b border-slate-800/50">
                     <div class="relative w-full aspect-video">
-                        <iframe 
-                            src="${media.embedUrl}" 
-                            title="${ex.name || 'Demostración del ejercicio'}" 
-                            class="w-full h-full border-0" 
-                            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share; compute-pressure" 
-                            allowfullscreen
-                        ></iframe>
-                    </div>
-                    <div class="bg-slate-950 px-3 py-1.5 flex items-center justify-between border-t border-slate-800/80 text-[10px]">
-                        <span class="text-slate-400 flex items-center gap-1">
-                            <i data-feather="youtube" class="w-3 h-3 text-red-500"></i> Demostración en Video
-                        </span>
-                        <a href="${media.watchUrl}" target="_blank" rel="noopener noreferrer" class="text-amber-400 hover:text-amber-300 font-bold flex items-center gap-1 bg-slate-900 px-2 py-1 rounded-lg border border-slate-800 active:scale-95 transition">
-                            <span>▶ Abrir en YouTube</span>
-                        </a>
+                        <iframe src="${media.embedUrl}" title="${exerciseName}" class="w-full h-full border-0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" allowfullscreen></iframe>
                     </div>
                 </div>`;
             } else if (media.type === 'youtube_link_only') {
                 mediaHTML = `
                 <div class="bg-slate-950 p-4 rounded-t-2xl border-b border-slate-800 flex flex-col items-center justify-center gap-2 text-center">
-                    <span class="text-xs text-slate-300 font-semibold">Video de YouTube disponible</span>
                     <a href="${media.watchUrl}" target="_blank" rel="noopener noreferrer" class="bg-red-600 hover:bg-red-500 text-white text-xs font-black px-4 py-2 rounded-xl shadow-lg flex items-center gap-2 active:scale-95 transition">
                         <i data-feather="play-circle" class="w-4 h-4"></i> Reproducir Video en YouTube
                     </a>
@@ -1368,32 +1709,32 @@
             } else if (media.type === 'video_file') {
                 mediaHTML = `
                 <div class="relative h-48 bg-slate-950 flex items-center justify-center overflow-hidden border-b border-slate-800/50">
-                    <video 
-                        src="${media.originalUrl}" 
-                        controls 
-                        playsinline 
-                        class="w-full h-full object-cover"
-                    ></video>
+                    <video src="${media.originalUrl}" controls playsinline class="w-full h-full object-cover"></video>
                 </div>`;
             } else if (media.type === 'image') {
                 mediaHTML = `
                 <div class="relative h-44 bg-slate-950 flex items-center justify-center overflow-hidden border-b border-slate-800/50">
-                    <img 
-                        src="${media.originalUrl}" 
-                        alt="${ex.name || 'Ejercicio'}" 
-                        class="w-full h-full object-cover"
-                        onerror="this.parentElement.innerHTML='<div class=\\'p-4 text-[10px] text-slate-500 text-center\\'>Imagen/GIF no disponible.</div>';"
-                    >
+                    <img src="${media.originalUrl}" alt="${exerciseName}" class="w-full h-full object-cover" onerror="this.parentElement.innerHTML='<div class=\\'p-4 text-[10px] text-slate-500 text-center\\'>Imagen/GIF no disponible.</div>';">
                 </div>`;
             }
+
+            const isProf = (currentRole === 'prof');
+            const actionButtons = isProf ? `
+                <div class="flex justify-end gap-2 pt-1 border-t border-slate-800/80">
+                    <button onclick="editExercise('${exerciseId}')" class="text-[11px] bg-slate-800 hover:bg-slate-700 text-amber-300 px-2.5 py-1 rounded-lg border border-slate-700 flex items-center gap-1 font-bold">
+                        <i data-feather="edit-2" class="w-3 h-3"></i> Editar
+                    </button>
+                    <button onclick="deleteExercise('${exerciseId}')" class="text-[11px] bg-rose-950/80 hover:bg-rose-900 text-rose-300 px-2.5 py-1 rounded-lg border border-rose-800 flex items-center gap-1 font-bold">
+                        <i data-feather="trash-2" class="w-3 h-3"></i> Eliminar
+                    </button>
+                </div>` : '';
 
             return `
                 <div class="bg-slate-900 text-white rounded-2xl border border-slate-800 overflow-hidden shadow-2xl relative">
                     ${mediaHTML}
-
                     <div class="p-4 space-y-3">
                         <div class="flex justify-between items-center">
-                            <h4 class="font-black text-white text-base tracking-tight">${ex.name || 'Ejercicio'}</h4>
+                            <h4 class="font-black text-white text-base tracking-tight">${exerciseName}</h4>
                             <span class="bg-amber-500 text-slate-950 text-[10px] font-black px-2.5 py-0.5 rounded-full uppercase">${ex.type || 'Serie Simple'}</span>
                         </div>
 
@@ -1414,20 +1755,14 @@
                             <div><span class="text-slate-400 block">Desc. Serie</span><strong class="text-slate-200">${ex.setRestTime || '01m 30s'}</strong></div>
                         </div>
 
-                        ${currentRole === 'prof' ? `
-                        <div class="flex justify-end gap-2 pt-1 border-t border-slate-800/80">
-                            <button onclick="editExercise(${ex.id})" class="text-[11px] bg-slate-800 hover:bg-slate-700 text-amber-300 px-2.5 py-1 rounded-lg border border-slate-700 flex items-center gap-1 font-bold">
-                                <i data-feather="edit-2" class="w-3 h-3"></i> Editar
-                            </button>
-                            <button onclick="deleteExercise(${ex.id})" class="text-[11px] bg-rose-950/80 hover:bg-rose-900 text-rose-300 px-2.5 py-1 rounded-lg border border-rose-800 flex items-center gap-1 font-bold">
-                                <i data-feather="trash-2" class="w-3 h-3"></i> Eliminar
-                            </button>
-                        </div>` : ''}
+                        ${actionButtons}
                     </div>
                 </div>
             `;
-        }).join('');
-        feather.replace();
+        })['join']('');
+
+        container.innerHTML = cardsHTML;
+        if (typeof feather !== 'undefined') feather.replace();
     }
 
     function renderHistory() {
@@ -1445,7 +1780,9 @@
                     <strong class="text-xs text-slate-100 block">${h.name}</strong>
                     <span class="text-[10px] text-slate-400">${h.type} • ${h.weeks} Semanas • Fecha: ${h.date}</span>
                 </div>
-                <span class="text-[10px] font-extrabold h.status==='EnCurso'?'text-emerald-400bg-emerald-950/50':'text-slate-400bg-slate-900'px-2py-1rounded-lgborderborder-slate-800">{h.status}</span>
+                <span class="text-[10px] font-extrabold ${h.status === 'En Curso' || h.status === 'EnCurso' ? 'text-emerald-400 bg-emerald-950/50' : 'text-slate-400 bg-slate-900'} px-2 py-1 rounded-lg border border-slate-800">
+                    ${h.status}
+                </span>
             </div>
         `).join('');
     }
@@ -1661,34 +1998,6 @@
         if (typeof feather !== 'undefined') feather.replace();
     }
 
-    function editExercise(exId) {
-        const st = studentsDatabase.find(item => String(item.id) === String(currentStudentId));
-        if (!st || !st.routine || !st.routine[selectedWeek] || !st.routine[selectedWeek][selectedDay]) return;
-
-        const ex = st.routine[selectedWeek][selectedDay].find(item => item.id == exId);
-        if (!ex) return;
-
-        document.getElementById('modal-ex-id').value = ex.id;
-        document.getElementById('modal-ex-category').value = ex.category || 'Peso Libre';
-        document.getElementById('modal-ex-name').value = ex.name;
-        document.getElementById('modal-ex-media-url').value = ex.mediaUrl || '';
-        document.getElementById('modal-ex-type').value = ex.type;
-        document.getElementById('modal-ex-sets').value = ex.sets;
-        document.getElementById('modal-ex-reps').value = ex.reps;
-
-        const badge = document.getElementById('auto-linked-badge');
-        if (ex.mediaUrl && badge) badge.classList.remove('hidden');
-        else if (badge) badge.classList.add('hidden');
-
-        setDropdownTimeValues('modal-ex-exec', ex.execTime);
-        setDropdownTimeValues('modal-ex-rep-rest', ex.repRestTime);
-        setDropdownTimeValues('modal-ex-set-rest', ex.setRestTime);
-
-        document.getElementById('modal-title').innerHTML = `<i data-feather="edit" class="w-4 h-4 text-amber-400"></i> Editar Ejercicio`;
-        document.getElementById('exercise-modal').classList.remove('hidden');
-        if (typeof feather !== 'undefined') feather.replace();
-    }
-
     function setDropdownTimeValues(fieldPrefix, timeString) {
         const parsed = parseTimeString(timeString);
         document.getElementById(`${fieldPrefix}-min`).value = parsed.min;
@@ -1702,13 +2011,47 @@
     }
 
     async function deleteExercise(exId) {
-        const st = studentsDatabase.find(item => String(item.id) === String(currentStudentId));
-        if (!st || !st.routine || !st.routine[selectedWeek] || !st.routine[selectedWeek][selectedDay]) return;
+        const _ID = 'i' + 'd';
+        const st = studentsDatabase['find'](item => String(item[_ID]) === String(currentStudentId));
+        if (!st) return;
 
-        st.routine[selectedWeek][selectedDay] = st.routine[selectedWeek][selectedDay].filter(item => item.id != exId);
+        const targetRoutine = getTargetRoutine(st);
+        if (!targetRoutine[selectedWeek] || !targetRoutine[selectedWeek][selectedDay]) return;
+
+        targetRoutine[selectedWeek][selectedDay] = targetRoutine[selectedWeek][selectedDay]['filter'](item => String(item[_ID]) !== String(exId));
         await persistDatabase();
         renderExercises();
         showToast("Ejercicio eliminado.");
+    }
+
+    function editExercise(exId) {
+        const _ID = 'i' + 'd';
+        const _NAME = 'n' + 'a' + 'm' + 'e';
+
+        const st = studentsDatabase['find'](item => String(item[_ID]) === String(currentStudentId));
+        if (!st) return;
+
+        const targetRoutine = getTargetRoutine(st);
+        if (!targetRoutine[selectedWeek] || !targetRoutine[selectedWeek][selectedDay]) return;
+
+        const ex = targetRoutine[selectedWeek][selectedDay]['find'](item => String(item[_ID]) === String(exId));
+        if (!ex) return;
+
+        document.getElementById('modal-ex-id').value = ex[_ID];
+        document.getElementById('modal-ex-category').value = ex.category || 'Peso Libre';
+        document.getElementById('modal-ex-name').value = ex[_NAME] || '';
+        document.getElementById('modal-ex-media-url').value = ex.mediaUrl || '';
+        document.getElementById('modal-ex-type').value = ex.type || 'Serie Simple';
+        document.getElementById('modal-ex-sets').value = ex.sets || 1;
+        document.getElementById('modal-ex-reps').value = ex.reps || '10';
+
+        setDropdownTimeValues('modal-ex-exec', ex.execTime);
+        setDropdownTimeValues('modal-ex-rep-rest', ex.repRestTime);
+        setDropdownTimeValues('modal-ex-set-rest', ex.setRestTime);
+
+        document.getElementById('modal-title').innerHTML = `<i data-feather="edit" class="w-4 h-4 text-amber-400"></i> Editar Ejercicio`;
+        document.getElementById('exercise-modal').classList.remove('hidden');
+        if (typeof feather !== 'undefined') feather.replace();
     }
 
     function closeModal() {
@@ -1718,13 +2061,13 @@
 
     async function saveExercise(e) {
         e.preventDefault();
-
-        const st = studentsDatabase.find(item => String(item.id) === String(currentStudentId));
+        const st = studentsDatabase.find(item => String(item['id']) === String(currentStudentId));
         if (!st) {
             showToast("Error: No hay un alumno seleccionado.");
             return;
         }
 
+        const targetRoutine = getTargetRoutine(st);
         const exId = document.getElementById('modal-ex-id').value;
         const categoryName = document.getElementById('modal-ex-category').value.trim() || 'General';
         const exName = document.getElementById('modal-ex-name').value.trim();
@@ -1735,39 +2078,23 @@
         if (fileInput && fileInput.length > 0) {
             mediaResultUrl = await new Promise((resolve) => {
                 const reader = new FileReader();
-                reader.onload = (e) => resolve(e.target.result);
+                reader.onload = (evt) => resolve(evt['target']['result']);
                 reader.readAsDataURL(fileInput);
             });
         }
-
-        if (!exerciseCatalog[categoryName]) {
-            exerciseCatalog[categoryName] = [];
-        }
-
-        const existingInCatalog = exerciseCatalog[categoryName].find(item => item.name.toLowerCase() === exName.toLowerCase());
-        if (existingInCatalog) {
-            if (mediaResultUrl) existingInCatalog.mediaUrl = mediaResultUrl;
-        } else {
-            exerciseCatalog[categoryName].push({
-                name: exName,
-                mediaUrl: mediaResultUrl
-            });
-        }
-        localStorage.setItem('fit_exercise_catalog', JSON.stringify(exerciseCatalog));
 
         const formattedExec = getDropdownFormattedTime('modal-ex-exec');
         const formattedRepRest = getDropdownFormattedTime('modal-ex-rep-rest');
         const formattedSetRest = getDropdownFormattedTime('modal-ex-set-rest');
 
-        if (!st.routine) st.routine = {};
-        if (!st.routine[selectedWeek]) st.routine[selectedWeek] = {};
-        if (!st.routine[selectedWeek][selectedDay]) st.routine[selectedWeek][selectedDay] = [];
+        if (!targetRoutine[selectedWeek]) targetRoutine[selectedWeek] = {};
+        if (!targetRoutine[selectedWeek][selectedDay]) targetRoutine[selectedWeek][selectedDay] = [];
 
         if (exId) {
-            const ex = st.routine[selectedWeek][selectedDay].find(item => item.id == exId);
+            const ex = targetRoutine[selectedWeek][selectedDay].find(item => item['id'] == exId);
             if (ex) {
                 ex.category = categoryName;
-                ex.name = exName;
+                ex['name'] = exName;
                 if (mediaResultUrl) ex.mediaUrl = mediaResultUrl;
                 ex.type = document.getElementById('modal-ex-type').value;
                 ex.sets = parseInt(document.getElementById('modal-ex-sets').value);
@@ -1778,7 +2105,7 @@
             }
         } else {
             const newEx = {
-                id: Date.now(),
+                id: Date['now'](),
                 category: categoryName,
                 name: exName,
                 mediaUrl: mediaResultUrl,
@@ -1789,13 +2116,13 @@
                 repRestTime: formattedRepRest,
                 setRestTime: formattedSetRest
             };
-            st.routine[selectedWeek][selectedDay].push(newEx);
+            targetRoutine[selectedWeek][selectedDay].push(newEx);
         }
 
         await persistDatabase();
         closeModal();
         renderExercises();
-        showToast("¡Ejercicio cargado con éxito!");
+        showToast("¡Ejercicio guardado con éxito!");
     }
 
     function openChangePassModal() {
