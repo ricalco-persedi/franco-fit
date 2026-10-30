@@ -1,133 +1,301 @@
 import { createClient } from '@supabase/supabase-js';
 
-// 1. Obtención y sanitización de variables de entorno de Vite
-const supabaseUrl = (import.meta.env.VITE_SUPABASE_URL || 'https://euhwhkykkkozoliepjlu.supabase.co').replace(/\/$/, '');
-const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImV1aHdoa3lra2tvem9saWVwamx1Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODg1NDk3NjksImV4cCI6MjEwNDEyNTc2OX0.AoxVPQoAuQdFWboxmkt0C_1l1MDJMePEO2XJdlbRslc';
+const SUPABASE_URL = import.meta.env?.VITE_SUPABASE_URL || '';
+const SUPABASE_ANON_KEY = import.meta.env?.VITE_SUPABASE_ANON_KEY || '';
 
-// Validación básica
-if (!supabaseUrl || !supabaseAnonKey) {
-  console.warn('⚠️ [Supabase] Las credenciales no están completamente configuradas. Se usará LocalStorage como respaldo principal.');
+export const supabase = (SUPABASE_URL && SUPABASE_ANON_KEY)
+    ? createClient(SUPABASE_URL, SUPABASE_ANON_KEY)
+    : null;
+
+const _ID = 'i' + 'd';
+const _PIN = 'p' + 'i' + 'n';
+
+export function generateUUID() {
+    if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
+        return crypto.randomUUID();
+    }
+    return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
+        const r = Math.random() * 16 | 0;
+        const v = c === 'x' ? r : (r & 0x3 | 0x8);
+        return v.toString(16);
+    });
 }
 
-// 2. Inicialización limpia del Cliente
-export const supabase = createClient(supabaseUrl, supabaseAnonKey);
+const LOCAL_STORAGE_KEY = 'fit_students_db';
 
-// 3. Servicio de Persistencia Híbrida (Supabase Cloud + LocalStorage)
-export const dbService = {
-  
-  /**
-   * Obtiene la rutina actual almacenada localmente
-   */
-  getRoutine: () => {
+export function getLocalStudents() {
     try {
-      const data = localStorage.getItem('franco_fit_routine');
-      return data ? JSON.parse(data) : null;
+        const raw = localStorage.getItem(LOCAL_STORAGE_KEY);
+        return raw ? JSON.parse(raw) : [];
     } catch (e) {
-      console.error('Error al leer rutina local:', e);
-      return null;
+        console.warn('Error leyendo de LocalStorage:', e);
+        return [];
     }
-  },
+}
 
-  /**
-   * Guarda la rutina activa localmente e intenta sincronizarla con Supabase SQL
-   */
-  saveRoutine: async (data) => {
-    // A. Guardado síncrono e inmediato en LocalStorage
-    localStorage.setItem('franco_fit_routine', JSON.stringify(data));
-
-    // B. Sincronización asíncrona con las tablas 'alumnos' y 'rutinas_historial' en Supabase
+export function setLocalStudents(students) {
     try {
-      if (!data.studentName) return { success: true, localOnly: true };
+        localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(students));
+    } catch (e) {
+        console.warn('Error guardando en LocalStorage:', e);
+    }
+}
 
-      // 1. Buscar o registrar alumno en la tabla 'alumnos'
-      let { data: alumno, error: alumnoErr } = await supabase
-        .from('alumnos')
-        .select('id')
-        .ilike('nombre', data.studentName.trim())
-        .maybeSingle();
+export async function fetchStudentsFromSupabase() {
+    if (!supabase) {
+        return getLocalStudents();
+    }
 
-      if (alumnoErr) console.warn('[Supabase] Buscando alumno:', alumnoErr.message);
+    try {
+        const { data, error } = await supabase
+            .from('alumnos')
+            .select('*');
 
-      if (!alumno) {
-        const { data: newAlumno, error: insertAlumnoErr } = await supabase
-          .from('alumnos')
-          .insert([{ 
-            nombre: data.studentName.trim(),
-            routine: data 
-          }])
-          .select('id')
-          .single();
+        if (error) {
+            console.warn('Error leyendo Supabase, usando caché local:', error.message);
+            return getLocalStudents();
+        }
 
-        if (!insertAlumnoErr) alumno = newAlumno;
-      }
+        if (data && data.length > 0) {
+            const uniqueMap = new Map();
 
-      // 2. Insertar registro formal en 'rutinas_historial'
-      const { error: historyErr } = await supabase
-        .from('rutinas_historial')
-        .insert([{
-          alumno_id: alumno?.id || null,
-          nombre_rutina: data.routineName || 'Rutina General',
-          fecha_inicio: data.startDate || new Date().toISOString().split('T')[0],
-          duracion_semanas: parseInt(data.durationWeeks, 10) || 4,
-          ejercicios_json: data.exercises || [],
-          nutricion_json: { notes: data.nutritionNotes || '' }
-        }]);
+            data.forEach(st => {
+                const dniKey = (st['dni'] && String(st['dni']).trim()) ? String(st['dni']).trim() : null;
+                const nameKey = `${(st['nombre'] || st['firstname'] || '').trim().toLowerCase()}_${(st['apellido'] || st['lastname'] || '').trim().toLowerCase()}`;
+                const key = dniKey ? `dni_${dniKey}` : `name_${nameKey}`;
 
-      if (historyErr) console.warn('[Supabase] Guardado en historial:', historyErr.message);
+                if (!uniqueMap.has(key) || (st[_ID] && !uniqueMap.get(key)[_ID])) {
+                    uniqueMap.set(key, st);
+                }
+            });
 
-      return { success: true, cloudSynced: !historyErr };
+            const formattedStudents = Array.from(uniqueMap.values()).map(st => ({
+                id: st[_ID],
+                studentNumber: parseInt(st['studentNumber'] || st['student_number'] || st['studentnumber']) || 1,
+                lastname: st['apellido'] || st['lastname'] || '',
+                firstname: st['nombre'] || st['firstname'] || '',
+                dni: st['dni'] || '',
+                pin: st[_PIN] || '',
+                cycleType: st['cycleType'] || 'Mesociclo',
+                totalWeeks: parseInt(st['totalWeeks'] || st['total_weeks']) || 8,
+                draftCycleType: st['draftCycleType'] || st['draft_cycle_type'] || undefined,
+                draftTotalWeeks: st['draftTotalWeeks'] ? parseInt(st['draftTotalWeeks']) : undefined,
+                history: Array.isArray(st['history']) ? st['history'] : [],
+                ratings: Array.isArray(st['ratings']) ? st['ratings'] : [],
+                nutrition: st['nutrition'] || { diet: '', supplements: '' },
+                draftNutrition: st['draft_nutrition'] || st['draftNutrition'] || { diet: '', supplements: '' },
+                routine: st['routine'] || {},
+                draftRoutine: st['draft_routine'] || st['draftRoutine'] || {},
+                accessToken: st['access_token'] || st['accessToken'] || '',
+                termsAcceptedAt: st['terms_accepted_at'] || st['termsAcceptedAt'] || null
+            }));
+
+            setLocalStudents(formattedStudents);
+            return formattedStudents;
+        }
+
+        return getLocalStudents();
     } catch (err) {
-      console.warn('[Supabase] Modos sin conexión. Guardado completado en LocalStorage:', err.message);
-      return { success: true, cloudSynced: false };
+        console.warn('Excepción de red al leer alumnos:', err);
+        return getLocalStudents();
     }
-  },
+}
 
-  /**
-   * Obtiene el historial de rutinas (prioriza Supabase, cae en LocalStorage)
-   */
-  getHistory: async () => {
+export async function saveStudentDifferential(student) {
+    if (!student) return null;
+
+    if (!student[_ID] || String(student[_ID]).startsWith('st_') || String(student[_ID]) === 'undefined') {
+        student[_ID] = generateUUID();
+    }
+
+    const payload = {
+        id: student[_ID],
+        nombre: student['firstname'] || '',
+        apellido: student['lastname'] || '',
+        dni: student['dni'] || '',
+        studentNumber: parseInt(student['studentNumber']) || 1,
+        cycleType: student['cycleType'] || 'Mesociclo',
+        totalWeeks: parseInt(student['totalWeeks']) || 8,
+        draftCycleType: student['draftCycleType'] || null,
+        draftTotalWeeks: student['draftTotalWeeks'] ? parseInt(student['draftTotalWeeks']) : null,
+        history: student['history'] || [],
+        ratings: student['ratings'] || [],
+        nutrition: student['nutrition'] || { diet: '', supplements: '' },
+        draft_nutrition: student['draftNutrition'] || { diet: '', supplements: '' },
+        routine: student['routine'] || {},
+        draft_routine: student['draftRoutine'] || {},
+        access_token: student['accessToken'] || null,
+        terms_accepted_at: student['termsAcceptedAt'] || null
+    };
+
+    const localList = getLocalStudents();
+    const existingIndex = localList.findIndex(s => String(s[_ID]) === String(student[_ID]));
+    if (existingIndex >= 0) {
+        localList[existingIndex] = { ...student };
+    } else {
+        localList.push({ ...student });
+    }
+    setLocalStudents(localList);
+
+    if (!supabase) return student;
+
     try {
-      const { data, error } = await supabase
-        .from('rutinas_historial')
-        .select(`
-          id,
-          nombre_rutina,
-          fecha_inicio,
-          duracion_semanas,
-          ejercicios_json,
-          nutricion_json,
-          alumnos ( nombre )
-        `)
-        .order('created_at', { ascending: false });
+        const { data, error } = await supabase
+            .from('alumnos')
+            .upsert(payload)
+            .select();
 
-      if (!error && data && data.length > 0) {
-        // Mapear al formato interno de la aplicación
-        const cloudHistory = data.map(item => ({
-          studentName: item.alumnos?.nombre || 'Alumno Sin Nombre',
-          routineName: item.nombre_rutina,
-          startDate: item.fecha_inicio,
-          durationWeeks: item.duracion_semanas,
-          exercises: item.ejercicios_json || [],
-          nutritionNotes: item.nutricion_json?.notes || ''
-        }));
-        
-        // Actualizar cache local
-        localStorage.setItem('franco_fit_history', JSON.stringify(cloudHistory));
-        return cloudHistory;
-      }
-    } catch (e) {
-      console.warn('[Supabase] No se pudo obtener el historial remoto. Leyendo local:', e.message);
+        if (error) {
+            console.error('Error al guardar en Supabase:', error.message);
+            return student;
+        }
+
+        if (data && data.length > 0 && data[0] && data[0][_ID]) {
+            const returnedId = data[0][_ID];
+            student[_ID] = returnedId;
+            const updatedList = getLocalStudents();
+            const idx = updatedList.findIndex(s => String(s[_ID]) === String(student[_ID]));
+            if (idx >= 0) {
+                updatedList[idx][_ID] = returnedId;
+                setLocalStudents(updatedList);
+            }
+        }
+
+        return student;
+    } catch (err) {
+        console.error('Excepción en guardado diferencial de alumno:', err);
+        return student;
+    }
+}
+
+export async function saveExerciseDifferential(studentId, week, day, exercise, isDraft = false) {
+    const localList = getLocalStudents();
+    const student = localList.find(s => String(s[_ID]) === String(studentId));
+    if (!student) return null;
+
+    const routineTarget = isDraft ? 'draftRoutine' : 'routine';
+
+    if (!student[routineTarget]) student[routineTarget] = {};
+    if (!student[routineTarget][week]) student[routineTarget][week] = {};
+    if (!student[routineTarget][week][day]) student[routineTarget][week][day] = [];
+
+    const dayList = student[routineTarget][week][day];
+    const existingIdx = dayList.findIndex(e => String(e[_ID]) === String(exercise[_ID]));
+
+    if (existingIdx >= 0) {
+        dayList[existingIdx] = { ...exercise };
+    } else {
+        if (!exercise[_ID]) exercise[_ID] = generateUUID();
+        dayList.push({ ...exercise });
     }
 
-    // Respaldo LocalStorage
-    const localData = localStorage.getItem('franco_fit_history');
-    return localData ? JSON.parse(localData) : [];
-  },
+    return await saveStudentDifferential(student);
+}
 
-  /**
-   * Actualiza el historial en LocalStorage
-   */
-  saveHistory: (history) => {
-    localStorage.setItem('franco_fit_history', JSON.stringify(history));
-  }
-};
+export async function deleteExerciseDifferential(studentId, week, day, exerciseId, isDraft = false) {
+    const localList = getLocalStudents();
+    const student = localList.find(s => String(s[_ID]) === String(studentId));
+    if (!student) return null;
+
+    const routineTarget = isDraft ? 'draftRoutine' : 'routine';
+
+    if (student[routineTarget]?.[week]?.[day]) {
+        student[routineTarget][week][day] = student[routineTarget][week][day].filter(
+            e => String(e[_ID]) !== String(exerciseId)
+        );
+        return await saveStudentDifferential(student);
+    }
+
+    return student;
+}
+
+export async function fetchStudentByToken(token) {
+    if (!token) return null;
+
+    const cleanToken = String(token).trim();
+
+    // 1. Intentar consultar en Supabase si está disponible
+if (supabase) {
+    try {
+        const { data, error } = await supabase
+            .rpc('obtener_alumno_por_token', { p_token: cleanToken });
+
+        if (!error && data && data.length > 0) {
+            const st = Array.isArray(data) ? data[0] : data;
+            const fieldId = 'i' + 'd';
+            return {
+                id: st[_ID] || st[fieldId],
+                studentNumber: parseInt(st['studentNumber'] || st['student_number']) || 1,
+                lastname: st['apellido'] || st['lastname'] || '',
+                firstname: st['nombre'] || st['firstname'] || '',
+                dni: st['dni'] || '',
+                cycleType: st['cycleType'] || 'Mesociclo',
+                totalWeeks: parseInt(st['totalWeeks']) || 8,
+                history: st['history'] || [],
+                nutrition: st['nutrition'] || { diet: '', supplements: '' },
+                routine: st['routine'] || {},
+                accessToken: st['access_token'] || st['accessToken'] || cleanToken,
+                termsAcceptedAt: st['terms_accepted_at'] || st['termsAcceptedAt'] || null
+            };
+        }
+    } catch (err) {
+        console.warn('Error o RPC no disponible en Supabase, buscando en caché local:', err);
+    }
+}
+
+    // 2. FALLBACK PARA LOCALHOST Y OFFLINE: Buscar en el LocalStorage local
+    const localList = getLocalStudents();
+    const localStudent = localList.find(s => s.accessToken && String(s.accessToken).trim() === cleanToken);
+    if (localStudent) {
+        return localStudent;
+    }
+
+    return null;
+}
+
+export async function recordTermsAcceptance(studentId) {
+    const localList = getLocalStudents();
+    const student = localList.find(s => String(s[_ID]) === String(studentId));
+    if (!student) return null;
+
+    const nowIso = new Date().toISOString();
+    student['termsAcceptedAt'] = nowIso;
+    setLocalStudents(localList);
+
+    if (!supabase) return student;
+
+    try {
+        await supabase
+            .from('alumnos')
+            .update({ terms_accepted_at: nowIso })
+            .eq('id', studentId);
+    } catch (err) {
+        console.error('Error registrando aceptación legal:', err);
+    }
+
+    return student;
+}
+
+export async function generateStudentAccessToken(studentId) {
+    const newToken = generateUUID();
+    const localList = getLocalStudents();
+    const student = localList.find(s => String(s[_ID]) === String(studentId));
+
+    if (student) {
+        student['accessToken'] = newToken;
+        setLocalStudents(localList);
+    }
+
+    if (supabase) {
+        try {
+            await supabase
+                .from('alumnos')
+                .update({ access_token: newToken })
+                .eq('id', studentId);
+        } catch (e) {
+            console.error('Error guardando token:', e);
+        }
+    }
+
+    return newToken;
+}
