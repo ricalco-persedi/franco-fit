@@ -214,43 +214,48 @@ export async function fetchStudentByToken(token) {
 
     const cleanToken = String(token).trim();
 
-    // 1. Intentar consultar en Supabase si está disponible
-if (supabase) {
-    try {
-        const { data, error } = await supabase
-            .rpc('obtener_alumno_por_token', { p_token: cleanToken });
+    if (supabase) {
+        try {
+            const { data, error } = await supabase
+                .rpc('obtener_alumno_por_token', { p_token: cleanToken });
 
-        if (!error && data && data.length > 0) {
-            const st = Array.isArray(data) ? data[0] : data;
-            const fieldId = 'i' + 'd';
-            return {
-                id: st[_ID] || st[fieldId],
-                studentNumber: parseInt(st['studentNumber'] || st['student_number']) || 1,
-                lastname: st['apellido'] || st['lastname'] || '',
-                firstname: st['nombre'] || st['firstname'] || '',
-                dni: st['dni'] || '',
-                cycleType: st['cycleType'] || 'Mesociclo',
-                totalWeeks: parseInt(st['totalWeeks']) || 8,
-                history: st['history'] || [],
-                nutrition: st['nutrition'] || { diet: '', supplements: '' },
-                routine: st['routine'] || {},
-                accessToken: st['access_token'] || st['accessToken'] || cleanToken,
-                termsAcceptedAt: st['terms_accepted_at'] || st['termsAcceptedAt'] || null
-            };
+            if (!error && data && data.length > 0) {
+                const st = Array.isArray(data) ? data : data;
+                const studentObj = {
+                    id: st['id'],
+                    studentNumber: parseInt(st['studentNumber'] || st['student_number']) || 1,
+                    lastname: st['apellido'] || st['lastname'] || '',
+                    firstname: st['nombre'] || st['firstname'] || '',
+                    dni: st['dni'] || '',
+                    cycleType: st['cycleType'] || 'Mesociclo',
+                    totalWeeks: parseInt(st['totalWeeks']) || 8,
+                    history: st['history'] || [],
+                    nutrition: st['nutrition'] || { diet: '', supplements: '' },
+                    routine: st['routine'] || {},
+                    accessToken: st['access_token'] || st['accessToken'] || cleanToken,
+                    termsAcceptedAt: st['terms_accepted_at'] || st['termsAcceptedAt'] || null
+                };
+
+                // Guardar/Actualizar en caché local del teléfono para acceso offline futuro
+                const localList = getLocalStudents();
+                const idx = localList.findIndex(s => String(s['id']) === String(studentObj.id));
+                if (idx >= 0) {
+                    localList[idx] = studentObj;
+                } else {
+                    localList.push(studentObj);
+                }
+                setLocalStudents(localList);
+
+                return studentObj;
+            }
+        } catch (err) {
+            console.warn('Error al consultar token en Supabase:', err);
         }
-    } catch (err) {
-        console.warn('Error o RPC no disponible en Supabase, buscando en caché local:', err);
     }
-}
 
-    // 2. FALLBACK PARA LOCALHOST Y OFFLINE: Buscar en el LocalStorage local
+    // Respaldo en memoria local si no hay conexión
     const localList = getLocalStudents();
-    const localStudent = localList.find(s => s.accessToken && String(s.accessToken).trim() === cleanToken);
-    if (localStudent) {
-        return localStudent;
-    }
-
-    return null;
+    return localList.find(s => s.accessToken && String(s.accessToken).trim() === cleanToken) || null;
 }
 
 export async function recordTermsAcceptance(studentId) {
@@ -279,22 +284,13 @@ export async function recordTermsAcceptance(studentId) {
 export async function generateStudentAccessToken(studentId) {
     const newToken = generateUUID();
     const localList = getLocalStudents();
-    const student = localList.find(s => String(s[_ID]) === String(studentId));
+    const student = localList.find(s => String(s['id']) === String(studentId));
 
     if (student) {
         student['accessToken'] = newToken;
         setLocalStudents(localList);
-    }
-
-    if (supabase) {
-        try {
-            await supabase
-                .from('alumnos')
-                .update({ access_token: newToken })
-                .eq('id', studentId);
-        } catch (e) {
-            console.error('Error guardando token:', e);
-        }
+        // Garantiza que la ficha y el token se guarden completos en Supabase
+        await saveStudentDifferential(student);
     }
 
     return newToken;
