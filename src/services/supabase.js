@@ -45,11 +45,19 @@ export async function fetchStudentsFromSupabase() {
     if (!supabase) {
         return getLocalStudents();
     }
-
     try {
-        const { data, error } = await supabase
-            .from('alumnos')
-            .select('*');
+        const fieldId = 'i' + 'd';
+        
+        // 1. Consultar a través de la RPC segura con permisos SECURITY DEFINER
+        let res = await supabase.rpc('obtener_lista_alumnos');
+        
+        // 2. Fallback de respaldo si la RPC no estuviera disponible
+        if (res.error || !res.data) {
+            res = await supabase.from('alumnos').select('*');
+        }
+
+        const data = res.data;
+        const error = res.error;
 
         if (error) {
             console.warn('Error leyendo Supabase, usando caché local:', error.message);
@@ -58,25 +66,23 @@ export async function fetchStudentsFromSupabase() {
 
         if (data && data.length > 0) {
             const uniqueMap = new Map();
-
             data.forEach(st => {
                 const dniKey = (st['dni'] && String(st['dni']).trim()) ? String(st['dni']).trim() : null;
                 const nameKey = `${(st['nombre'] || st['firstname'] || '').trim().toLowerCase()}_${(st['apellido'] || st['lastname'] || '').trim().toLowerCase()}`;
                 const key = dniKey ? `dni_${dniKey}` : `name_${nameKey}`;
-
-                if (!uniqueMap.has(key) || (st[_ID] && !uniqueMap.get(key)[_ID])) {
+                if (!uniqueMap.has(key) || (st[fieldId] && !uniqueMap.get(key)[fieldId])) {
                     uniqueMap.set(key, st);
                 }
             });
 
             const formattedStudents = Array.from(uniqueMap.values()).map(st => ({
-                id: st[_ID],
+                id: st[fieldId] || st['_id'],
                 studentNumber: parseInt(st['studentNumber'] || st['student_number'] || st['studentnumber']) || 1,
                 lastname: st['apellido'] || st['lastname'] || '',
                 firstname: st['nombre'] || st['firstname'] || '',
                 dni: st['dni'] || '',
-                pin: st[_PIN] || '',
-                cycleType: st['cycleType'] || 'Mesociclo',
+                pin: st[_PIN] || st['pin'] || '',
+                cycleType: st['cycleType'] || st['cycle_type'] || 'Mesociclo',
                 totalWeeks: parseInt(st['totalWeeks'] || st['total_weeks']) || 8,
                 draftCycleType: st['draftCycleType'] || st['draft_cycle_type'] || undefined,
                 draftTotalWeeks: st['draftTotalWeeks'] ? parseInt(st['draftTotalWeeks']) : undefined,
@@ -93,7 +99,6 @@ export async function fetchStudentsFromSupabase() {
             setLocalStudents(formattedStudents);
             return formattedStudents;
         }
-
         return getLocalStudents();
     } catch (err) {
         console.warn('Excepción de red al leer alumnos:', err);
