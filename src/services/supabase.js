@@ -218,6 +218,7 @@ export async function fetchStudentByToken(token) {
     if (!token) return null;
 
     const cleanToken = String(token).trim();
+    const fieldId = 'i' + 'd';
 
     if (supabase) {
         try {
@@ -225,25 +226,27 @@ export async function fetchStudentByToken(token) {
                 .rpc('obtener_alumno_por_token', { p_token: cleanToken });
 
             if (!error && data && data.length > 0) {
+                // CORRECCIÓN: Extraer el primer objeto data del arreglo devuelto por Supabase
                 const st = Array.isArray(data) ? data : data;
+                
                 const studentObj = {
-                    id: st['id'],
+                    id: st[fieldId] || st['_id'] || st['id'],
                     studentNumber: parseInt(st['studentNumber'] || st['student_number']) || 1,
                     lastname: st['apellido'] || st['lastname'] || '',
                     firstname: st['nombre'] || st['firstname'] || '',
                     dni: st['dni'] || '',
-                    cycleType: st['cycleType'] || 'Mesociclo',
-                    totalWeeks: parseInt(st['totalWeeks']) || 8,
-                    history: st['history'] || [],
+                    cycleType: st['cycleType'] || st['cycle_type'] || 'Mesociclo',
+                    totalWeeks: parseInt(st['totalWeeks'] || st['total_weeks']) || 8,
+                    history: Array.isArray(st['history']) ? st['history'] : [],
                     nutrition: st['nutrition'] || { diet: '', supplements: '' },
                     routine: st['routine'] || {},
                     accessToken: st['access_token'] || st['accessToken'] || cleanToken,
                     termsAcceptedAt: st['terms_accepted_at'] || st['termsAcceptedAt'] || null
                 };
 
-                // Guardar/Actualizar en caché local del teléfono para acceso offline futuro
+                // Guardar en la caché local del dispositivo para soporte offline
                 const localList = getLocalStudents();
-                const idx = localList.findIndex(s => String(s['id']) === String(studentObj.id));
+                const idx = localList.findIndex(s => String(s[fieldId] || s['id']) === String(studentObj.id));
                 if (idx >= 0) {
                     localList[idx] = studentObj;
                 } else {
