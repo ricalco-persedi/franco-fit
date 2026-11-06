@@ -327,7 +327,7 @@ function bindEvents() {
         showToast("Verificando credenciales con el servidor...");
         
         // Autenticación nativa mediante Supabase Auth
-        const { data, error } = await loginProfesorWithSupabase(emailInput, passInput);
+        const { data, error } = await loginProfesorWithSupabase(emailProfesor, passInput);
 
         if (!error && data?.session) {
             currentRole = 'prof';
