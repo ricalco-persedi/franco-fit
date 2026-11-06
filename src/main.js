@@ -8,7 +8,8 @@ import {
     generateUUID,
     fetchStudentByToken,
     recordTermsAcceptance,
-    generateStudentAccessToken
+    generateStudentAccessToken,
+    loginProfesorWithSupabase
 } from './services/supabase.js';
 
 import { renderHeader } from './components/Header.js';
@@ -316,22 +317,35 @@ function bindEvents() {
     }
 
     if (formProf) {
-        formProf.onsubmit = (e) => {
-            e.preventDefault();
-            const pass = document.getElementById('input-prof-pass').value.trim();
-            const savedMasterPass = localStorage.getItem('fit_prof_password') || 'franco2026';
+    formProf.onsubmit = async (e) => {
+        e.preventDefault();
+        
+        // Correo fijo configurado para la cuenta del profesor único
+        const emailProfesor = 'fcomeglio@gmail.com';
+        const passInput = document.getElementById('input-prof-pass').value.trim();
 
-            if (pass === savedMasterPass || pass === 'franco2026' || pass === 'francofit' || pass === 'admin' || pass === '1234') {
-                currentRole = 'prof';
-                currentStudentId = null;
-                localStorage.setItem('fit_active_session', JSON.stringify({ role: 'prof', studentId: null }));
-                renderApp();
-                showToast("¡Bienvenido al Control Global, Franco!");
-            } else {
-                showToast("Contraseña de profesor incorrecta.");
-            }
-        };
-    }
+        showToast("Verificando credenciales con el servidor...");
+        
+        // Autenticación nativa mediante Supabase Auth
+        const { data, error } = await loginProfesorWithSupabase(emailInput, passInput);
+
+        if (!error && data?.session) {
+            currentRole = 'prof';
+            currentStudentId = null;
+            localStorage.setItem('fit_active_session', JSON.stringify({ 
+                role: 'prof', 
+                studentId: null 
+            }));
+            
+            // Recarga los alumnos autorizados por las políticas RLS del servidor
+            await loadInitialData();
+            renderApp();
+            showToast("¡Bienvenido al Control Global, Franco!");
+        } else {
+            showToast(error?.message || "Contraseña de profesor incorrecta.");
+        }
+    };
+}
 
     const btnLogout = document.getElementById('btn-logout');
     if (btnLogout) {

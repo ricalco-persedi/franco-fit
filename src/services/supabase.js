@@ -7,8 +7,34 @@ export const supabase = (SUPABASE_URL && SUPABASE_ANON_KEY)
     ? createClient(SUPABASE_URL, SUPABASE_ANON_KEY)
     : null;
 
+// Constantes internas del módulo
 const _ID = 'i' + 'd';
 const _PIN = 'p' + 'i' + 'n';
+
+// ==========================================
+// 🔐 FUNCIONES DE AUTENTICACIÓN NATIVA (JWT)
+// ==========================================
+
+export async function loginProfesorWithSupabase(email, password) {
+    if (!supabase) return { error: { message: 'Supabase no está configurado.' } };
+    
+    const { data, error } = await supabase.auth.signInWithPassword({
+        email: email.trim(),
+        password: password.trim()
+    });
+    
+    return { data, error };
+}
+
+export async function logoutSupabase() {
+    if (supabase) {
+        await supabase.auth.signOut();
+    }
+}
+
+// ==========================================
+// 🛠️ FUNCIONES UTILITARIAS Y DE CACHÉ LOCAL
+// ==========================================
 
 export function generateUUID() {
     if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
@@ -292,14 +318,14 @@ export async function recordTermsAcceptance(studentId) {
 export async function generateStudentAccessToken(studentId) {
     const newToken = generateUUID();
     const localList = getLocalStudents();
-    const student = localList.find(s => String(s['id']) === String(studentId));
-
+    const fieldId = 'i' + 'd';
+    const student = localList.find(s => String(s[fieldId] || s['_id'] || s['id']) === String(studentId));
+    
     if (student) {
         student['accessToken'] = newToken;
         setLocalStudents(localList);
-        // Garantiza que la ficha y el token se guarden completos en Supabase
+        // Guarda la ficha y el token en Supabase
         await saveStudentDifferential(student);
     }
-
     return newToken;
 }
