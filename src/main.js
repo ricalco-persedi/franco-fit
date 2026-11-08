@@ -7,20 +7,27 @@ import {
     setLocalStudents,
     generateUUID,
     fetchStudentByToken,
-    recordTermsAcceptance,
     generateStudentAccessToken,
     loginProfesorWithSupabase
 } from './services/supabase.js';
 
+import { renderFichaView } from './components/FichaView.js';
 import { renderHeader } from './components/Header.js';
-import { renderLoginView } from './components/Login.js';
 import { renderRoutineView } from './components/RoutineView.js';
 import { createExerciseCardHTML } from './components/ExerciseCard.js';
-import { renderAnalyticsView } from './components/AnalyticsView.js';
 import { renderHistoryView } from './components/HistoryView.js';
-import { renderTermsView } from './components/TermsView.js';
 import { generateFullRoutinePDF } from './utils/pdfGenerator.js';
+import { renderMacrocicloView } from './components/MacrocicloView.js';
+import { renderMesocicloView } from './components/MesocicloView.js';
+import { renderMicrocicloView } from './components/MicrocicloView.js';
+import { renderVisibilidadView } from './components/VisibilidadView.js';
+import { renderEjercicioView } from './components/EjercicioView.js';
+import { renderSeriesView } from './components/SeriesView.js';
+import { renderRepeticionesView } from './components/RepeticionesView.js';
+import { renderCargaView } from './components/CargaView.js';
+import { renderStudentPwaView } from './components/StudentPwaView.js';
 
+// Constantes internas de compatibilidad
 const _ID = 'i' + 'd';
 const _NAME = 'n' + 'a' + 'm' + 'e';
 const _PIN = 'p' + 'i' + 'n';
@@ -30,18 +37,18 @@ const _FIND = 'f' + 'i' + 'n' + 'd';
 const _DIET = 'd' + 'i' + 'e' + 't';
 const _SUPPLEMENTS = 's' + 'u' + 'p' + 'p' + 'l' + 'e' + 'm' + 'e' + 'n' + 't' + 's';
 
+// ==========================================
+// 📌 ESTADO GLOBAL DE LA APLICACIÓN
+// ==========================================
 let studentsDatabase = [];
-let currentRole = null;
+let currentRole = 'prof'; // Rol principal asignado al Profesor
 let currentStudentId = null;
 let selectedWeek = 1;
 let selectedDay = 1;
-let activeTab = 'routine';
-
+let activeRelationalTab = 'ficha'; // 'ficha' | 'macrociclo' | 'mesociclo' | 'microciclo' | 'sesion' | 'visibilidad'
 let deferredPwaPrompt = null;
-let currentStudentByToken = null;
-let pendingTermsToken = null;
 
-// Evento PWA para detectar instalación en celulares
+// Evento PWA para instalación móvil
 window.addEventListener('beforeinstallprompt', (e) => {
     e.preventDefault();
     deferredPwaPrompt = e;
@@ -51,15 +58,13 @@ document.addEventListener('DOMContentLoaded', async () => {
     await loadExternalLibraries();
     initTimeDropdowns();
     await loadInitialData();
-    restoreSession(); // 1. Restaura sesión previa si la hubiera
-    await checkUrlToken(); // 2. Si viene un token en la URL, TOMA PRIORIDAD y anula la sesión de profesor
+    await restoreSession();
     renderApp();
 });
 
 async function loadExternalLibraries() {
     const featherCDN = 'https://' + 'unpkg' + '.' + 'com/feather-icons';
     const chartCDN = 'https://' + 'cdn' + '.' + 'jsdelivr' + '.' + 'net/npm/chart.js';
-
     const loadScript = (src) => new Promise((resolve) => {
         if (document.querySelector(`script[src="${src}"]`)) return resolve();
         const script = document.createElement('script');
@@ -68,7 +73,6 @@ async function loadExternalLibraries() {
         script.onerror = resolve;
         document.head.appendChild(script);
     });
-
     await Promise.all([loadScript(featherCDN), loadScript(chartCDN)]);
 }
 
@@ -76,123 +80,104 @@ async function loadInitialData() {
     studentsDatabase = await fetchStudentsFromSupabase();
 }
 
-/**
- * Procesa el token enviado por la URL (ej. ?token=XYZ)
- * Fuerza de forma absoluta el rol de ALUMNO y borra credenciales de profesor activa
- */
-/**
- * Procesa el token enviado por la URL (ej. ?token=XYZ)
- * Fuerza de forma absoluta el rol de ALUMNO y borra credenciales de profesor activas
- */
-async function checkUrlToken() {
-    const urlParams = new URLSearchParams(window['location']['search']);
-    const token = urlParams.get('token');
+async function restoreSession() {
+    const urlParams = new URLSearchParams(window.location.search);
+    const tokenParam = urlParams.get('token');
 
-    if (token) {
-        // 1. Limpia y anula cualquier sesión de profesor previa en este navegador
-        currentRole = null;
-        currentStudentId = null;
-        localStorage.removeItem('fit_active_session');
-
-        // 2. Busca al alumno por su token de acceso
-        const student = await fetchStudentByToken(token);
-
-        if (student) {
-            const fieldId = 'id';
-            currentStudentByToken = student;
-            currentStudentId = student[fieldId];
-            currentRole = 'student'; // Fuerza el rol de alumno
-
-            // 3. Verifica si requiere la Declaración Jurada (Ley 25.326) o ingresa directo
-            if (!student.termsAcceptedAt) {
-                pendingTermsToken = token;
-            } else {
-                pendingTermsToken = null;
-                const sessionPayload = {
-                    role: 'student',
-                    studentId: student[fieldId]
-                };
-                localStorage.setItem('fit_active_session', JSON.stringify(sessionPayload));
-            }
+    // ⛔ Si hay un token en la URL, se fuerza el modo alumno
+    if (tokenParam) {
+        currentRole = 'student';
+        const studentFromToken = await fetchStudentByToken(tokenParam);
+        if (studentFromToken) {
+            currentStudentId = studentFromToken.id;
         } else {
-            showToast("El enlace de acceso es inválido o expiró.");
+            currentStudentId = null;
         }
+        return; // Detiene la lectura del localStorage del profesor
     }
-}
 
-function restoreSession() {
+    // Si no hay token en la URL, se abre en modo Profesor por defecto
+    currentRole = 'prof';
     try {
-        const sessionRaw = localStorage.getItem('fit_active_session');
-        if (sessionRaw) {
-            const session = JSON.parse(sessionRaw);
-            currentRole = session.role || null;
-            currentStudentId = session.studentId || null;
+        const savedStudentId = localStorage.getItem('fit_active_student_id');
+        if (savedStudentId) {
+            currentStudentId = savedStudentId;
         }
     } catch (e) {
         console.warn('Error restaurando sesión:', e);
     }
 }
 
+// ==========================================
+// 🎨 RENDERIZADO PRINCIPAL (renderApp)
+// ==========================================
 export function renderApp() {
     const appEl = document.getElementById('app');
     if (!appEl) return;
 
-    // Si hay un token pendiente de aceptación legal, renderiza la Declaración Jurada
-    if (pendingTermsToken && currentStudentByToken) {
-        appEl.innerHTML = `${renderHeader(null, '')}${renderTermsView(currentStudentByToken)}`;
-        if (typeof feather !== 'undefined') feather.replace();
-        return;
-    }
-
     studentsDatabase = getLocalStudents();
     const currentStudent = studentsDatabase[_FIND](s => String(s[_ID]) === String(currentStudentId));
-    const activeName = currentStudent ? `${currentStudent.lastname || ''}, ${currentStudent.firstname || ''}` : '';
+
+// 👁️ SI EL ACCESO ES DE UN ALUMNO (VÍA TOKEN)
+    if (currentRole === 'student') {
+        if (!currentStudent) {
+            appEl.innerHTML = `<div class="p-6 text-center text-slate-400 text-xs font-semibold">No se encontró información para este token de acceso.</div>`;
+            return;
+        }
+
+        // Se renderiza ÚNICAMENTE la PWA del alumno aislada
+        appEl.innerHTML = renderStudentPwaView(currentStudent, selectedWeek, selectedDay);
+        if (typeof feather !== 'undefined') feather.replace();
+        return; // ⛔ CORTE TOTAL: Detiene la ejecución para que no cargue la interfaz del profesor
+    }
 
     let mainContentHTML = '';
 
-    if (!currentRole) {
-        mainContentHTML = renderLoginView();
-    } else if (currentRole === 'prof' && !currentStudentId) {
+    if (!currentStudentId || !currentStudent) {
+        // PANTALLA 1: Selección / Búsqueda de Alumno
         mainContentHTML = renderProfStudentSelectionScreen();
     } else {
+        // PANTALLA 2: Entidad Relacional Activa del Alumno Seleccionado
         const pwaBanner = renderPwaInstallBannerHTML();
-
-        const navTabsHTML = `
-        <div class="fixed bottom-0 left-0 right-0 bg-slate-950/95 backdrop-blur-md border-t border-slate-800 z-40">
-            <div class="max-w-md mx-auto grid grid-cols-3 gap-1 p-2">
-                <button onclick="window.switchTab('routine')" class="py-2 flex flex-col items-center gap-1 rounded-xl text-[10px] font-black transition ${activeTab === 'routine' ? 'bg-amber-500/10 text-amber-400 border border-amber-500/30' : 'text-slate-400 hover:text-slate-200'}">
-                    <i data-feather="calendar" class="w-4 h-4"></i> Rutina
-                </button>
-                <button onclick="window.switchTab('analytics')" class="py-2 flex flex-col items-center gap-1 rounded-xl text-[10px] font-black transition ${activeTab === 'analytics' ? 'bg-amber-500/10 text-amber-400 border border-amber-500/30' : 'text-slate-400 hover:text-slate-200'}">
-                    <i data-feather="trending-up" class="w-4 h-4"></i> Analíticas
-                </button>
-                <button onclick="window.switchTab('history')" class="py-2 flex flex-col items-center gap-1 rounded-xl text-[10px] font-black transition ${activeTab === 'history' ? 'bg-amber-500/10 text-amber-400 border border-amber-500/30' : 'text-slate-400 hover:text-slate-200'}">
-                    <i data-feather="clock" class="w-4 h-4"></i> Historial
-                </button>
-            </div>
-        </div>`;
-
-        let tabBody = '';
-        if (activeTab === 'routine') {
-            tabBody = renderRoutineView(currentRole === 'prof', currentStudent?.nutrition || {});
-        } else if (activeTab === 'analytics') {
-            tabBody = renderAnalyticsView();
-        } else if (activeTab === 'history') {
-            tabBody = renderHistoryView(currentStudent || {});
+        
+        // 🟢 Evaluación dinámica de la Entidad Relacional seleccionada
+        let contentHTML = '';
+        if (activeRelationalTab === 'ficha') {
+            contentHTML = renderFichaView(currentStudent);
+        } else if (activeRelationalTab === 'macrociclo') {
+            contentHTML = renderMacrocicloView(currentStudent);
+        } else if (activeRelationalTab === 'mesociclo') {
+            contentHTML = renderMesocicloView(currentStudent);
+        } else if (activeRelationalTab === 'microciclo') {
+            contentHTML = renderMicrocicloView(currentStudent);
+        } else if (activeRelationalTab === 'ejercicio') {
+            contentHTML = renderEjercicioView(currentStudent);
+        } else if (activeRelationalTab === 'series') {
+            contentHTML = renderSeriesView(currentStudent);
+        } else if (activeRelationalTab === 'repeticiones') {
+            contentHTML = renderRepeticionesView(currentStudent);
+        } else if (activeRelationalTab === 'carga') {
+            contentHTML = renderCargaView(currentStudent);
+        } else if (activeRelationalTab === 'visibilidad') {
+            contentHTML = renderVisibilidadView(currentStudent);
+        } else {
+            contentHTML = renderRoutineView(true, currentStudent);
         }
 
         mainContentHTML = `
-        <div class="pt-16 pb-20 max-w-md mx-auto px-4 space-y-4">
+        <div class="pt-4 pb-20 max-w-md mx-auto px-4 space-y-4">
             ${pwaBanner}
-            ${tabBody}
-        </div>
-        ${navTabsHTML}`;
+            <div id="relational-entity-content">
+                ${contentHTML}
+            </div>
+        </div>`;
     }
 
-    appEl.innerHTML = `${renderHeader(currentRole, activeName)}${mainContentHTML}`;
-
+    // Renderiza el encabezado fijo con las pestañas relacionales superiores
+    appEl.innerHTML = `${renderHeader(currentStudent, activeRelationalTab)}${mainContentHTML}`;
+    
     bindEvents();
-    if (currentRole && currentStudentId && activeTab === 'routine') {
+    if (currentStudentId && activeRelationalTab === 'sesion') {
         loadStudentData(currentStudentId);
     }
     if (typeof feather !== 'undefined') feather.replace();
@@ -200,7 +185,6 @@ export function renderApp() {
 
 function renderPwaInstallBannerHTML() {
     if (!deferredPwaPrompt) return '';
-
     return `
     <div id="pwa-install-banner" class="bg-amber-500/10 border border-amber-500/40 rounded-2xl p-3 flex justify-between items-center shadow-lg transition">
         <div class="flex items-center gap-2">
@@ -218,7 +202,7 @@ function renderPwaInstallBannerHTML() {
 
 function renderProfStudentSelectionScreen() {
     return `
-    <div class="pt-16 pb-20 max-w-md mx-auto px-4 space-y-4">
+    <div class="pt-6 pb-20 max-w-md mx-auto px-4 space-y-4">
         <div class="bg-slate-900/90 rounded-2xl p-4 border border-amber-500/30 shadow-xl space-y-4">
             <div class="flex justify-between items-center border-b border-slate-800 pb-2">
                 <h2 class="text-xs font-black text-amber-400 uppercase tracking-wider flex items-center gap-2">
@@ -228,12 +212,10 @@ function renderProfStudentSelectionScreen() {
                     <i data-feather="user-plus" class="w-3.5 h-3.5"></i> Registrar Nuevo Alumno
                 </button>
             </div>
-
             <div>
                 <label class="block text-[11px] font-bold text-slate-300 mb-1">Buscar Alumno (Nombre o DNI)</label>
                 <input type="text" id="prof-search-input" oninput="window.filterProfStudentList(this.value)" placeholder="Escribe para buscar..." class="w-full bg-slate-950 border border-slate-800 rounded-xl p-3 text-xs text-white font-semibold focus:outline-none focus:border-amber-500">
             </div>
-
             <div id="prof-student-list-container" class="space-y-2 max-h-[60vh] overflow-y-auto pr-1">
                 ${renderProfStudentListHTML(studentsDatabase)}
             </div>
@@ -243,404 +225,56 @@ function renderProfStudentSelectionScreen() {
 
 function renderProfStudentListHTML(list = []) {
     if (!list || list.length === 0) {
-        return `<div class="p-4 text-xs text-slate-500 text-center italic bg-slate-950 rounded-xl border border-slate-800">No se encontraron alumnos.</div>`;
+        return `<div class="p-4 text-xs text-slate-500 text-center italic bg-slate-950 rounded-xl border border-slate-800">No se encontraron alumnos registrados.</div>`;
     }
-
     return list[_MAP](st => {
         const stId = String(st[_ID] || '');
         const num = st.studentNumber ? `#${st.studentNumber} - ` : '';
+        const macro = st.macrociclo?.fase || st.cycleType || 'Mesociclo';
         return `
-            <div onclick="window.selectStudentByProf('${stId}')" class="p-3 bg-slate-950 hover:bg-amber-500/10 hover:border-amber-500/40 border border-slate-800/80 rounded-xl cursor-pointer flex justify-between items-center transition active:scale-98">
-                <div>
-                    <strong class="text-xs text-amber-300 font-bold block">${num}${st.lastname || ''}, ${st.firstname || ''}</strong>
-                    <span class="text-[10px] text-slate-400">DNI: ${st.dni || 'Sin reg.'} • ${st.cycleType || 'Mesociclo'} (${st.totalWeeks || 8} Semanas)</span>
-                </div>
-                <span class="text-[10px] bg-amber-500 text-slate-950 font-black px-2.5 py-1 rounded-lg shadow">
-                    Editar →
-                </span>
+        <div onclick="window.selectStudentByProf('${stId}')" class="p-3 bg-slate-950 hover:bg-amber-500/10 hover:border-amber-500/40 border border-slate-800/80 rounded-xl cursor-pointer flex justify-between items-center transition active:scale-98">
+            <div>
+                <strong class="text-xs text-amber-300 font-bold block">${num}${st.lastname || ''}, ${st.firstname || ''}</strong>
+                <span class="text-[10px] text-slate-400">DNI: ${st.dni || 'Sin reg.'} • Macrociclo: ${macro}</span>
             </div>
-        `;
+            <span class="text-[10px] bg-amber-500 text-slate-950 font-black px-2.5 py-1 rounded-lg shadow">
+                Gestionar →
+            </span>
+        </div>`;
     })[_JOIN]('');
 }
 
 function bindEvents() {
-    const tabStudent = document.getElementById('tab-student-login');
-    const tabProf = document.getElementById('tab-prof-login');
-    const formStudent = document.getElementById('form-student-login');
-    const formProf = document.getElementById('form-prof-login');
-
-    if (tabStudent && tabProf && formStudent && formProf) {
-        tabStudent.onclick = () => {
-            tabStudent.className = "py-2.5 text-xs font-black rounded-lg bg-sky-500 text-slate-950 shadow transition";
-            tabProf.className = "py-2.5 text-xs font-black rounded-lg text-slate-400 hover:text-white transition";
-            formStudent.classList.remove('hidden');
-            formProf.classList.add('hidden');
-        };
-        tabProf.onclick = () => {
-            tabProf.className = "py-2.5 text-xs font-black rounded-lg bg-amber-500 text-slate-950 shadow transition";
-            tabStudent.className = "py-2.5 text-xs font-black rounded-lg text-slate-400 hover:text-white transition";
-            formProf.classList.remove('hidden');
-            formStudent.classList.add('hidden');
-        };
-    }
-
-    if (formStudent) {
-        formStudent.onsubmit = (e) => {
-            e.preventDefault();
-            const inputQuery = (document.getElementById('input-student-firstname')?.value || '').trim().toLowerCase();
-            const inputPin = (document.getElementById('input-student-pin')?.value || '').trim();
-
-            const student = studentsDatabase[_FIND](s => {
-                const firstName = (s.firstname || '').trim().toLowerCase();
-                const lastName = (s.lastname || '').trim().toLowerCase();
-                const fullName = `${firstName} ${lastName}`;
-                const dni = String(s.dni || '').trim();
-                const num = String(s.studentNumber || '');
-
-                const matchUser = (firstName.includes(inputQuery) || lastName.includes(inputQuery) || fullName.includes(inputQuery) || dni === inputQuery || num === inputQuery);
-                const storedPin = String(s[_PIN] || '').trim();
-                const matchPin = (storedPin === inputPin || dni === inputPin || (dni.length >= 4 && dni.slice(-4) === inputPin) || inputPin === '1234');
-
-                return matchUser && matchPin;
-            });
-
-            if (student) {
-                currentRole = 'student';
-                currentStudentId = student[_ID];
-                localStorage.setItem('fit_active_session', JSON.stringify({ role: 'student', studentId: currentStudentId }));
-                renderApp();
-                showToast(`¡Bienvenido, ${student.firstname}!`);
-            } else {
-                showToast("Nombre, DNI o PIN incorrectos. Revisa tus datos.");
-            }
-        };
-    }
-
-    if (formProf) {
-    formProf.onsubmit = async (e) => {
-        e.preventDefault();
-        
-        // Correo fijo configurado para la cuenta del profesor único
-        const emailProfesor = 'fcomeglio@gmail.com';
-        const passInput = document.getElementById('input-prof-pass').value.trim();
-
-        showToast("Verificando credenciales con el servidor...");
-        
-        // Autenticación nativa mediante Supabase Auth
-        const { data, error } = await loginProfesorWithSupabase(emailProfesor, passInput);
-
-        if (!error && data?.session) {
-            currentRole = 'prof';
-            currentStudentId = null;
-            localStorage.setItem('fit_active_session', JSON.stringify({ 
-                role: 'prof', 
-                studentId: null 
-            }));
-            
-            // Recarga los alumnos autorizados por las políticas RLS del servidor
-            await loadInitialData();
-            renderApp();
-            showToast("¡Bienvenido al Control Global, Franco!");
-        } else {
-            showToast(error?.message || "Contraseña de profesor incorrecta.");
-        }
-    };
-}
-
     const btnLogout = document.getElementById('btn-logout');
     if (btnLogout) {
         btnLogout.onclick = () => {
-            currentRole = null;
             currentStudentId = null;
-            localStorage.removeItem('fit_active_session');
+            localStorage.removeItem('fit_active_student_id');
             renderApp();
-            showToast("Sesión cerrada correctamente.");
+            showToast("Sesión cerrada.");
         };
     }
 }
 
-function loadStudentData(studentId) {
-    studentsDatabase = getLocalStudents();
-    const st = studentsDatabase[_FIND](s => String(s[_ID]) === String(studentId));
-    if (!st) return;
-
-    const modeEl = document.getElementById('routine-status-mode');
-    const isDraft = modeEl && modeEl.value === 'draft';
-
-    const cycleType = isDraft ? (st.draftCycleType || st.cycleType || 'Mesociclo') : (st.cycleType || 'Mesociclo');
-    const totalWeeks = isDraft ? (st.draftTotalWeeks || st.totalWeeks || 8) : (st.totalWeeks || 8);
-    const nutritionData = isDraft ? (st.draftNutrition || { diet: '', supplements: '' }) : (st.nutrition || { diet: '', supplements: '' });
-
-    const nameDisplay = document.getElementById('student-name-display');
-    if (nameDisplay) nameDisplay.innerText = `${st.lastname || ''}, ${st.firstname || ''}`;
-
-    const cycleDisplay = document.getElementById('cycle-display');
-    if (cycleDisplay) cycleDisplay.innerText = `${cycleType} (${totalWeeks} Semanas)${isDraft ? ' [BORRADOR]' : ''}`;
-
-    const dietInput = document.getElementById('nutrition-diet-input');
-    const suppInput = document.getElementById('nutrition-supplements-input');
-    if (dietInput) dietInput.value = String(nutritionData[_DIET] || '');
-    if (suppInput) suppInput.value = String(nutritionData[_SUPPLEMENTS] || '');
-
-    if (currentRole === 'prof') {
-        const numInput = document.getElementById('student-number-input');
-        const lastInput = document.getElementById('student-lastname-input');
-        const firstInput = document.getElementById('student-firstname-input');
-        const dniInput = document.getElementById('student-dni-input');
-        const cycleSelect = document.getElementById('student-cycle-type');
-        const weeksInput = document.getElementById('student-total-weeks');
-
-        if (numInput) numInput.value = st.studentNumber || 1;
-        if (lastInput) lastInput.value = st.lastname || '';
-        if (firstInput) firstInput.value = st.firstname || '';
-        if (dniInput) dniInput.value = st.dni || '';
-        if (cycleSelect) cycleSelect.value = cycleType;
-        if (weeksInput) weeksInput.value = totalWeeks;
-
-        const mainSection = document.getElementById('student-management-card');
-        const card = document.getElementById('mode-container-card');
-        const nutCard = document.getElementById('nutrition-management-card');
-        const title = document.getElementById('mode-card-title');
-        const desc = document.getElementById('mode-description-box');
-        const buttons = document.getElementById('mode-action-buttons');
-
-        if (isDraft) {
-            if (mainSection) mainSection.className = "bg-slate-900/90 rounded-2xl p-4 border-2 border-amber-500/80 shadow-2xl shadow-amber-500/10 space-y-4 transition-all";
-            if (card) card.className = "bg-slate-950 border-2 border-amber-500/90 rounded-2xl p-3.5 space-y-3 shadow-2xl shadow-amber-500/20 transition-all";
-            if (nutCard) nutCard.className = "bg-slate-900/90 rounded-2xl p-4 border-2 border-amber-500/80 shadow-2xl space-y-3 transition-all";
-            if (title) title.innerHTML = `<i data-feather="edit-3" class="w-4 h-4 text-amber-400"></i> <span class="text-amber-400 font-extrabold">MODO BORRADOR (PRE-CARGA PRIVADA)</span>`;
-            if (desc) desc.className = "text-xs p-2.5 rounded-xl bg-amber-500/15 border border-amber-500/40 text-amber-300 font-medium space-y-1";
-            if (desc) desc.innerHTML = `
-                <div class="font-bold flex items-center gap-1 text-amber-400"><i data-feather="eye-off" class="w-3.5 h-3.5"></i> BORRADOR PRIVADO — OCULTO PARA EL ALUMNO</div>
-                <p class="text-[11px] text-amber-200/90 leading-relaxed">Estás modificando el <strong>Plan Borrador</strong>. Los ciclos, semanas, ejercicios y nutrición que cargues aquí son totalmente independientes y no alteran lo que ve el alumno hasta que presiones 'Publicar y Activar'.</p>
-            `;
-            if (buttons) buttons.innerHTML = `
-                <div class="grid grid-cols-2 gap-2">
-                    <button onclick="window.saveCurrentStudent()" class="bg-amber-500 hover:bg-amber-400 text-slate-950 text-xs font-black py-2.5 rounded-xl border border-amber-300 shadow transition flex items-center justify-center gap-1.5 active:scale-95">
-                        <i data-feather="save" class="w-3.5 h-3.5"></i> Guardar Ficha Borrador
-                    </button>
-                    <button onclick="window.activateDraftRoutine()" class="bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-black py-2.5 rounded-xl border border-emerald-400 shadow transition flex items-center justify-center gap-1.5 active:scale-95">
-                        <i data-feather="send" class="w-3.5 h-3.5"></i> 🚀 Publicar y Activar
-                    </button>
-                </div>
-            `;
-        } else {
-            if (mainSection) mainSection.className = "bg-slate-900/90 rounded-2xl p-4 border border-slate-800 shadow-xl space-y-4 transition-all";
-            if (card) card.className = "bg-slate-950 border-2 border-sky-500/60 rounded-2xl p-3.5 space-y-3 shadow-xl transition-all";
-            if (nutCard) nutCard.className = "bg-slate-900/90 rounded-2xl p-4 border border-emerald-500/30 shadow-xl space-y-3 transition-all";
-            if (title) title.innerHTML = `<i data-feather="activity" class="w-4 h-4 text-sky-400"></i> <span class="text-sky-300 font-extrabold">EDITANDO PLAN ACTIVO OFICIAL</span>`;
-            if (desc) desc.className = "text-xs p-2.5 rounded-xl bg-sky-500/10 border border-sky-500/30 text-sky-200 font-medium space-y-1";
-            if (desc) desc.innerHTML = `
-                <div class="font-bold flex items-center gap-1 text-sky-300"><i data-feather="eye" class="w-3.5 h-3.5"></i> PLAN VISIBLE EN TIEMPO REAL POR EL ALUMNO</div>
-                <p class="text-[11px] text-sky-200/80 leading-relaxed">Estás viendo la rutina en curso del alumno. Los cambios que guardes aquí se reflejarán inmediatamente en su pantalla.</p>
-            `;
-            if (buttons) buttons.innerHTML = `
-                <button onclick="window.saveCurrentStudent()" class="w-full bg-sky-500 hover:bg-sky-400 text-slate-950 text-xs font-black py-2.5 rounded-xl border border-sky-300 shadow transition flex items-center justify-center gap-1.5 active:scale-95">
-                    <i data-feather="save" class="w-3.5 h-3.5"></i> Guardar Ficha y Plan Activo
-                </button>
-            `;
-        }
-        if (typeof feather !== 'undefined') feather.replace();
-    }
-
-    populateWeekSelectors(totalWeeks);
-    populateDaySelectors();
-    renderExercises();
-}
-
-function populateWeekSelectors(totalWeeks = 8) {
-    const container = document.getElementById('week-selector-container');
-    if (!container) return;
-
-    let html = '';
-    for (let w = 1; w <= totalWeeks; w++) {
-        const isActive = (w === selectedWeek);
-        html += `
-        <button onclick="window.selectWeek(${w})" class="px-3 py-1.5 rounded-xl text-xs font-black transition flex-shrink-0 ${isActive ? 'bg-amber-500 text-slate-950 shadow-lg' : 'bg-slate-950 text-slate-400 border border-slate-800 hover:text-white'}">
-            Sem ${w}
-        </button>`;
-    }
-    container.innerHTML = html;
-}
-
-function populateDaySelectors() {
-    const container = document.getElementById('day-selector-container');
-    if (!container) return;
-
-    let html = '';
-    for (let d = 1; d <= 7; d++) {
-        const isActive = (d === selectedDay);
-        html += `
-        <button onclick="window.selectDay(${d})" class="px-2.5 py-1 rounded-xl text-[11px] font-black transition flex-shrink-0 ${isActive ? 'bg-sky-500 text-slate-950 shadow-lg' : 'bg-slate-950 text-slate-400 border border-slate-800 hover:text-white'}">
-            Día ${d}
-        </button>`;
-    }
-    container.innerHTML = html;
-}
-
-function renderExercises() {
-    const container = document.getElementById('exercise-list');
-    if (!container) return;
-
-    const titleEl = document.getElementById('current-view-title');
-    if (titleEl) titleEl.innerText = `Semana ${selectedWeek} / Día ${selectedDay}`;
-
-    studentsDatabase = getLocalStudents();
-    const st = studentsDatabase[_FIND](s => String(s[_ID]) === String(currentStudentId));
-    if (!st) return;
-
-    const modeEl = document.getElementById('routine-status-mode');
-    const isDraft = modeEl && modeEl.value === 'draft';
-    const targetRoutine = isDraft ? (st.draftRoutine || {}) : (st.routine || {});
-
-    const exercises = (targetRoutine && targetRoutine[selectedWeek] && targetRoutine[selectedWeek][selectedDay]) || [];
-
-    if (exercises['length'] === 0) {
-        container.innerHTML = `
-        <div class="bg-slate-900 border border-dashed border-slate-800 rounded-2xl p-6 text-center text-slate-400">
-            <i data-feather="calendar" class="w-8 h-8 text-amber-400 mx-auto mb-2"></i>
-            <p class="text-xs">Sin ejercicios programados para el <strong>Día ${selectedDay}</strong> de la <strong>Semana ${selectedWeek}</strong> (${isDraft ? 'Borrador' : 'Activo'}).</p>
-        </div>`;
-        if (typeof feather !== 'undefined') feather.replace();
-        return;
-    }
-
-    container.innerHTML = exercises[_MAP](ex => createExerciseCardHTML(ex, currentRole === 'prof'))[_JOIN]('');
-    if (typeof feather !== 'undefined') feather.replace();
-}
-
-function initTimeDropdowns() {
-    const timeFields = ['modal-ex-exec', 'modal-ex-rep-rest', 'modal-ex-set-rest'];
-    timeFields.forEach(field => {
-        const minSelect = document.getElementById(`${field}-min`);
-        const secSelect = document.getElementById(`${field}-sec`);
-
-        if (minSelect) {
-            let minOptions = '';
-            for (let m = 0; m <= 30; m++) {
-                const str = String(m).padStart(2, '0');
-                minOptions += `<option value="${str}">${str}m</option>`;
-            }
-            minSelect.innerHTML = minOptions;
-        }
-
-        if (secSelect) {
-            let secOptions = '';
-            for (let s = 0; s < 60; s += 5) {
-                const str = String(s).padStart(2, '0');
-                secOptions += `<option value="${str}">${str}s</option>`;
-            }
-            secSelect.innerHTML = secOptions;
-        }
-    });
-}
-
-export function showToast(message) {
-    let toast = document.getElementById('app-toast');
-    if (!toast) {
-        toast = document.createElement('div');
-        toast[_ID] = 'app-toast';
-        toast.className = 'fixed bottom-16 left-1/2 -translate-x-1/2 bg-amber-500 text-slate-950 text-xs font-black px-4 py-2.5 rounded-2xl shadow-2xl z-50 transition-all duration-300 opacity-0 pointer-events-none';
-        document.body.appendChild(toast);
-    }
-    toast.innerText = message;
-    toast.classList.remove('opacity-0', 'pointer-events-none');
-    setTimeout(() => {
-        toast.classList.add('opacity-0', 'pointer-events-none');
-    }, 2500);
-}
-
-// --- ACCIONES Y MANEJADORES GLOBALES ---
-
-window.toggleAcceptButton = function(isChecked) {
-    const btn = document.getElementById('btn-confirm-terms');
-    if (!btn) return;
-
-    if (isChecked) {
-        btn.disabled = false;
-        btn.className = "w-full bg-amber-500 hover:bg-amber-400 text-slate-950 text-xs font-black py-3 rounded-xl border border-amber-300 shadow transition flex items-center justify-center gap-2 active:scale-95 cursor-pointer";
-    } else {
-        btn.disabled = true;
-        btn.className = "w-full bg-slate-800 text-slate-500 cursor-not-allowed text-xs font-black py-3 rounded-xl border border-slate-700 transition flex items-center justify-center gap-2 shadow";
-    }
-};
-
-window.confirmTermsAndEnter = async function() {
-    if (!currentStudentByToken) return;
-
-    await recordTermsAcceptance(currentStudentByToken[_ID]);
-    pendingTermsToken = null;
-    currentRole = 'student';
-    currentStudentId = currentStudentByToken[_ID];
-    localStorage.setItem('fit_active_session', JSON.stringify({ role: 'student', studentId: currentStudentByToken[_ID] }));
-
-    showToast("¡Declaración Jurada aceptada! Bienvenido.");
+// ==========================================
+// 🌐 NAVEGACIÓN Y HANDLERS GLOBALES
+// ==========================================
+window.switchRelationalTab = function(tabName) {
+    activeRelationalTab = tabName;
     renderApp();
 };
 
-window.installPWA = async function() {
-    if (!deferredPwaPrompt) return;
-    deferredPwaPrompt.prompt();
-    const { outcome } = await deferredPwaPrompt.userChoice;
-    if (outcome === 'accepted') {
-        deferredPwaPrompt = null;
-        const banner = document.getElementById('pwa-install-banner');
-        if (banner) banner.remove();
-        showToast("¡Aplicación agregada a la pantalla de inicio!");
-    }
+window.deselectStudent = function() {
+    currentStudentId = null;
+    localStorage.removeItem('fit_active_student_id');
+    renderApp();
 };
 
-window.sendStudentAccess = async function(studentId, action = 'whatsapp') {
-    // Si studentId viene null desde el botón HTML, toma el alumno activo en sesión
-    const targetId = studentId || currentStudentId;
-    if (!targetId) {
-        showToast("Selecciona un alumno para generar su token de acceso.");
-        return;
-    }
-
-    studentsDatabase = getLocalStudents();
-    const st = studentsDatabase.find(s => String(s[_ID]) === String(targetId));
-    const studentName = st ? st.firstname || 'Alumno' : 'Alumno';
-
-    showToast("Generando token de acceso seguro...");
-    const token = await generateStudentAccessToken(targetId);
-    
-    const baseUrl = window['location']['origin'] + window['location']['pathname'];
-    const accessUrl = `${baseUrl}?token=${token}`;
-
-    const message = `¡Hola ${studentName}! 👋 Acá tenés tu enlace exclusivo para acceder a tu rutina y plan de entrenamiento en Franco Fit:\n\n${accessUrl}\n\n*Nota:* Este enlace es personal, privado y de uso exclusivo.`;
-
-    if (action === 'whatsapp') {
-        const waDomain = 'api' + '.' + 'whatsapp' + '.' + 'com';
-        const whatsappUrl = `https://${waDomain}/send?text=${encodeURIComponent(message)}`;
-        
-        // Intenta abrir en nueva pestaña
-        const win = window['open'](whatsappUrl, '_blank');
-        
-        // Fallback si el navegador en PC bloqueó el pop-up
-        if (!win || win.closed || typeof win.closed === 'undefined') {
-            window['location']['href'] = whatsappUrl;
-        } else {
-            showToast("📱 Abriendo WhatsApp con el acceso preparado...");
-        }
-    } else {
-        try {
-            if (navigator.clipboard) {
-                await navigator.clipboard.writeText(accessUrl);
-                showToast("🔗 ¡Enlace Mágico copiado al portapapeles!");
-            } else {
-                throw new Error("Portapapeles no soportado");
-            }
-        } catch (err) {
-            // Fallback infalible para HTTP/Localhost
-            prompt("Copia manualmente este enlace mágico para el alumno:", accessUrl);
-        }
-    }
-};
-
-// Mantiene compatibilidad con cualquier llamada anterior
-window.copyStudentLink = function(studentId) {
-    window.sendStudentAccess(studentId, 'copy');
+window.selectStudentByProf = function(studentId) {
+    if (!studentId || studentId === 'undefined') return;
+    currentStudentId = studentId;
+    localStorage.setItem('fit_active_student_id', studentId);
+    renderApp();
 };
 
 window.filterProfStudentList = function(query) {
@@ -669,91 +303,130 @@ window.registerNewStudentPrompt = async function() {
         firstname: firstname.trim(),
         lastname: lastname.trim(),
         dni: dni.trim(),
-        cycleType: 'Mesociclo',
-        totalWeeks: 8,
+        datosAntropometricos: { peso: null, altura: null, grasa: null },
+        historialLesiones: '',
+        evaluacionInicial: '',
+        macrociclo: { fase: 'Adaptación', objetivo: '' },
+        mesociclo: { numeroSemanas: 4 },
+        microciclo: { diasPorSemana: 3 },
+        visibilitySettings: {},
         routine: {},
         draftRoutine: {},
         nutrition: { diet: '', supplements: '' },
-        draftNutrition: { diet: '', supplements: '' },
         history: []
     };
 
     await saveStudentDifferential(newStudent);
     studentsDatabase = await fetchStudentsFromSupabase();
+    currentStudentId = newStudent.id;
+    localStorage.setItem('fit_active_student_id', newStudent.id);
     showToast("¡Nuevo alumno registrado con éxito!");
     renderApp();
 };
 
-window.deselectStudent = function() {
-    currentStudentId = null;
-    localStorage.setItem('fit_active_session', JSON.stringify({ role: 'prof', studentId: null }));
-    renderApp();
-};
+function loadStudentData(studentId) {
+    studentsDatabase = getLocalStudents();
+    const st = studentsDatabase[_FIND](s => String(s[_ID]) === String(studentId));
+    if (!st) return;
 
-window.selectStudentByProf = function(studentId) {
-    if (!studentId || studentId === 'undefined') return;
-    currentStudentId = studentId;
-    localStorage.setItem('fit_active_session', JSON.stringify({ role: 'prof', studentId: studentId }));
-    renderApp();
-};
+    populateWeekSelectors(st.totalWeeks || 4);
+    populateDaySelectors();
+    renderExercises();
+}
 
-window.saveNutritionPlan = async function() {
+function populateWeekSelectors(totalWeeks = 4) {
+    const container = document.getElementById('week-selector-container');
+    if (!container) return;
+    let html = '';
+    for (let w = 1; w <= totalWeeks; w++) {
+        const isActive = (w === selectedWeek);
+        html += `
+        <button onclick="window.selectWeek(${w})" class="px-3 py-1.5 rounded-xl text-xs font-black transition flex-shrink-0 ${isActive ? 'bg-amber-500 text-slate-950 shadow-lg' : 'bg-slate-950 text-slate-400 border border-slate-800 hover:text-white'}">
+            Sem ${w}
+        </button>`;
+    }
+    container.innerHTML = html;
+}
+
+function populateDaySelectors() {
+    const container = document.getElementById('day-selector-container');
+    if (!container) return;
+    let html = '';
+    for (let d = 1; d <= 7; d++) {
+        const isActive = (d === selectedDay);
+        html += `
+        <button onclick="window.selectDay(${d})" class="px-2.5 py-1 rounded-xl text-[11px] font-black transition flex-shrink-0 ${isActive ? 'bg-sky-500 text-slate-950 shadow-lg' : 'bg-slate-950 text-slate-400 border border-slate-800 hover:text-white'}">
+            Día ${d}
+        </button>`;
+    }
+    container.innerHTML = html;
+}
+
+function renderExercises() {
+    const container = document.getElementById('exercise-list');
+    if (!container) return;
+
     studentsDatabase = getLocalStudents();
     const st = studentsDatabase[_FIND](s => String(s[_ID]) === String(currentStudentId));
     if (!st) return;
 
-    const modeEl = document.getElementById('routine-status-mode');
-    const isDraft = modeEl && modeEl.value === 'draft';
-
-    const diet = document.getElementById('nutrition-diet-input')?.value || '';
-    const supp = document.getElementById('nutrition-supplements-input')?.value || '';
-
-    if (isDraft) {
-        st.draftNutrition = { diet: diet.trim(), supplements: supp.trim() };
-    } else {
-        st.nutrition = { diet: diet.trim(), supplements: supp.trim() };
-    }
-
-    await saveStudentDifferential(st);
-    studentsDatabase = getLocalStudents();
-    showToast(isDraft ? "🥗 Plan Nutricional BORRADOR guardado." : "🥗 Plan Nutricional ACTIVO guardado.");
-};
-
-window.exportFullPDF = function() {
-    studentsDatabase = getLocalStudents();
-    const st = studentsDatabase[_FIND](s => String(s[_ID]) === String(currentStudentId));
-    if (st) {
-        generateFullRoutinePDF(st);
-    } else {
-        showToast("Selecciona un alumno para generar el PDF.");
-    }
-};
-
-window.changeProfPassword = function() {
-    const currentPass = localStorage.getItem('fit_prof_password') || 'franco2026';
-    const oldInput = prompt("Ingresa tu contraseña de profesor actual:");
-    if (oldInput === null) return;
-    if (oldInput !== currentPass && oldInput !== 'franco2026' && oldInput !== 'admin') {
-        showToast("La contraseña actual es incorrecta.");
+    const exercises = (st.routine && st.routine[selectedWeek] && st.routine[selectedWeek][selectedDay]) || [];
+    if (exercises.length === 0) {
+        container.innerHTML = `
+        <div class="bg-slate-900 border border-dashed border-slate-800 rounded-2xl p-6 text-center text-slate-400">
+            <i data-feather="calendar" class="w-8 h-8 text-amber-400 mx-auto mb-2"></i>
+            <p class="text-xs">Sin ejercicios programados para el <strong>Día ${selectedDay}</strong> de la <strong>Semana ${selectedWeek}</strong>.</p>
+        </div>`;
+        if (typeof feather !== 'undefined') feather.replace();
         return;
     }
-    const newPass = prompt("Ingresa la NUEVA contraseña del profesor:");
-    if (!newPass || newPass.trim().length < 4) {
-        showToast("La clave debe tener al menos 4 caracteres.");
-        return;
-    }
-    localStorage.setItem('fit_prof_password', newPass.trim());
-    showToast("🔑 ¡Contraseña del profesor actualizada!");
-};
 
-window.switchTab = function(tabName) {
-    activeTab = tabName;
-    renderApp();
-};
+    container.innerHTML = exercises[_MAP](ex => createExerciseCardHTML(ex, true))[_JOIN]('');
+    if (typeof feather !== 'undefined') feather.replace();
+}
+
+function initTimeDropdowns() {
+    const timeFields = ['modal-ex-exec', 'modal-ex-rep-rest', 'modal-ex-set-rest'];
+    timeFields.forEach(field => {
+        const minSelect = document.getElementById(`${field}-min`);
+        const secSelect = document.getElementById(`${field}-sec`);
+        if (minSelect) {
+            let minOptions = '';
+            for (let m = 0; m <= 30; m++) {
+                const str = String(m).padStart(2, '0');
+                minOptions += `<option value="${str}">${str}m</option>`;
+            }
+            minSelect.innerHTML = minOptions;
+        }
+        if (secSelect) {
+            let secOptions = '';
+            for (let s = 0; s < 60; s += 5) {
+                const str = String(s).padStart(2, '0');
+                secOptions += `<option value="${str}">${str}s</option>`;
+            }
+            secSelect.innerHTML = secOptions;
+        }
+    });
+}
+
+export function showToast(message) {
+    let toast = document.getElementById('app-toast');
+    if (!toast) {
+        toast = document.createElement('div');
+        toast[_ID] = 'app-toast';
+        toast.className = 'fixed bottom-16 left-1/2 -translate-x-1/2 bg-amber-500 text-slate-950 text-xs font-black px-4 py-2.5 rounded-2xl shadow-2xl z-50 transition-all duration-300 opacity-0 pointer-events-none';
+        document.body.appendChild(toast);
+    }
+    toast.innerText = message;
+    toast.classList.remove('opacity-0', 'pointer-events-none');
+    setTimeout(() => {
+        toast.classList.add('opacity-0', 'pointer-events-none');
+    }, 2500);
+}
 
 window.selectWeek = function(w) {
     selectedWeek = w;
-    populateWeekSelectors(document.getElementById('student-total-weeks')?.value || 8);
+    populateWeekSelectors();
     renderExercises();
 };
 
@@ -763,185 +436,769 @@ window.selectDay = function(d) {
     renderExercises();
 };
 
-window.toggleRoutineEditMode = function() {
-    loadStudentData(currentStudentId);
+window.installPWA = async function() {
+    if (!deferredPwaPrompt) return;
+    deferredPwaPrompt.prompt();
+    const { outcome } = await deferredPwaPrompt.userChoice;
+    if (outcome === 'accepted') {
+        deferredPwaPrompt = null;
+        const banner = document.getElementById('pwa-install-banner');
+        if (banner) banner.remove();
+        showToast("¡Aplicación instalada!");
+    }
 };
 
-window.saveCurrentStudent = async function() {
+window.saveFichaStudent = async function() {
+    if (!currentStudentId) return;
+
     studentsDatabase = getLocalStudents();
-    const st = studentsDatabase[_FIND](s => String(s[_ID]) === String(currentStudentId));
-    if (!st) return;
+    const student = studentsDatabase.find(s => String(s.id) === String(currentStudentId));
+    if (!student) return;
 
-    const modeEl = document.getElementById('routine-status-mode');
-    const isDraft = modeEl && modeEl.value === 'draft';
+    student.studentNumber = parseInt(document.getElementById('ficha-student-number')?.value) || 1;
+    student.lastname = (document.getElementById('ficha-lastname')?.value || '').trim();
+    student.firstname = (document.getElementById('ficha-firstname')?.value || '').trim();
+    student.dni = (document.getElementById('ficha-dni')?.value || '').trim();
 
-    const last = document.getElementById('student-lastname-input').value.trim();
-    const first = document.getElementById('student-firstname-input').value.trim();
-    const dni = document.getElementById('student-dni-input').value.trim();
-    const num = parseInt(document.getElementById('student-number-input').value) || 1;
-    const cycle = document.getElementById('student-cycle-type').value;
-    const weeks = parseInt(document.getElementById('student-total-weeks').value) || 8;
+    student.datosAntropometricos = {
+        peso: parseFloat(document.getElementById('ficha-peso')?.value) || null,
+        altura: parseFloat(document.getElementById('ficha-altura')?.value) || null,
+        grasa: parseFloat(document.getElementById('ficha-grasa')?.value) || null
+    };
 
-    st.studentNumber = num;
-    st.lastname = last;
-    st.firstname = first;
-    st.dni = dni;
+    student.historialLesiones = (document.getElementById('ficha-lesiones')?.value || '').trim();
+    student.evaluacionInicial = (document.getElementById('ficha-evaluacion')?.value || '').trim();
 
-    if (isDraft) {
-        st.draftCycleType = cycle;
-        st.draftTotalWeeks = weeks;
+    student.visibilitySettings = {
+        ...student.visibilitySettings,
+        antropometria: document.getElementById('vis-antropo')?.checked ?? true,
+        lesiones: document.getElementById('vis-lesiones')?.checked ?? true,
+        evaluacion: document.getElementById('vis-evaluacion')?.checked ?? true
+    };
+
+    showToast("Guardando cambios en la ficha...");
+    await saveStudentDifferential(student);
+    showToast("¡Ficha del alumno actualizada!");
+    renderApp();
+};
+
+window.saveMacrocicloStudent = async function() {
+    if (!currentStudentId) return;
+
+    studentsDatabase = getLocalStudents();
+    const student = studentsDatabase.find(s => String(s.id) === String(currentStudentId));
+    if (!student) return;
+
+    const selectEl = document.getElementById('macro-fase-select');
+    const customInput = document.getElementById('macro-fase-custom');
+
+    let fase = 'Adaptación';
+    if (selectEl?.value === '__custom__') {
+        fase = (customInput?.value || '').trim() || 'Fase Personalizada';
     } else {
-        st.cycleType = cycle;
-        st.totalWeeks = weeks;
+        fase = selectEl?.value || 'Adaptación';
     }
 
-    await saveStudentDifferential(st);
-    studentsDatabase = getLocalStudents();
-    showToast(isDraft ? "🟡 Borrador y Ficha guardados." : "🟢 Plan Activo y Ficha guardados.");
-    loadStudentData(currentStudentId);
+    const objetivo = (document.getElementById('macro-objetivo')?.value || '').trim();
+    const isVisibleMacro = document.getElementById('vis-macrociclo')?.checked ?? true;
+    const isVisibleObjetivos = document.getElementById('vis-objetivos')?.checked ?? true;
+
+    student.macrociclo = { fase, objetivo };
+    student.cycleType = fase; // Compatibilidad de columna en Supabase
+
+    // Guarda los estados de visibilidad independientes
+    student.visibilitySettings = {
+        ...student.visibilitySettings,
+        macrociclo: isVisibleMacro,
+        objetivos: isVisibleObjetivos
+    };
+
+    showToast("Guardando Macrociclo...");
+    await saveStudentDifferential(student);
+    showToast("¡Macrociclo actualizado con éxito!");
+    renderApp();
 };
 
-window.activateDraftRoutine = async function() {
+// Maneja el despliegue del campo de texto cuando el profesor elige personalizar una fase
+window.handleMacroFaseChange = function(value) {
+    const customInput = document.getElementById('macro-fase-custom');
+    if (!customInput) return;
+    if (value === '__custom__') {
+        customInput.classList.remove('hidden');
+        customInput.focus();
+    } else {
+        customInput.classList.add('hidden');
+        customInput.value = '';
+    }
+};
+
+// Selecciona un preset numérico de semanas (1, 2, 3...) y actualiza el desplegable de semanas en preparación
+window.setMesoWeeksPreset = function(weeks) {
+    const input = document.getElementById('meso-weeks-input');
+    if (input) {
+        input.value = weeks;
+        window.updatePrepWeeksDropdown();
+    }
+    
+    document.querySelectorAll('.meso-week-btn').forEach(btn => {
+        btn.classList.remove('bg-amber-500', 'text-slate-950', 'border-amber-400', 'shadow-lg');
+        btn.classList.add('bg-slate-950', 'text-slate-300', 'border-slate-800');
+    });
+    if (event && event.target) {
+        event.target.classList.remove('bg-slate-950', 'text-slate-300', 'border-slate-800');
+        event.target.classList.add('bg-amber-500', 'text-slate-950', 'border-amber-400', 'shadow-lg');
+    }
+};
+
+// Guarda los datos del Mesociclo (Duración total + Semana en preparación)
+window.saveMesocicloStudent = async function() {
+    if (!currentStudentId) return;
+
     studentsDatabase = getLocalStudents();
-    const st = studentsDatabase[_FIND](s => String(s[_ID]) === String(currentStudentId));
-    if (!st || !st.draftRoutine || Object.keys(st.draftRoutine).length === 0) {
-        showToast("No hay ninguna rutina en Borrador para activar.");
-        return;
+    const student = studentsDatabase.find(s => String(s.id) === String(currentStudentId));
+    if (!student) return;
+
+    const numWeeks = parseInt(document.getElementById('meso-weeks-input')?.value) || 4;
+    const prepWeek = parseInt(document.getElementById('meso-prep-week-select')?.value) || 1;
+    const enfoque = (document.getElementById('meso-enfoque-input')?.value || '').trim();
+
+    const isVisibleMeso = document.getElementById('vis-mesociclo')?.checked ?? true;
+    const isVisibleSemanaPrep = document.getElementById('vis-semana-prep')?.checked ?? true;
+    const isVisibleEnfoque = document.getElementById('vis-enfoque-meso')?.checked ?? true;
+
+    student.mesociclo = { 
+        numeroSemanas: numWeeks, 
+        semanaEnPreparacion: prepWeek,
+        enfoque 
+    };
+    student.totalWeeks = numWeeks;
+
+    student.visibilitySettings = {
+        ...student.visibilitySettings,
+        mesociclo: isVisibleMeso,
+        semanaEnPreparacion: isVisibleSemanaPrep,
+        enfoqueMesociclo: isVisibleEnfoque
+    };
+
+    showToast("Guardando Mesociclo...");
+    await saveStudentDifferential(student);
+    showToast("¡Mesociclo actualizado con éxito!");
+    renderApp();
+};
+
+// Actualiza dinámicamente las opciones del selector de "Semana en Preparación" según la cantidad de semanas
+window.updatePrepWeeksDropdown = function() {
+    const weeksInput = document.getElementById('meso-weeks-input');
+    const prepSelect = document.getElementById('meso-prep-week-select');
+    if (!weeksInput || !prepSelect) return;
+
+    const totalWeeks = parseInt(weeksInput.value) || 4;
+    const currentPrepVal = parseInt(prepSelect.value) || 1;
+
+    let html = '';
+    for (let w = 1; w <= totalWeeks; w++) {
+        const isSelected = (w === currentPrepVal || (w === totalWeeks && currentPrepVal > totalWeeks));
+        html += `<option value="${w}" ${isSelected ? 'selected' : ''}>Semana ${w} ${isSelected ? '(En Edición)' : ''}</option>`;
+    }
+    prepSelect.innerHTML = html;
+};
+
+// Cambia la selección de cantidad de días por semana (1 a 7)
+window.setMicroDaysCount = function(count) {
+    document.querySelectorAll('.micro-day-num-btn').forEach((btn, idx) => {
+        if (idx + 1 === count) {
+            btn.classList.remove('bg-slate-950', 'text-slate-400', 'border-slate-800');
+            btn.classList.add('bg-amber-500', 'text-slate-950', 'border-amber-400', 'shadow-lg');
+        } else {
+            btn.classList.remove('bg-amber-500', 'text-slate-950', 'border-amber-400', 'shadow-lg');
+            btn.classList.add('bg-slate-950', 'text-slate-400', 'border-slate-800');
+        }
+    });
+};
+
+// Activa o desactiva la selección de un día específico y actualiza el desplegable de "Día en Preparación"
+window.toggleMicroDaySelection = function(btnEl, dayName) {
+    if (!btnEl) return;
+    const isSelected = btnEl.classList.contains('bg-sky-500');
+    if (isSelected) {
+        btnEl.classList.remove('bg-sky-500', 'text-slate-950', 'border-sky-400', 'shadow-md', 'font-black');
+        btnEl.classList.add('bg-slate-950', 'text-slate-400', 'border-slate-800');
+    } else {
+        btnEl.classList.remove('bg-slate-950', 'text-slate-400', 'border-slate-800');
+        btnEl.classList.add('bg-sky-500', 'text-slate-950', 'border-sky-400', 'shadow-md', 'font-black');
     }
 
-    if (!st.history) st.history = [];
-
-    // 1. Normalizar estado de registros anteriores en historial
-    st.history = (st.history || [])[_MAP](item => ({
-        ...item,
-        status: 'Finalizado'
-    }));
-
-    // 2. Archivar la rutina activa actual antes de reemplazarla
-    if (st.routine && Object.keys(st.routine).length > 0) {
-        st.history.unshift({
-            id: generateUUID(),
-            name: `${st.cycleType || 'Mesociclo'} (${st.totalWeeks || 8} Semanas)`,
-            date: new Date().toLocaleDateString('es-AR'),
-            weeks: st.totalWeeks || 8,
-            status: 'Finalizado'
+    // Actualiza dinámicamente el selector del "Día en Preparación"
+    const activeChips = document.querySelectorAll('.micro-day-chip.bg-sky-500');
+    const prepSelect = document.getElementById('micro-prep-day-select');
+    if (prepSelect) {
+        const currentVal = parseInt(prepSelect.value) || 1;
+        let optionsHTML = '';
+        activeChips.forEach((chip, idx) => {
+            const dayNum = idx + 1;
+            const dName = chip.getAttribute('data-day');
+            const isSel = (dayNum === currentVal || (dayNum === activeChips.length && currentVal > activeChips.length));
+            optionsHTML += `<option value="${dayNum}" ${isSel ? 'selected' : ''}>Día ${dayNum} - ${dName} ${isSel ? '(En Edición)' : ''}</option>`;
         });
+        prepSelect.innerHTML = optionsHTML || `<option value="1">Día 1 (Sin días asignados)</option>`;
     }
-
-    // 3. Reemplazar la rutina activa con el contenido del borrador
-    st.routine = JSON.parse(JSON.stringify(st.draftRoutine));
-    if (st.draftCycleType) {
-        st.cycleType = st.draftCycleType;
-        delete st.draftCycleType;
-    }
-    if (st.draftTotalWeeks) {
-        st.totalWeeks = st.draftTotalWeeks;
-        delete st.draftTotalWeeks;
-    }
-    st.draftRoutine = {};
-
-    if (st.draftNutrition) {
-        st.nutrition = JSON.parse(JSON.stringify(st.draftNutrition));
-        st.draftNutrition = { diet: '', supplements: '' };
-    }
-
-    const modeEl = document.getElementById('routine-status-mode');
-    if (modeEl) modeEl.value = 'active';
-
-    await saveStudentDifferential(st);
-    studentsDatabase = getLocalStudents();
-    showToast("🚀 ¡Plan Borrador publicado y activado! El plan anterior fue archivado en Historial.");
-    loadStudentData(currentStudentId);
 };
 
-window.openAddExerciseModal = function() {
-    document.getElementById('modal-ex-id').value = '';
-    document.getElementById('modal-ex-name').value = '';
-    document.getElementById('modal-ex-media-url').value = '';
-    document.getElementById('modal-title').innerHTML = `<i data-feather="plus-circle" class="w-4 h-4 text-amber-400"></i> Agregar Ejercicio`;
-    document.getElementById('exercise-modal').classList.remove('hidden');
+// Despliega el campo de texto cuando se elige un tipo de microciclo personalizado
+window.handleMicroTipoChange = function(val) {
+    const customInput = document.getElementById('micro-tipo-custom');
+    if (!customInput) return;
+    if (val === '__custom__') {
+        customInput.classList.remove('hidden');
+        customInput.focus();
+    } else {
+        customInput.classList.add('hidden');
+        customInput.value = '';
+    }
+};
+
+// Guarda los datos del Microciclo y calcula la cantidad de días automáticamente a partir de los días seleccionados
+window.saveMicrocicloStudent = async function() {
+    if (!currentStudentId) return;
+
+    studentsDatabase = getLocalStudents();
+    const student = studentsDatabase.find(s => String(s.id) === String(currentStudentId));
+    if (!student) return;
+
+    const activeDayChips = document.querySelectorAll('.micro-day-chip.bg-sky-500');
+    const diasAsignados = Array.from(activeDayChips).map(chip => chip.getAttribute('data-day'));
+    const diasPorSemana = diasAsignados.length;
+
+    const prepDay = parseInt(document.getElementById('micro-prep-day-select')?.value) || 1;
+
+    const selectEl = document.getElementById('micro-tipo-select');
+    const customInput = document.getElementById('micro-tipo-custom');
+
+    let tipoMicrociclo = 'Carga';
+    if (selectEl?.value === '__custom__') {
+        tipoMicrociclo = (customInput?.value || '').trim() || 'Tipo Personalizado';
+    } else {
+        tipoMicrociclo = selectEl?.value || 'Carga';
+    }
+
+    const observaciones = (document.getElementById('micro-obs-input')?.value || '').trim();
+
+    const isVisibleMicro = document.getElementById('vis-microciclo')?.checked ?? true;
+    const isVisibleDias = document.getElementById('vis-dias-semana')?.checked ?? true;
+    const isVisibleDiaPrep = document.getElementById('vis-dia-prep')?.checked ?? true;
+
+    student.microciclo = {
+        diasPorSemana,
+        diasAsignados,
+        diaEnPreparacion: prepDay,
+        tipoMicrociclo,
+        observaciones
+    };
+
+    student.visibilitySettings = {
+        ...student.visibilitySettings,
+        microciclo: isVisibleMicro,
+        diasSemana: isVisibleDias,
+        diaEnPreparacion: isVisibleDiaPrep
+    };
+
+    showToast("Guardando Microciclo...");
+    await saveStudentDifferential(student);
+    showToast("¡Microciclo actualizado con éxito!");
+    renderApp();
+};
+
+// Guarda los datos del Microciclo incluyendo el Día en Preparación
+window.saveMicrocicloStudent = async function() {
+    if (!currentStudentId) return;
+
+    studentsDatabase = getLocalStudents();
+    const student = studentsDatabase.find(s => String(s.id) === String(currentStudentId));
+    if (!student) return;
+
+    const activeDayChips = document.querySelectorAll('.micro-day-chip.bg-sky-500');
+    const diasAsignados = Array.from(activeDayChips).map(chip => chip.getAttribute('data-day'));
+
+    const activeNumBtn = document.querySelector('.micro-day-num-btn.bg-amber-500');
+    const diasPorSemana = activeNumBtn ? parseInt(activeNumBtn.innerText) || diasAsignados.length : diasAsignados.length;
+
+    const prepDay = parseInt(document.getElementById('micro-prep-day-select')?.value) || 1;
+
+    const selectEl = document.getElementById('micro-tipo-select');
+    const customInput = document.getElementById('micro-tipo-custom');
+
+    let tipoMicrociclo = 'Carga';
+    if (selectEl?.value === '__custom__') {
+        tipoMicrociclo = (customInput?.value || '').trim() || 'Tipo Personalizado';
+    } else {
+        tipoMicrociclo = selectEl?.value || 'Carga';
+    }
+
+    const observaciones = (document.getElementById('micro-obs-input')?.value || '').trim();
+
+    const isVisibleMicro = document.getElementById('vis-microciclo')?.checked ?? true;
+    const isVisibleDias = document.getElementById('vis-dias-semana')?.checked ?? true;
+    const isVisibleDiaPrep = document.getElementById('vis-dia-prep')?.checked ?? true;
+
+    student.microciclo = {
+        diasPorSemana,
+        diasAsignados,
+        diaEnPreparacion: prepDay,
+        tipoMicrociclo,
+        observaciones
+    };
+
+    student.visibilitySettings = {
+        ...student.visibilitySettings,
+        microciclo: isVisibleMicro,
+        diasSemana: isVisibleDias,
+        diaEnPreparacion: isVisibleDiaPrep
+    };
+
+    showToast("Guardando Microciclo...");
+    await saveStudentDifferential(student);
+    showToast("¡Microciclo actualizado con éxito!");
+    renderApp();
+};
+
+// Alterna la visibilidad directa de un día en 1 toque desde la Planilla
+window.toggleDayVisibilityDirect = async function(week, day) {
+    if (!currentStudentId) return;
+    studentsDatabase = getLocalStudents();
+    const student = studentsDatabase.find(s => String(s.id) === String(currentStudentId));
+    if (!student) return;
+
+    const key = `semana_${week}_dia_${day}`;
+    const currentVis = student.visibilitySettings?.[key] !== false;
+
+    student.visibilitySettings = {
+        ...student.visibilitySettings,
+        [key]: !currentVis
+    };
+
+    await saveStudentDifferential(student);
+    showToast(`Día ${day} de Semana ${week}: ${!currentVis ? '👁️ Publicado' : '🔒 Oculto'}`);
+    renderApp();
+};
+
+// Alterna la visibilidad directa de una semana completa en 1 toque
+window.toggleWeekVisibilityDirect = async function(week) {
+    if (!currentStudentId) return;
+    studentsDatabase = getLocalStudents();
+    const student = studentsDatabase.find(s => String(s.id) === String(currentStudentId));
+    if (!student) return;
+
+    const key = `semana_${week}`;
+    const currentVis = student.visibilitySettings?.[key] !== false;
+
+    student.visibilitySettings = {
+        ...student.visibilitySettings,
+        [key]: !currentVis
+    };
+
+    await saveStudentDifferential(student);
+    showToast(`Semana ${week}: ${!currentVis ? '👁️ Publicada' : '🔒 Oculta'}`);
+    renderApp();
+};
+
+// Abre el modal asignando bloque y número de ejercicio
+window.openAddExerciseModal = function(defaultBloque = 'Desarrollo', exNumber = 1) {
+    const modal = document.getElementById('exercise-entity-modal');
+    if (!modal) return;
+    document.getElementById('ex-modal-id').value = '';
+    document.getElementById('ex-modal-name').value = '';
+    document.getElementById('ex-modal-media-url').value = '';
+    document.getElementById('ex-modal-notes').value = '';
+    document.getElementById('ex-modal-bloque').value = defaultBloque;
+    document.getElementById('ex-modal-num').value = exNumber;
+    
+    const numDisplay = document.getElementById('ex-modal-num-display');
+    if (numDisplay) numDisplay.value = exNumber;
+
+    document.getElementById('ex-modal-title').innerHTML = `<i data-feather="plus-circle" class="w-4 h-4"></i> Cargar a Ejercicio ${exNumber}`;
+    modal.classList.remove('hidden');
     if (typeof feather !== 'undefined') feather.replace();
 };
 
-window.closeModal = function() {
-    document.getElementById('exercise-modal').classList.add('hidden');
+window.closeExerciseModal = function() {
+    const modal = document.getElementById('exercise-entity-modal');
+    if (modal) modal.classList.add('hidden');
 };
 
-window.editExercise = function(exId) {
-    studentsDatabase = getLocalStudents();
-    const st = studentsDatabase[_FIND](s => String(s[_ID]) === String(currentStudentId));
-    if (!st) return;
-
-    const modeEl = document.getElementById('routine-status-mode');
-    const isDraft = modeEl && modeEl.value === 'draft';
-    const targetRoutine = isDraft ? (st.draftRoutine || {}) : (st.routine || {});
-
-    const exercises = targetRoutine?.[selectedWeek]?.[selectedDay] || [];
-    const ex = exercises[_FIND](e => String(e[_ID]) === String(exId));
-    if (!ex) return;
-
-    document.getElementById('modal-ex-id').value = ex[_ID];
-    document.getElementById('modal-ex-category').value = ex.category || 'Peso Libre';
-    document.getElementById('modal-ex-name').value = ex[_NAME] || '';
-    document.getElementById('modal-ex-media-url').value = ex.mediaUrl || '';
-    document.getElementById('modal-ex-type').value = ex.type || 'Serie Simple';
-    document.getElementById('modal-ex-sets').value = ex.sets || 1;
-    document.getElementById('modal-ex-reps').value = ex.reps || '10';
-
-    document.getElementById('modal-title').innerHTML = `<i data-feather="edit" class="w-4 h-4 text-amber-400"></i> Editar Ejercicio`;
-    document.getElementById('exercise-modal').classList.remove('hidden');
-    if (typeof feather !== 'undefined') feather.replace();
-};
-
-window.deleteExercise = async function(exId) {
-    const modeEl = document.getElementById('routine-status-mode');
-    const isDraft = modeEl && modeEl.value === 'draft';
-    await deleteExerciseDifferential(currentStudentId, selectedWeek, selectedDay, exId, isDraft);
-    studentsDatabase = getLocalStudents();
-    showToast("Ejercicio eliminado.");
-    renderExercises();
-};
-
+// Guarda el movimiento vinculándolo al número de ejercicio
 window.saveExerciseFromModal = async function() {
-    const exId = document.getElementById('modal-ex-id').value;
-    const category = document.getElementById('modal-ex-category').value;
-    const name = document.getElementById('modal-ex-name').value.trim();
-    const mediaUrl = document.getElementById('modal-ex-media-url').value.trim();
-    const type = document.getElementById('modal-ex-type').value;
-    const sets = parseInt(document.getElementById('modal-ex-sets').value) || 1;
-    const reps = document.getElementById('modal-ex-reps').value.trim() || '10';
+    if (!currentStudentId) return;
+    studentsDatabase = getLocalStudents();
+    const student = studentsDatabase.find(s => String(s.id) === String(currentStudentId));
+    if (!student) return;
 
-    const execMin = document.getElementById('modal-ex-exec-min').value || '00';
-    const execSec = document.getElementById('modal-ex-exec-sec').value || '00';
-    const repRestMin = document.getElementById('modal-ex-rep-rest-min').value || '00';
-    const repRestSec = document.getElementById('modal-ex-rep-rest-sec').value || '00';
-    const setRestMin = document.getElementById('modal-ex-set-rest-min').value || '00';
-    const setRestSec = document.getElementById('modal-ex-set-rest-sec').value || '00';
+    const prepWeek = student.mesociclo?.semanaEnPreparacion || 1;
+    const prepDay = student.microciclo?.diaEnPreparacion || 1;
+    const exId = document.getElementById('ex-modal-id')?.value || generateUUID();
+    const exerciseNumber = parseInt(document.getElementById('ex-modal-num')?.value) || 1;
+    const bloque = document.getElementById('ex-modal-bloque')?.value || 'Desarrollo';
+    const name = (document.getElementById('ex-modal-name')?.value || '').trim();
+    const category = document.getElementById('ex-modal-category')?.value || 'Peso Libre';
+    const mediaUrl = (document.getElementById('ex-modal-media-url')?.value || '').trim();
+    const notes = (document.getElementById('ex-modal-notes')?.value || '').trim();
 
     if (!name) {
-        showToast("Por favor ingresa un nombre para el ejercicio.");
+        showToast("Escribe un nombre para el ejercicio.");
         return;
     }
 
-    const modeEl = document.getElementById('routine-status-mode');
-    const isDraft = modeEl && modeEl.value === 'draft';
+    if (!student.routine) student.routine = {};
+    if (!student.routine[prepWeek]) student.routine[prepWeek] = {};
+    if (!student.routine[prepWeek][prepDay]) student.routine[prepWeek][prepDay] = [];
 
-    const exerciseObj = {
-        category: category,
-        name: name,
-        mediaUrl: mediaUrl,
-        type: type,
-        sets: sets,
-        reps: reps,
-        execTime: `${execMin}m ${execSec}s`,
-        repRestTime: `${repRestMin}m ${repRestSec}s`,
-        setRestTime: `${setRestMin}m ${setRestSec}s`
+    const dayList = student.routine[prepWeek][prepDay];
+    const existingIdx = dayList.findIndex(e => String(e.id) === String(exId));
+
+    const exerciseData = {
+        id: exId,
+        exerciseNumber,
+        bloque,
+        name,
+        category,
+        mediaUrl,
+        notes,
+        visible: existingIdx >= 0 ? (dayList[existingIdx].visible !== false) : true
     };
-    exerciseObj[_ID] = exId || generateUUID();
 
-    await saveExerciseDifferential(currentStudentId, selectedWeek, selectedDay, exerciseObj, isDraft);
+    if (existingIdx >= 0) {
+        dayList[existingIdx] = { ...dayList[existingIdx], ...exerciseData };
+    } else {
+        dayList.push(exerciseData);
+    }
+
+    window.closeExerciseModal();
+    showToast("Guardando ejercicio...");
+    await saveStudentDifferential(student);
+    showToast("¡Ejercicio guardado exitosamente!");
+    renderApp();
+};
+
+// Carga los datos de un ejercicio existente en el modal
+window.editExerciseInModal = function(exerciseId) {
     studentsDatabase = getLocalStudents();
-    window.closeModal();
-    showToast(exId ? "Ejercicio actualizado." : (isDraft ? "Ejercicio agregado a Borrador." : "Ejercicio agregado a Plan Activo."));
-    renderExercises();
+    const student = studentsDatabase.find(s => String(s.id) === String(currentStudentId));
+    if (!student) return;
+
+    const prepWeek = student.mesociclo?.semanaEnPreparacion || 1;
+    const prepDay = student.microciclo?.diaEnPreparacion || 1;
+    const dayList = student.routine?.[prepWeek]?.[prepDay] || [];
+    const ex = dayList.find(e => String(e.id) === String(exerciseId));
+    if (!ex) return;
+
+    const exNum = ex.exerciseNumber || 1;
+    document.getElementById('ex-modal-id').value = ex.id;
+    document.getElementById('ex-modal-num').value = exNum;
+    const numDisplay = document.getElementById('ex-modal-num-display');
+    if (numDisplay) numDisplay.value = exNum;
+
+    document.getElementById('ex-modal-bloque').value = ex.bloque || 'Desarrollo';
+    document.getElementById('ex-modal-name').value = ex.name || '';
+    document.getElementById('ex-modal-category').value = ex.category || 'Peso Libre';
+    document.getElementById('ex-modal-media-url').value = ex.mediaUrl || '';
+    document.getElementById('ex-modal-notes').value = ex.notes || '';
+    document.getElementById('ex-modal-title').innerHTML = `<i data-feather="edit-2" class="w-4 h-4"></i> Editar Movimiento (Ejercicio ${exNum})`;
+
+    const modal = document.getElementById('exercise-entity-modal');
+    if (modal) modal.classList.remove('hidden');
+    if (typeof feather !== 'undefined') feather.replace();
+};
+
+// Elimina un ejercicio del día activo
+window.deleteExerciseFromRoutine = async function(exerciseId) {
+    if (!confirm("¿Deseas eliminar este ejercicio de la sesión?")) return;
+    studentsDatabase = getLocalStudents();
+    const student = studentsDatabase.find(s => String(s.id) === String(currentStudentId));
+    if (!student) return;
+
+    const prepWeek = student.mesociclo?.semanaEnPreparacion || 1;
+    const prepDay = student.microciclo?.diaEnPreparacion || 1;
+
+    if (student.routine?.[prepWeek]?.[prepDay]) {
+        student.routine[prepWeek][prepDay] = student.routine[prepWeek][prepDay].filter(e => String(e.id) !== String(exerciseId));
+        await saveStudentDifferential(student);
+        showToast("Ejercicio eliminado.");
+        renderApp();
+    }
+};
+
+// Alterna el estado de visibilidad individual de un ejercicio
+window.toggleExerciseVisibility = async function(exerciseId) {
+    studentsDatabase = getLocalStudents();
+    const student = studentsDatabase.find(s => String(s.id) === String(currentStudentId));
+    if (!student) return;
+
+    const prepWeek = student.mesociclo?.semanaEnPreparacion || 1;
+    const prepDay = student.microciclo?.diaEnPreparacion || 1;
+    const dayList = student.routine?.[prepWeek]?.[prepDay] || [];
+    const ex = dayList.find(e => String(e.id) === String(exerciseId));
+    if (!ex) return;
+
+    ex.visible = (ex.visible === false) ? true : false;
+    await saveStudentDifferential(student);
+    showToast(`Ejercicio: ${ex.visible ? '👁️ Visible' : '🔒 Oculto'}`);
+    renderApp();
+};
+
+// Actualiza el número de series de un ejercicio específico desde los botones preset
+window.setSeriesCountForEx = function(exId, count) {
+    const input = document.getElementById(`series-count-input-${exId}`);
+    if (input) input.value = count;
+
+    document.querySelectorAll(`.series-count-btn-${exId}`).forEach(btn => {
+        btn.classList.remove('bg-amber-500', 'text-slate-950', 'border-amber-400', 'shadow-md');
+        btn.classList.add('bg-slate-950', 'text-slate-400', 'border-slate-800');
+    });
+    if (event && event.target) {
+        event.target.classList.remove('bg-slate-950', 'text-slate-400', 'border-slate-800');
+        event.target.classList.add('bg-amber-500', 'text-slate-950', 'border-amber-400', 'shadow-md');
+    }
+};
+
+// Actualiza el tiempo de descanso de un ejercicio específico desde los botones preset
+window.setSeriesRestForEx = function(exId, restStr) {
+    const customInput = document.getElementById(`series-rest-custom-${exId}`);
+    if (customInput) customInput.value = restStr;
+
+    document.querySelectorAll(`.series-rest-btn-${exId}`).forEach(btn => {
+        btn.classList.remove('bg-sky-500', 'text-slate-950', 'border-sky-400', 'font-black', 'shadow');
+        btn.classList.add('bg-slate-950', 'text-slate-400', 'border-slate-800');
+    });
+    if (event && event.target) {
+        event.target.classList.remove('bg-slate-950', 'text-slate-400', 'border-slate-800');
+        event.target.classList.add('bg-sky-500', 'text-slate-950', 'border-sky-400', 'font-black', 'shadow');
+    }
+};
+
+// Guarda la configuración de series para todos los ejercicios del día activo
+window.saveSeriesStudent = async function() {
+    if (!currentStudentId) return;
+
+    studentsDatabase = getLocalStudents();
+    const student = studentsDatabase.find(s => String(s.id) === String(currentStudentId));
+    if (!student) return;
+
+    const prepWeek = student.mesociclo?.semanaEnPreparacion || 1;
+    const prepDay = student.microciclo?.diaEnPreparacion || 1;
+
+    const dayList = student.routine?.[prepWeek]?.[prepDay] || [];
+    if (dayList.length === 0) return;
+
+    dayList.forEach(ex => {
+        const exId = String(ex.id);
+        const countInput = document.getElementById(`series-count-input-${exId}`);
+        const tipoSelect = document.getElementById(`series-tipo-select-${exId}`);
+        const restInput = document.getElementById(`series-rest-custom-${exId}`);
+        const visCheck = document.getElementById(`vis-series-ex-${exId}`);
+
+        if (countInput) ex.series = parseInt(countInput.value) || 3;
+        if (tipoSelect) ex.tipoSerie = tipoSelect.value;
+        if (restInput) ex.setRest = (restInput.value || '').trim() || '60s';
+        if (visCheck) ex.visibleSeries = visCheck.checked;
+    });
+
+    const isVisibleSeriesGlobal = document.getElementById('vis-series-global')?.checked ?? true;
+    student.visibilitySettings = {
+        ...student.visibilitySettings,
+        seriesGlobal: isVisibleSeriesGlobal
+    };
+
+    showToast("Guardando configuración de Series...");
+    await saveStudentDifferential(student);
+    showToast("¡Series actualizadas exitosamente!");
+    renderApp();
+};
+
+// Actualiza el rango de repeticiones de un ejercicio desde los botones preset
+window.setRepsPresetForEx = function(exId, presetStr) {
+    const input = document.getElementById(`reps-input-${exId}`);
+    if (input) input.value = presetStr;
+
+    document.querySelectorAll(`.reps-preset-btn-${exId}`).forEach(btn => {
+        btn.classList.remove('bg-amber-500', 'text-slate-950', 'border-amber-400', 'font-black', 'shadow');
+        btn.classList.add('bg-slate-950', 'text-slate-400', 'border-slate-800');
+    });
+    if (event && event.target) {
+        event.target.classList.remove('bg-slate-950', 'text-slate-400', 'border-slate-800');
+        event.target.classList.add('bg-amber-500', 'text-slate-950', 'border-amber-400', 'font-black', 'shadow');
+    }
+};
+
+// Actualiza el tempo de ejecución de un ejercicio desde los botones preset
+window.setTempoPresetForEx = function(exId, tempoStr) {
+    const input = document.getElementById(`reps-tempo-input-${exId}`);
+    if (input) input.value = tempoStr;
+
+    document.querySelectorAll(`.tempo-btn-${exId}`).forEach(btn => {
+        btn.classList.remove('bg-sky-500', 'text-slate-950', 'border-sky-400', 'font-black', 'shadow');
+        btn.classList.add('bg-slate-950', 'text-slate-400', 'border-slate-800');
+    });
+    if (event && event.target) {
+        event.target.classList.remove('bg-slate-950', 'text-slate-400', 'border-slate-800');
+        event.target.classList.add('bg-sky-500', 'text-slate-950', 'border-sky-400', 'font-black', 'shadow');
+    }
+};
+
+// Guarda la configuración de repeticiones para todos los ejercicios del día activo
+window.saveRepeticionesStudent = async function() {
+    if (!currentStudentId) return;
+
+    studentsDatabase = getLocalStudents();
+    const student = studentsDatabase.find(s => String(s.id) === String(currentStudentId));
+    if (!student) return;
+
+    const prepWeek = student.mesociclo?.semanaEnPreparacion || 1;
+    const prepDay = student.microciclo?.diaEnPreparacion || 1;
+
+    const dayList = student.routine?.[prepWeek]?.[prepDay] || [];
+    if (dayList.length === 0) return;
+
+    dayList.forEach(ex => {
+        const exId = String(ex.id);
+        const repsInput = document.getElementById(`reps-input-${exId}`);
+        const rpeSelect = document.getElementById(`reps-rpe-select-${exId}`);
+        const tempoInput = document.getElementById(`reps-tempo-input-${exId}`);
+        const visCheck = document.getElementById(`vis-reps-ex-${exId}`);
+
+        if (repsInput) {
+            ex.repeticiones = (repsInput.value || '').trim() || '8-12';
+            ex.repsRange = ex.repeticiones;
+        }
+        if (rpeSelect) ex.rpe = rpeSelect.value;
+        if (tempoInput) ex.tempo = (tempoInput.value || '').trim() || '3-0-1-0';
+        if (visCheck) ex.visibleReps = visCheck.checked;
+    });
+
+    const isVisibleRepsGlobal = document.getElementById('vis-reps-global')?.checked ?? true;
+    student.visibilitySettings = {
+        ...student.visibilitySettings,
+        repetitionGlobal: isVisibleRepsGlobal
+    };
+
+    showToast("Guardando configuración de Repeticiones...");
+    await saveStudentDifferential(student);
+    showToast("¡Repeticiones actualizadas exitosamente!");
+    renderApp();
+};
+
+// Establece el valor del campo de Carga en Kg desde los presets táctiles
+window.setCargaPresetForEx = function(exId, valStr) {
+    const input = document.getElementById(`carga-kg-input-${exId}`);
+    if (input) input.value = valStr;
+};
+
+// Establece el porcentaje de RM desde los presets táctiles
+window.setRMPresetForEx = function(exId, rmStr) {
+    const input = document.getElementById(`carga-rm-input-${exId}`);
+    if (input) input.value = rmStr;
+
+    document.querySelectorAll(`.rm-preset-btn-${exId}`).forEach(btn => {
+        btn.classList.remove('bg-emerald-500', 'text-slate-950', 'border-emerald-400', 'font-black', 'shadow');
+        btn.classList.add('bg-slate-950', 'text-slate-400', 'border-slate-800');
+    });
+    if (event && event.target) {
+        event.target.classList.remove('bg-slate-950', 'text-slate-400', 'border-slate-800');
+        event.target.classList.add('bg-emerald-500', 'text-slate-950', 'border-emerald-400', 'font-black', 'shadow');
+    }
+};
+
+// Guarda la configuración de cargas para todos los ejercicios del día activo
+window.saveCargaStudent = async function() {
+    if (!currentStudentId) return;
+
+    studentsDatabase = getLocalStudents();
+    const student = studentsDatabase.find(s => String(s.id) === String(currentStudentId));
+    if (!student) return;
+
+    const prepWeek = student.mesociclo?.semanaEnPreparacion || 1;
+    const prepDay = student.microciclo?.diaEnPreparacion || 1;
+
+    const dayList = student.routine?.[prepWeek]?.[prepDay] || [];
+    if (dayList.length === 0) return;
+
+    dayList.forEach(ex => {
+        const exId = String(ex.id);
+        const kgInput = document.getElementById(`carga-kg-input-${exId}`);
+        const rmInput = document.getElementById(`carga-rm-input-${exId}`);
+        const metodoSelect = document.getElementById(`carga-metodo-select-${exId}`);
+        const notasInput = document.getElementById(`carga-notas-input-${exId}`);
+        const visCheck = document.getElementById(`vis-carga-ex-${exId}`);
+
+        if (kgInput) {
+            ex.cargaKg = (kgInput.value || '').trim();
+            ex.pesoKg = ex.cargaKg;
+        }
+        if (rmInput) ex.porcentajeRM = (rmInput.value || '').trim();
+        if (metodoSelect) ex.metodoCarga = metodoSelect.value;
+        if (notasInput) ex.notasCarga = (notasInput.value || '').trim();
+        if (visCheck) ex.visibleCarga = visCheck.checked;
+    });
+
+    const isVisibleCargaGlobal = document.getElementById('vis-carga-global')?.checked ?? true;
+    student.visibilitySettings = {
+        ...student.visibilitySettings,
+        cargaGlobal: isVisibleCargaGlobal
+    };
+
+    showToast("Guardando configuración de Cargas...");
+    await saveStudentDifferential(student);
+    showToast("¡Cargas y Pesos actualizados exitosamente!");
+    renderApp();
+};
+
+// Exportación del PDF unificado con todas las semanas y días del alumno
+window.exportFullPDF = function() {
+    if (!currentStudentId) {
+        showToast("Selecciona un alumno primero.");
+        return;
+    }
+    studentsDatabase = getLocalStudents();
+    const student = studentsDatabase.find(s => String(s.id) === String(currentStudentId));
+    if (!student) return;
+
+    showToast("Generando vista PDF...");
+    generateFullRoutinePDF(student);
+};
+
+// Genera o lee el token del alumno y copia su Enlace Mágico al portapapeles
+window.sendStudentAccess = async function() {
+    if (!currentStudentId) {
+        showToast("Selecciona un alumno primero.");
+        return;
+    }
+
+    studentsDatabase = getLocalStudents();
+    const student = studentsDatabase.find(s => String(s.id) === String(currentStudentId));
+    if (!student) return;
+
+    let token = student.accessToken;
+    if (!token) {
+        showToast("Generando Token de acceso seguro...");
+        token = await generateStudentAccessToken(student.id);
+    }
+
+    const appUrl = `${window.location.origin}/?token=${token}`;
+
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+        await navigator.clipboard.writeText(appUrl);
+        showToast("¡Enlace Mágico copiado al portapapeles!");
+    } else {
+        prompt("Copia este enlace individual para el alumno:", appUrl);
+    }
+};
+
+// Controladores de navegación interactiva para la PWA del Alumno
+window.selectStudentPwaWeek = function(weekNum) {
+    selectedWeek = weekNum;
+    selectedDay = 1;
+    renderApp();
+};
+
+window.selectStudentPwaDay = function(dayNum) {
+    selectedDay = dayNum;
+    renderApp();
 };

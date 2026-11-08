@@ -74,23 +74,15 @@ export async function fetchStudentsFromSupabase() {
     try {
         const fieldId = 'i' + 'd';
         
-        // 1. Consultar a través de la RPC segura con permisos SECURITY DEFINER
-        let res = await supabase.rpc('obtener_lista_alumnos');
-        
-        // 2. Fallback de respaldo si la RPC no estuviera disponible
-        if (res.error || !res.data) {
-            res = await supabase.from('alumnos').select('*');
-        }
-
-        const data = res.data;
-        const error = res.error;
+        // 🟢 Consulta directa a la tabla alumnos (evita el error 404)
+        const { data, error } = await supabase.from('alumnos').select('*');
 
         if (error) {
             console.warn('Error leyendo Supabase, usando caché local:', error.message);
             return getLocalStudents();
         }
 
-        if (data && data.length > 0) {
+        if (data && Array.isArray(data)) {
             const uniqueMap = new Map();
             data.forEach(st => {
                 const dniKey = (st['dni'] && String(st['dni']).trim()) ? String(st['dni']).trim() : null;
@@ -110,21 +102,24 @@ export async function fetchStudentsFromSupabase() {
                 pin: st[_PIN] || st['pin'] || '',
                 cycleType: st['cycleType'] || st['cycle_type'] || 'Mesociclo',
                 totalWeeks: parseInt(st['totalWeeks'] || st['total_weeks']) || 8,
-                draftCycleType: st['draftCycleType'] || st['draft_cycle_type'] || undefined,
-                draftTotalWeeks: st['draftTotalWeeks'] ? parseInt(st['draftTotalWeeks']) : undefined,
+                datosAntropometricos: st['datos_antropometricos'] || st['datosAntropometricos'] || { peso: null, altura: null, grasa: null },
+                historialLesiones: st['historial_lesiones'] || st['historialLesiones'] || '',
+                evaluacionInicial: st['evaluacion_inicial'] || st['evaluacionInicial'] || '',
+                macrociclo: st['macrociclo'] || { fase: 'Adaptación', objetivo: '' },
+                mesociclo: st['mesociclo'] || { numeroSemanas: 4 },
+                microciclo: st['microciclo'] || { diasPorSemana: 3 },
+                visibilitySettings: st['visibility_settings'] || st['visibilitySettings'] || {},
                 history: Array.isArray(st['history']) ? st['history'] : [],
-                ratings: Array.isArray(st['ratings']) ? st['ratings'] : [],
                 nutrition: st['nutrition'] || { diet: '', supplements: '' },
-                draftNutrition: st['draft_nutrition'] || st['draftNutrition'] || { diet: '', supplements: '' },
                 routine: st['routine'] || {},
                 draftRoutine: st['draft_routine'] || st['draftRoutine'] || {},
-                accessToken: st['access_token'] || st['accessToken'] || '',
-                termsAcceptedAt: st['terms_accepted_at'] || st['termsAcceptedAt'] || null
+                accessToken: st['access_token'] || st['accessToken'] || ''
             }));
 
             setLocalStudents(formattedStudents);
             return formattedStudents;
         }
+
         return getLocalStudents();
     } catch (err) {
         console.warn('Excepción de red al leer alumnos:', err);
@@ -133,69 +128,60 @@ export async function fetchStudentsFromSupabase() {
 }
 
 export async function saveStudentDifferential(student) {
-    if (!student) return null;
+    if (!student || !student.id) return { error: 'ID de alumno inválido' };
 
-    if (!student[_ID] || String(student[_ID]).startsWith('st_') || String(student[_ID]) === 'undefined') {
-        student[_ID] = generateUUID();
-    }
-
-    const payload = {
-        id: student[_ID],
-        nombre: student['firstname'] || '',
-        apellido: student['lastname'] || '',
-        dni: student['dni'] || '',
-        studentNumber: parseInt(student['studentNumber']) || 1,
-        cycleType: student['cycleType'] || 'Mesociclo',
-        totalWeeks: parseInt(student['totalWeeks']) || 8,
-        draftCycleType: student['draftCycleType'] || null,
-        draftTotalWeeks: student['draftTotalWeeks'] ? parseInt(student['draftTotalWeeks']) : null,
-        history: student['history'] || [],
-        ratings: student['ratings'] || [],
-        nutrition: student['nutrition'] || { diet: '', supplements: '' },
-        draft_nutrition: student['draftNutrition'] || { diet: '', supplements: '' },
-        routine: student['routine'] || {},
-        draft_routine: student['draftRoutine'] || {},
-        access_token: student['accessToken'] || null,
-        terms_accepted_at: student['termsAcceptedAt'] || null
-    };
-
+    // 1. Guardado inmediato en la memoria local (LocalStorage)
     const localList = getLocalStudents();
-    const existingIndex = localList.findIndex(s => String(s[_ID]) === String(student[_ID]));
-    if (existingIndex >= 0) {
-        localList[existingIndex] = { ...student };
+    const index = localList.findIndex(s => String(s.id) === String(student.id));
+    if (index >= 0) {
+        localList[index] = student;
     } else {
-        localList.push({ ...student });
+        localList.push(student);
     }
     setLocalStudents(localList);
 
-    if (!supabase) return student;
+    if (!supabase) return { data: student };
 
     try {
+        const _ID = 'i' + 'd';
+        
+        // Mapeo exacto a los nombres reales de las columnas en Supabase
+        const payload = {
+            [_ID]: student.id,
+            student_number: student.studentNumber || 1,
+            nombre: student.firstname || '',   // 🟢 Coincide con la columna 'nombre'
+            apellido: student.lastname || '',  // 🟢 Coincide con la columna 'apellido'
+            dni: student.dni || '',
+            access_token: student.accessToken || student.access_token || '', // 👈 LÍNEA AGREGADA
+            cycle_type: student.cycleType || student.macrociclo?.fase || 'Mesociclo',
+            total_weeks: student.totalWeeks || student.mesociclo?.numeroSemanas || 8,
+            routine: student.routine || {},
+            draft_routine: student.draftRoutine || {},
+            nutrition: student.nutrition || {},
+            draft_nutrition: student.draftNutrition || {},
+            history: student.history || [],
+            datos_antropometricos: student.datosAntropometricos || {},
+            historial_lesiones: student.historialLesiones || '',
+            evaluacion_inicial: student.evaluacionInicial || '',
+            macrociclo: student.macrociclo || {},
+            mesociclo: student.mesociclo || {},
+            microciclo: student.microciclo || {},
+            visibility_settings: student.visibilitySettings || {}
+        };
+
         const { data, error } = await supabase
             .from('alumnos')
-            .upsert(payload)
-            .select();
+            .upsert(payload, { onConflict: _ID });
 
         if (error) {
-            console.error('Error al guardar en Supabase:', error.message);
-            return student;
+            console.warn('Error al guardar en Supabase:', error.message);
+            return { error };
         }
 
-        if (data && data.length > 0 && data[0] && data[0][_ID]) {
-            const returnedId = data[0][_ID];
-            student[_ID] = returnedId;
-            const updatedList = getLocalStudents();
-            const idx = updatedList.findIndex(s => String(s[_ID]) === String(student[_ID]));
-            if (idx >= 0) {
-                updatedList[idx][_ID] = returnedId;
-                setLocalStudents(updatedList);
-            }
-        }
-
-        return student;
+        return { data };
     } catch (err) {
-        console.error('Excepción en guardado diferencial de alumno:', err);
-        return student;
+        console.warn('Excepción al guardar en Supabase:', err);
+        return { error: err };
     }
 }
 
@@ -253,7 +239,7 @@ export async function fetchStudentByToken(token) {
 
             if (!error && data && data.length > 0) {
                 // CORRECCIÓN: Extraer el primer objeto data del arreglo devuelto por Supabase
-                const st = Array.isArray(data) ? data : data;
+                const st = Array.isArray(data) ? data[0] : data;
                 
                 const studentObj = {
                     id: st[fieldId] || st['_id'] || st['id'],
@@ -272,6 +258,10 @@ export async function fetchStudentByToken(token) {
 
                 // Guardar en la caché local del dispositivo para soporte offline
                 const localList = getLocalStudents();
+                return localList.find(s => 
+                    (s.accessToken && String(s.accessToken).trim() === cleanToken) || 
+                    (s.id && String(s.id).trim() === cleanToken)
+                ) || null;
                 const idx = localList.findIndex(s => String(s[fieldId] || s['id']) === String(studentObj.id));
                 if (idx >= 0) {
                     localList[idx] = studentObj;
