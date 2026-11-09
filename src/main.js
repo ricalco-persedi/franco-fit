@@ -1,4 +1,6 @@
 import {
+    supabase,                     
+    logoutSupabase,               
     fetchStudentsFromSupabase,
     saveStudentDifferential,
     saveExerciseDifferential,
@@ -43,6 +45,7 @@ const _SUPPLEMENTS = 's' + 'u' + 'p' + 'p' + 'l' + 'e' + 'm' + 'e' + 'n' + 't' +
 let studentsDatabase = [];
 let currentRole = 'prof'; // Rol principal asignado al Profesor
 let currentStudentId = null;
+let isProfLoggedIn = false;
 let selectedWeek = 1;
 let selectedDay = 1;
 let activeRelationalTab = 'ficha'; // 'ficha' | 'macrociclo' | 'mesociclo' | 'microciclo' | 'sesion' | 'visibilidad'
@@ -84,7 +87,7 @@ async function restoreSession() {
     const urlParams = new URLSearchParams(window.location.search);
     const tokenParam = urlParams.get('token');
 
-    // ⛔ Si hay un token en la URL, se fuerza el modo alumno
+    // 1. Acceso de Alumno vía Token
     if (tokenParam) {
         currentRole = 'student';
         const studentFromToken = await fetchStudentByToken(tokenParam);
@@ -93,20 +96,90 @@ async function restoreSession() {
         } else {
             currentStudentId = null;
         }
-        return; // Detiene la lectura del localStorage del profesor
+        return;
     }
 
-    // Si no hay token en la URL, se abre en modo Profesor por defecto
+    // 2. Acceso de Profesor
     currentRole = 'prof';
-    try {
-        const savedStudentId = localStorage.getItem('fit_active_student_id');
-        if (savedStudentId) {
-            currentStudentId = savedStudentId;
+    
+    // Verificar si Supabase tiene sesión activa o si hay bandera local
+    const storedProfLogin = localStorage.getItem('fit_prof_logged_in');
+    let hasSupabaseSession = false;
+
+    if (supabase) {
+        const { data } = await supabase.auth.getSession();
+        if (data && data.session) {
+            hasSupabaseSession = true;
         }
-    } catch (e) {
-        console.warn('Error restaurando sesión:', e);
+    }
+
+    if (storedProfLogin === 'true' || hasSupabaseSession) {
+        isProfLoggedIn = true;
+        try {
+            const savedStudentId = localStorage.getItem('fit_active_student_id');
+            if (savedStudentId) {
+                currentStudentId = savedStudentId;
+            }
+        } catch (e) {
+            console.warn('Error restaurando alumno activo:', e);
+        }
+    } else {
+        isProfLoggedIn = false;
     }
 }
+
+// ==========================================
+// 🔑 VISTA DE LOGIN Y HANDLERS DE AUTENTICACIÓN
+// ==========================================
+function renderLoginView() {
+    return `
+    <div class="min-h-[80vh] flex items-center justify-center px-4 py-8">
+        <div class="bg-slate-900/90 border border-amber-500/40 rounded-2xl p-6 w-full max-w-sm space-y-5 shadow-2xl">
+            <div class="text-center space-y-2">
+                <div class="h-16 w-16 mx-auto rounded-2xl overflow-hidden shadow-lg border border-amber-400 bg-slate-950 flex items-center justify-center">
+                    <img src="/imagenes/FC-MARCA.png" alt="FC" class="h-full w-full object-cover" onerror="this.onerror=null; this.src='/logo.png';">
+                </div>
+                <h1 class="text-sm font-black text-amber-400 uppercase tracking-wider">FC Training</h1>
+                <p class="text-xs text-slate-400 font-semibold">Acceso Exclusivo de Administración</p>
+            </div>
+
+            <form onsubmit="event.preventDefault(); window.handleProfLogin();" class="space-y-4">
+                <div>
+                    <label class="block text-[11px] font-bold text-slate-300 mb-1">Correo Electrónico</label>
+                    <input type="email" id="login-email" required placeholder="profesor@fctraining.ar" class="w-full bg-slate-950 border border-slate-800 rounded-xl p-3 text-xs text-white font-semibold focus:outline-none focus:border-amber-500">
+                </div>
+
+                <div>
+                    <label class="block text-[11px] font-bold text-slate-300 mb-1">Contraseña</label>
+                    <input type="password" id="login-password" required placeholder="••••••••" class="w-full bg-slate-950 border border-slate-800 rounded-xl p-3 text-xs text-white font-semibold focus:outline-none focus:border-amber-500">
+                </div>
+
+                <button type="submit" class="w-full bg-amber-500 hover:bg-amber-400 text-slate-950 text-xs font-black py-3 rounded-xl shadow-lg transition active:scale-95 cursor-pointer">
+                    Iniciar Sesión
+                </button>
+            </form>
+        </div>
+    </div>`;
+}
+
+// Controlador para procesar el inicio de sesión con Supabase
+window.handleProfLogin = async function() {
+    const email = document.getElementById('login-email')?.value || '';
+    const password = document.getElementById('login-password')?.value || '';
+
+    showToast("Verificando credenciales...");
+    const { data, error } = await loginProfesorWithSupabase(email, password);
+
+    if (error) {
+        showToast("Error: " + (error.message || "Credenciales inválidas"));
+        return;
+    }
+
+    isProfLoggedIn = true;
+    localStorage.setItem('fit_prof_logged_in', 'true');
+    showToast("¡Bienvenido Profesor!");
+    renderApp();
+};
 
 // ==========================================
 // 🎨 RENDERIZADO PRINCIPAL (renderApp)
@@ -116,31 +189,32 @@ export function renderApp() {
     if (!appEl) return;
 
     studentsDatabase = getLocalStudents();
-    const currentStudent = studentsDatabase[_FIND](s => String(s[_ID]) === String(currentStudentId));
+    const currentStudent = studentsDatabase.find(s => String(s.id) === String(currentStudentId));
 
-// 👁️ SI EL ACCESO ES DE UN ALUMNO (VÍA TOKEN)
+    // 👁️ VISTA EXCLUSIVA PWA ALUMNO (SI INGRESA VÍA TOKEN)
     if (currentRole === 'student') {
         if (!currentStudent) {
             appEl.innerHTML = `<div class="p-6 text-center text-slate-400 text-xs font-semibold">No se encontró información para este token de acceso.</div>`;
             return;
         }
-
-        // Se renderiza ÚNICAMENTE la PWA del alumno aislada
         appEl.innerHTML = renderStudentPwaView(currentStudent, selectedWeek, selectedDay);
         if (typeof feather !== 'undefined') feather.replace();
-        return; // ⛔ CORTE TOTAL: Detiene la ejecución para que no cargue la interfaz del profesor
+        return;
     }
 
-    let mainContentHTML = '';
+    // 🔒 VISTA DE LOGIN SI EL PROFESOR NO HA INICIADO SESIÓN
+    if (!isProfLoggedIn) {
+        appEl.innerHTML = renderLoginView();
+        if (typeof feather !== 'undefined') feather.replace();
+        return;
+    }
 
+    // 👨‍🏫 PANEL DE ADMINISTRACIÓN DEL PROFESOR
+    let mainContentHTML = '';
     if (!currentStudentId || !currentStudent) {
-        // PANTALLA 1: Selección / Búsqueda de Alumno
         mainContentHTML = renderProfStudentSelectionScreen();
     } else {
-        // PANTALLA 2: Entidad Relacional Activa del Alumno Seleccionado
         const pwaBanner = renderPwaInstallBannerHTML();
-        
-        // 🟢 Evaluación dinámica de la Entidad Relacional seleccionada
         let contentHTML = '';
         if (activeRelationalTab === 'ficha') {
             contentHTML = renderFichaView(currentStudent);
@@ -173,10 +247,9 @@ export function renderApp() {
         </div>`;
     }
 
-    // Renderiza el encabezado fijo con las pestañas relacionales superiores
     appEl.innerHTML = `${renderHeader(currentStudent, activeRelationalTab)}${mainContentHTML}`;
-    
     bindEvents();
+
     if (currentStudentId && activeRelationalTab === 'sesion') {
         loadStudentData(currentStudentId);
     }
@@ -247,11 +320,23 @@ function renderProfStudentListHTML(list = []) {
 function bindEvents() {
     const btnLogout = document.getElementById('btn-logout');
     if (btnLogout) {
-        btnLogout.onclick = () => {
+        btnLogout.onclick = async () => {
+            showToast("Cerrando sesión...");
+            
+            // 1. Cerrar sesión en Supabase
+            await logoutSupabase();
+
+            // 2. Limpiar variables de estado
+            isProfLoggedIn = false;
             currentStudentId = null;
+
+            // 3. Limpiar almacenamiento local
+            localStorage.removeItem('fit_prof_logged_in');
             localStorage.removeItem('fit_active_student_id');
+
+            // 4. Re-renderizar para mostrar la pantalla de Login
             renderApp();
-            showToast("Sesión cerrada.");
+            showToast("Sesión cerrada correctamente.");
         };
     }
 }
