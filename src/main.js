@@ -886,21 +886,20 @@ window.toggleWeekVisibilityDirect = async function(week) {
     renderApp();
 };
 
-// Abre el modal asignando bloque y número de ejercicio
-window.openAddExerciseModal = function(defaultBloque = 'Desarrollo', exNumber = 1) {
+// Abre el modal asignando el número correlativo de ejercicio
+window.openAddExerciseModal = function(exNumber = 1) {
     const modal = document.getElementById('exercise-entity-modal');
     if (!modal) return;
     document.getElementById('ex-modal-id').value = '';
     document.getElementById('ex-modal-name').value = '';
     document.getElementById('ex-modal-media-url').value = '';
     document.getElementById('ex-modal-notes').value = '';
-    document.getElementById('ex-modal-bloque').value = defaultBloque;
     document.getElementById('ex-modal-num').value = exNumber;
     
     const numDisplay = document.getElementById('ex-modal-num-display');
     if (numDisplay) numDisplay.value = exNumber;
 
-    document.getElementById('ex-modal-title').innerHTML = `<i data-feather="plus-circle" class="w-4 h-4"></i> Cargar a Ejercicio ${exNumber}`;
+    document.getElementById('ex-modal-title').innerHTML = `<i data-feather="plus-circle" class="w-4 h-4"></i> Cargar Ejercicio ${exNumber}`;
     modal.classList.remove('hidden');
     if (typeof feather !== 'undefined') feather.replace();
 };
@@ -910,7 +909,7 @@ window.closeExerciseModal = function() {
     if (modal) modal.classList.add('hidden');
 };
 
-// Guarda el movimiento vinculándolo al número de ejercicio
+// Guarda el movimiento vinculándolo a su número correlativo de ejercicio
 window.saveExerciseFromModal = async function() {
     if (!currentStudentId) return;
     studentsDatabase = getLocalStudents();
@@ -921,7 +920,6 @@ window.saveExerciseFromModal = async function() {
     const prepDay = student.microciclo?.diaEnPreparacion || 1;
     const exId = document.getElementById('ex-modal-id')?.value || generateUUID();
     const exerciseNumber = parseInt(document.getElementById('ex-modal-num')?.value) || 1;
-    const bloque = document.getElementById('ex-modal-bloque')?.value || 'Desarrollo';
     const name = (document.getElementById('ex-modal-name')?.value || '').trim();
     const category = document.getElementById('ex-modal-category')?.value || 'Peso Libre';
     const mediaUrl = (document.getElementById('ex-modal-media-url')?.value || '').trim();
@@ -942,7 +940,6 @@ window.saveExerciseFromModal = async function() {
     const exerciseData = {
         id: exId,
         exerciseNumber,
-        bloque,
         name,
         category,
         mediaUrl,
@@ -963,7 +960,7 @@ window.saveExerciseFromModal = async function() {
     renderApp();
 };
 
-// Carga los datos de un ejercicio existente en el modal
+// Carga los datos de un ejercicio existente en el modal para editarlo
 window.editExerciseInModal = function(exerciseId) {
     studentsDatabase = getLocalStudents();
     const student = studentsDatabase.find(s => String(s.id) === String(currentStudentId));
@@ -981,12 +978,11 @@ window.editExerciseInModal = function(exerciseId) {
     const numDisplay = document.getElementById('ex-modal-num-display');
     if (numDisplay) numDisplay.value = exNum;
 
-    document.getElementById('ex-modal-bloque').value = ex.bloque || 'Desarrollo';
     document.getElementById('ex-modal-name').value = ex.name || '';
     document.getElementById('ex-modal-category').value = ex.category || 'Peso Libre';
     document.getElementById('ex-modal-media-url').value = ex.mediaUrl || '';
     document.getElementById('ex-modal-notes').value = ex.notes || '';
-    document.getElementById('ex-modal-title').innerHTML = `<i data-feather="edit-2" class="w-4 h-4"></i> Editar Movimiento (Ejercicio ${exNum})`;
+    document.getElementById('ex-modal-title').innerHTML = `<i data-feather="edit-2" class="w-4 h-4"></i> Editar Ejercicio ${exNum}`;
 
     const modal = document.getElementById('exercise-entity-modal');
     if (modal) modal.classList.remove('hidden');
