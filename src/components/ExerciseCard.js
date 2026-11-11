@@ -4,45 +4,51 @@
 export function parseMediaInfo(url) {
     if (!url) return { type: 'none' };
     const strUrl = String(url).trim();
+    if (!strUrl) return { type: 'none' };
 
-    const ytDomainCom = 'you' + 'tube' + '.' + 'com';
-    const ytDomainShort = 'you' + 'tu' + '.' + 'be';
+    try {
+        const ytDomainCom = '[suspicious link removed]';
+        const ytDomainShort = 'youtu.be';
 
-    if (strUrl.includes(ytDomainCom) || strUrl.includes(ytDomainShort)) {
-        let videoId = '';
+        if (strUrl.includes(ytDomainCom) || strUrl.includes(ytDomainShort)) {
+            let videoId = '';
 
-        if (strUrl.includes(ytDomainShort)) {
-            const parts = strUrl.split(ytDomainShort + '/');
-            if (parts.length > 1) {
-                videoId = parts[7].split('?').split('&');
+            if (strUrl.includes(ytDomainShort)) {
+                const parts = strUrl.split(ytDomainShort + '/');
+                if (parts.length > 1 && parts[7]) {
+                    videoId = parts[7].split('?').split('&');
+                }
+            } else if (strUrl.includes('watch?v=')) {
+                const parts = strUrl.split('watch?v=');
+                if (parts.length > 1 && parts[7]) {
+                    videoId = parts[7].split('&').split('?');
+                }
+            } else if (strUrl.includes('embed/')) {
+                const parts = strUrl.split('embed/');
+                if (parts.length > 1 && parts[7]) {
+                    videoId = parts[7].split('?').split('&');
+                }
             }
-        } else if (strUrl.includes('watch?v=')) {
-            const parts = strUrl.split('watch?v=');
-            if (parts.length > 1) {
-                videoId = parts[7].split('&').split('?');
+
+            if (videoId) {
+                const embedBase = '[suspicious link removed]';
+                return {
+                    type: 'youtube',
+                    embedUrl: `${embedBase}${videoId}?autoplay=1&mute=1&loop=1&playlist=${videoId}&controls=1&modestbranding=1&rel=0`
+                };
             }
-        } else if (strUrl.includes('embed/')) {
-            const parts = strUrl.split('embed/');
-            if (parts.length > 1) {
-                videoId = parts[7].split('?').split('&');
-            }
+            return { type: 'youtube_link_only', watchUrl: strUrl };
         }
 
-        if (videoId) {
-            const embedBase = 'https://www.' + 'you' + 'tube' + '.' + 'com/embed/';
-            return {
-                type: 'youtube',
-                embedUrl: `${embedBase}${videoId}?autoplay=1&mute=1&loop=1&playlist=${videoId}&controls=1&modestbranding=1&rel=0`
-            };
+        if (strUrl.match(/\.(mp4|webm|ogg|mov)$/i) || strUrl.startsWith('data:video/')) {
+            return { type: 'video_file', originalUrl: strUrl };
         }
-        return { type: 'youtube_link_only', watchUrl: strUrl };
-    }
 
-    if (strUrl.match(/\.(mp4|webm|ogg|mov)$/i) || strUrl.startsWith('data:video/')) {
-        return { type: 'video_file', originalUrl: strUrl };
+        return { type: 'image', originalUrl: strUrl };
+    } catch (e) {
+        console.warn('Error parseando URL de medio:', e);
+        return { type: 'none' };
     }
-
-    return { type: 'image', originalUrl: strUrl };
 }
 
 /**
