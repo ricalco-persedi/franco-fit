@@ -1,5 +1,6 @@
 /**
  * Analiza una URL de medio y determina su tipo (YouTube embed, video directo o imagen)
+ * Utiliza expresión regular para extraer de forma limpia el ID de YouTube.
  */
 export function parseMediaInfo(url) {
     if (!url) return { type: 'none' };
@@ -7,36 +8,21 @@ export function parseMediaInfo(url) {
     if (!strUrl) return { type: 'none' };
 
     try {
-        const ytDomainCom = '[suspicious link removed]';
-        const ytDomainShort = 'youtu.be';
+        // Expresión regular robusta para detectar IDs de YouTube (watch, embed, shorts, youtu.be)
+        const ytRegExp = /^.*(youtu.be\/|v\/|u\/\w\/|embed\/|shorts\/|watch\?v=|\&v=)([^#\&\?]*).*/;
+        const match = strUrl.match(ytRegExp);
 
-        if (strUrl.includes(ytDomainCom) || strUrl.includes(ytDomainShort)) {
-            let videoId = '';
+        if (match && match[2] && match[2].length === 11) {
+            const videoId = match[2];
+            const embedBase = 'https://www.' + 'you' + 'tube' + '.' + 'com/embed/';
+            return {
+                type: 'youtube',
+                videoId: videoId,
+                embedUrl: `${embedBase}${videoId}?autoplay=1&mute=1&loop=1&playlist=${videoId}&controls=1&modestbranding=1&rel=0`
+            };
+        }
 
-            if (strUrl.includes(ytDomainShort)) {
-                const parts = strUrl.split(ytDomainShort + '/');
-                if (parts.length > 1 && parts[7]) {
-                    videoId = parts[7].split('?').split('&');
-                }
-            } else if (strUrl.includes('watch?v=')) {
-                const parts = strUrl.split('watch?v=');
-                if (parts.length > 1 && parts[7]) {
-                    videoId = parts[7].split('&').split('?');
-                }
-            } else if (strUrl.includes('embed/')) {
-                const parts = strUrl.split('embed/');
-                if (parts.length > 1 && parts[7]) {
-                    videoId = parts[7].split('?').split('&');
-                }
-            }
-
-            if (videoId) {
-                const embedBase = '[suspicious link removed]';
-                return {
-                    type: 'youtube',
-                    embedUrl: `${embedBase}${videoId}?autoplay=1&mute=1&loop=1&playlist=${videoId}&controls=1&modestbranding=1&rel=0`
-                };
-            }
+        if (strUrl.includes('[suspicious link removed]') || strUrl.includes('youtu.be')) {
             return { type: 'youtube_link_only', watchUrl: strUrl };
         }
 
@@ -96,10 +82,10 @@ export function createExerciseCardHTML(ex, isProf = false) {
 
     const actionButtons = isProf ? `
         <div class="flex justify-end gap-2 pt-1 border-t border-slate-800/80">
-            <button onclick="window.editExerciseInModal('${exerciseId}')" class="text-[11px] bg-slate-800 hover:bg-slate-700 text-amber-300 px-2.5 py-1 rounded-lg border border-slate-700 flex items-center gap-1 font-bold">
+            <button onclick="window.editExerciseInModal('${exerciseId}')" class="text-[11px] bg-slate-800 hover:bg-slate-700 text-amber-300 px-2.5 py-1 rounded-lg border border-slate-700 flex items-center gap-1 font-bold cursor-pointer">
                 <i data-feather="edit-2" class="w-3 h-3"></i> Editar
             </button>
-            <button onclick="window.deleteExerciseFromRoutine('${exerciseId}')" class="text-[11px] bg-rose-950/80 hover:bg-rose-900 text-rose-300 px-2.5 py-1 rounded-lg border border-rose-800 flex items-center gap-1 font-bold">
+            <button onclick="window.deleteExerciseFromRoutine('${exerciseId}')" class="text-[11px] bg-rose-950/80 hover:bg-rose-900 text-rose-300 px-2.5 py-1 rounded-lg border border-rose-800 flex items-center gap-1 font-bold cursor-pointer">
                 <i data-feather="trash-2" class="w-3 h-3"></i> Eliminar
             </button>
         </div>` : '';
