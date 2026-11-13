@@ -106,6 +106,10 @@ export function renderHeader(activeStudent = null, activeTab = 'ficha') {
                 class="px-2.5 py-1 rounded-lg transition flex items-center gap-1 shrink-0 ${activeTab === 'visibilidad' ? 'bg-amber-500 text-slate-950 font-black shadow-md' : 'text-slate-400 hover:text-white bg-slate-900/80'}">
                 <i data-feather="eye" class="w-3 h-3"></i> Visibilidad
             </button>
+            <button onclick="window.switchRelationalTab('resumen')"
+                class="px-2.5 py-1 rounded-lg transition flex items-center gap-1 shrink-0 ${activeTab === 'resumen' ? 'bg-amber-500 text-slate-950 font-black shadow-md' : 'text-slate-400 hover:text-white bg-slate-900/80'}">
+                <i data-feather="check-square" class="w-3 h-3"></i> Resumen
+            </button>
         </div>
     </nav>` : '';
 

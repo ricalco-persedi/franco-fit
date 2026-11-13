@@ -3,7 +3,7 @@ import { parseMediaInfo } from './ExerciseCard.js';
 /**
  * Componente para renderizar la gestión de la Entidad Relacional Ejercicio
  * Muestra una lista secuencial de ejercicios numerados (Ejercicio 1, Ejercicio 2...)
- * sin división de bloques (Inicio, Desarrollo, Cierre).
+ * con autocompletado de videos y búsqueda directa en YouTube.
  */
 export function renderEjercicioView(student = {}) {
     if (!student || !student.id) {
@@ -152,23 +152,33 @@ function renderExerciseModalHTML() {
 
                 <div>
                     <label class="block text-[10px] font-bold text-slate-400 mb-1">Nombre del Ejercicio / Movimiento</label>
-                    <input type="text" id="ex-modal-name" required placeholder="Ej: Sentadilla Trasera con Barra" class="w-full bg-slate-950 border border-slate-800 rounded-xl p-2.5 text-xs text-white font-semibold focus:outline-none focus:border-amber-500">
+                    <input type="text" id="ex-modal-name" required placeholder="Ej: Sentadilla Trasera con Barra" oninput="window.autoSuggestVideoLink(this.value)" class="w-full bg-slate-950 border border-slate-800 rounded-xl p-2.5 text-xs text-white font-semibold focus:outline-none focus:border-amber-500">
                 </div>
 
                 <div>
                     <label class="block text-[10px] font-bold text-slate-400 mb-1">Categoría</label>
-                    <select id="ex-modal-category" class="w-full bg-slate-950 border border-slate-800 rounded-xl p-2.5 text-xs text-white font-semibold focus:outline-none">
-                        <option value="Peso Libre">Peso Libre</option>
-                        <option value="Máquinas">Máquinas</option>
-                        <option value="Calistenia / Peso Corporal">Calistenia / Peso Corporal</option>
-                        <option value="Cardio">Cardio</option>
-                        <option value="Flexibilidad / Movilidad">Flexibilidad / Movilidad</option>
-                    </select>
+                    <div class="space-y-2">
+                        <select id="ex-modal-category" onchange="window.handleExCategoryChange(this.value)" class="w-full bg-slate-950 border border-slate-800 rounded-xl p-2.5 text-xs text-white font-semibold focus:outline-none">
+                            <option value="Peso Libre">Peso Libre</option>
+                            <option value="Máquinas">Máquinas</option>
+                            <option value="Calistenia / Peso Corporal">Calistenia / Peso Corporal</option>
+                            <option value="Cardio">Cardio</option>
+                            <option value="Flexibilidad / Movilidad">Flexibilidad / Movilidad</option>
+                            <option value="__custom__">➕ Agregar / Personalizar Categoría...</option>
+                        </select>
+                        <input type="text" id="ex-modal-category-custom" placeholder="Escribe la categoría personalizada..." class="hidden w-full bg-slate-950 border border-amber-500/60 rounded-xl p-2.5 text-xs text-amber-300 font-bold focus:outline-none">
+                    </div>
                 </div>
 
                 <div>
-                    <label class="block text-[10px] font-bold text-slate-400 mb-1">URL de Demostración (YouTube / Video / GIF / Imagen)</label>
+                    <div class="flex justify-between items-center mb-1">
+                        <label class="block text-[10px] font-bold text-slate-400">URL de Demostración (YouTube / Video / GIF)</label>
+                        <button type="button" onclick="window.searchVideoInYouTube()" class="text-[9px] bg-red-600 hover:bg-red-500 text-white font-black px-2 py-0.5 rounded-md flex items-center gap-1 transition shadow cursor-pointer">
+                            🔍 Buscar en YouTube
+                        </button>
+                    </div>
                     <input type="url" id="ex-modal-media-url" placeholder="https://..." class="w-full bg-slate-950 border border-slate-800 rounded-xl p-2.5 text-xs text-white font-semibold focus:outline-none focus:border-amber-500">
+                    <p id="ex-modal-video-badge" class="text-[9px] text-emerald-400 font-bold hidden mt-1">✨ Video autocompletado desde tu Banco de Videos</p>
                 </div>
 
                 <div>

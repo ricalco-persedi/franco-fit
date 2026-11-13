@@ -226,6 +226,48 @@ export async function deleteExerciseDifferential(studentId, week, day, exerciseI
     return student;
 }
 
+// ==========================================
+// 📹 BANCO DE VIDEOS EN SUPABASE (MULTI-DISPOSITIVO)
+// ==========================================
+
+/**
+ * Guarda o actualiza el objeto completo del Banco de Videos en la tabla 'app_settings'
+ */
+export async function syncVideoBankToSupabase(videoBankObj) {
+    if (!supabase) return;
+    try {
+        const { error } = await supabase
+            .from('app_settings')
+            .upsert({ id: 'video_bank', data: videoBankObj });
+            
+        if (error) {
+            console.warn('Error al sincronizar banco de videos en Supabase:', error.message);
+        }
+    } catch (e) {
+        console.warn('Excepción sincronizando banco de videos:', e);
+    }
+}
+
+/**
+ * Recupera el Banco de Videos actualizado desde Supabase
+ */
+export async function fetchVideoBankFromSupabase() {
+    if (!supabase) return null;
+    try {
+        const { data, error } = await supabase
+            .from('app_settings')
+            .select('data')
+            .eq('id', 'video_bank')
+            .maybeSingle();
+
+        if (error || !data) return null;
+        return data.data || null;
+    } catch (e) {
+        console.warn('Excepción obteniendo banco de videos de Supabase:', e);
+        return null;
+    }
+}
+
 export async function fetchStudentByToken(token) {
     if (!token) return null;
 

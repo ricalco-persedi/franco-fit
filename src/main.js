@@ -10,7 +10,9 @@ import {
     generateUUID,
     fetchStudentByToken,
     generateStudentAccessToken,
-    loginProfesorWithSupabase
+    loginProfesorWithSupabase,
+    syncVideoBankToSupabase,
+    fetchVideoBankFromSupabase
 } from './services/supabase.js';
 
 import { renderFichaView } from './components/FichaView.js';
@@ -28,6 +30,7 @@ import { renderSeriesView } from './components/SeriesView.js';
 import { renderRepeticionesView } from './components/RepeticionesView.js';
 import { renderCargaView } from './components/CargaView.js';
 import { renderStudentPwaView } from './components/StudentPwaView.js';
+import { renderResumenView } from './components/ResumenView.js';
 
 // Constantes internas de compatibilidad
 const _ID = 'i' + 'd';
@@ -86,7 +89,7 @@ async function loadInitialData() {
 async function restoreSession() {
     const urlParams = new URLSearchParams(window.location.search);
     const tokenParam = urlParams.get('token');
-
+    
     // 1. Acceso de Alumno vía Token
     if (tokenParam) {
         currentRole = 'student';
@@ -101,15 +104,17 @@ async function restoreSession() {
 
     // 2. Acceso de Profesor
     currentRole = 'prof';
-    
-    // Verificar si Supabase tiene sesión activa o si hay bandera local
     const storedProfLogin = localStorage.getItem('fit_prof_logged_in');
     let hasSupabaseSession = false;
 
     if (supabase) {
-        const { data } = await supabase.auth.getSession();
-        if (data && data.session) {
-            hasSupabaseSession = true;
+        try {
+            const { data } = await supabase.auth.getSession();
+            if (data && data.session) {
+                hasSupabaseSession = true;
+            }
+        } catch (e) {
+            console.warn('Error al verificar sesión de Supabase:', e);
         }
     }
 
@@ -123,6 +128,9 @@ async function restoreSession() {
         } catch (e) {
             console.warn('Error restaurando alumno activo:', e);
         }
+
+        // 📹 Cargar y sincronizar el banco de videos cuando el profesor SÍ está autenticado
+        loadAndSyncVideoBank();
     } else {
         isProfLoggedIn = false;
     }
@@ -234,6 +242,8 @@ export function renderApp() {
             contentHTML = renderCargaView(currentStudent);
         } else if (activeRelationalTab === 'visibilidad') {
             contentHTML = renderVisibilidadView(currentStudent);
+        } else if (activeRelationalTab === 'resumen') {
+            contentHTML = renderResumenView(currentStudent);
         } else {
             contentHTML = renderRoutineView(true, currentStudent);
         }
@@ -886,6 +896,56 @@ window.toggleWeekVisibilityDirect = async function(week) {
     renderApp();
 };
 
+// ==========================================
+// 📹 GESTIÓN DEL BANCO DE VIDEOS (SINCRONIZADO)
+// ==========================================
+
+const VIDEO_BANK_KEY = 'fit_video_bank';
+
+// Lee el banco de videos desde la memoria local
+export function getVideoBank() {
+    try {
+        const raw = localStorage.getItem(VIDEO_BANK_KEY);
+        return raw ? JSON.parse(raw) : {};
+    } catch (e) {
+        return {};
+    }
+}
+
+// Guarda un video en la memoria local y lo sube inmediatamente a Supabase
+export async function saveToVideoBank(exerciseName, url) {
+    if (!exerciseName || !url) return;
+    const cleanKey = exerciseName.trim().toLowerCase();
+    if (!cleanKey) return;
+
+    const bank = getVideoBank();
+    bank[cleanKey] = url.trim();
+
+    // 1. Guardado local de acceso rápido
+    try {
+        localStorage.setItem(VIDEO_BANK_KEY, JSON.stringify(bank));
+    } catch (e) {
+        console.warn('Error guardando en LocalStorage:', e);
+    }
+
+    // 2. Sincronización en la nube para disponibilidad multi-dispositivo
+    await syncVideoBankToSupabase(bank);
+}
+
+// Descarga el banco de videos de Supabase al iniciar sesión y lo fusiona
+export async function loadAndSyncVideoBank() {
+    const remoteBank = await fetchVideoBankFromSupabase();
+    if (remoteBank && typeof remoteBank === 'object') {
+        const localBank = getVideoBank();
+        const mergedBank = { ...localBank, ...remoteBank };
+        try {
+            localStorage.setItem(VIDEO_BANK_KEY, JSON.stringify(mergedBank));
+        } catch (e) {}
+        return mergedBank;
+    }
+    return getVideoBank();
+}
+
 // Abre el modal asignando el número correlativo de ejercicio
 window.openAddExerciseModal = function(exNumber = 1) {
     const modal = document.getElementById('exercise-entity-modal');
@@ -921,13 +981,27 @@ window.saveExerciseFromModal = async function() {
     const exId = document.getElementById('ex-modal-id')?.value || generateUUID();
     const exerciseNumber = parseInt(document.getElementById('ex-modal-num')?.value) || 1;
     const name = (document.getElementById('ex-modal-name')?.value || '').trim();
-    const category = document.getElementById('ex-modal-category')?.value || 'Peso Libre';
+    
+    const categorySelect = document.getElementById('ex-modal-category')?.value;
+    const categoryCustom = (document.getElementById('ex-modal-category-custom')?.value || '').trim();
+    let category = 'Peso Libre';
+    if (categorySelect === '__custom__') {
+        category = categoryCustom || 'Personalizada';
+    } else {
+        category = categorySelect || 'Peso Libre';
+    }
+
     const mediaUrl = (document.getElementById('ex-modal-media-url')?.value || '').trim();
     const notes = (document.getElementById('ex-modal-notes')?.value || '').trim();
 
     if (!name) {
         showToast("Escribe un nombre para el ejercicio.");
         return;
+    }
+
+    // 🟢 Guardar en la base/banco de videos para futuros ejercicios con el mismo nombre
+    if (mediaUrl) {
+        saveToVideoBank(name, mediaUrl);
     }
 
     if (!student.routine) student.routine = {};
@@ -979,7 +1053,25 @@ window.editExerciseInModal = function(exerciseId) {
     if (numDisplay) numDisplay.value = exNum;
 
     document.getElementById('ex-modal-name').value = ex.name || '';
-    document.getElementById('ex-modal-category').value = ex.category || 'Peso Libre';
+
+    // Carga de la categoría (detecta si es estándar o personalizada)
+    const baseCategories = ['Peso Libre', 'Máquinas', 'Calistenia / Peso Corporal', 'Cardio', 'Flexibilidad / Movilidad'];
+    const currentCat = ex.category || 'Peso Libre';
+    const catSelect = document.getElementById('ex-modal-category');
+    const catCustom = document.getElementById('ex-modal-category-custom');
+
+    if (catSelect && catCustom) {
+        if (baseCategories.includes(currentCat)) {
+            catSelect.value = currentCat;
+            catCustom.classList.add('hidden');
+            catCustom.value = '';
+        } else {
+            catSelect.value = '__custom__';
+            catCustom.classList.remove('hidden');
+            catCustom.value = currentCat;
+        }
+    }
+
     document.getElementById('ex-modal-media-url').value = ex.mediaUrl || '';
     document.getElementById('ex-modal-notes').value = ex.notes || '';
     document.getElementById('ex-modal-title').innerHTML = `<i data-feather="edit-2" class="w-4 h-4"></i> Editar Ejercicio ${exNum}`;
@@ -1149,8 +1241,8 @@ window.saveRepeticionesStudent = async function() {
             ex.repeticiones = (repsInput.value || '').trim() || '8-12';
             ex.repsRange = ex.repeticiones;
         }
-        if (rpeSelect) ex.rpe = rpeSelect.value;
-        if (tempoInput) ex.tempo = (tempoInput.value || '').trim() || '3-0-1-0';
+        if (rpeSelect) ex.rpe = rpeSelect.value || '-';
+        if (tempoInput) ex.tempo = (tempoInput.value || '').trim() || '0';
         if (visCheck) ex.visibleReps = visCheck.checked;
     });
 
@@ -1282,4 +1374,94 @@ window.selectStudentPwaWeek = function(weekNum) {
 window.selectStudentPwaDay = function(dayNum) {
     selectedDay = dayNum;
     renderApp();
+};
+
+// Maneja el despliegue del campo de texto cuando el profesor elige una categoría personalizada
+window.handleExCategoryChange = function(value) {
+    const customInput = document.getElementById('ex-modal-category-custom');
+    if (!customInput) return;
+    if (value === '__custom__') {
+        customInput.classList.remove('hidden');
+        customInput.focus();
+    } else {
+        customInput.classList.add('hidden');
+        customInput.value = '';
+    }
+};
+
+// Handler al cambiar de Semana en la navegación o en MesocicloView
+window.handleWeekChange = async function(newWeek) {
+    if (!currentStudentId) return;
+    studentsDatabase = getLocalStudents();
+    const student = studentsDatabase.find(s => String(s.id) === String(currentStudentId));
+    if (!student) return;
+
+    if (!student.mesociclo) student.mesociclo = {};
+    student.mesociclo.semanaEnPreparacion = parseInt(newWeek) || 1;
+
+    // Resetear día en preparación al día 1 al cambiar de semana
+    if (!student.microciclo) student.microciclo = {};
+    student.microciclo.diaEnPreparacion = 1;
+
+    showToast(`Cargando Semana ${newWeek}...`);
+    await saveStudentDifferential(student);
+    renderApp();
+};
+
+// Handler al cambiar de Día en MicrocicloView
+window.handleDayChange = async function(newDay) {
+    if (!currentStudentId) return;
+    studentsDatabase = getLocalStudents();
+    const student = studentsDatabase.find(s => String(s.id) === String(currentStudentId));
+    if (!student) return;
+
+    if (!student.microciclo) student.microciclo = {};
+    student.microciclo.diaEnPreparacion = parseInt(newDay) || 1;
+
+    showToast(`Cargando Día ${newDay}...`);
+    await saveStudentDifferential(student);
+    renderApp();
+};
+
+// Sugiere la URL del video automáticamente cuando el profesor escribe el nombre del ejercicio
+window.autoSuggestVideoLink = function(nameValue) {
+    const mediaInput = document.getElementById('ex-modal-media-url');
+    const badge = document.getElementById('ex-modal-video-badge');
+    if (!mediaInput) return;
+
+    const cleanKey = (nameValue || '').trim().toLowerCase();
+    if (!cleanKey) {
+        if (badge) badge.classList.add('hidden');
+        return;
+    }
+
+    const bank = getVideoBank();
+    if (bank[cleanKey]) {
+        // Solo autocompleta si la casilla de URL está vacía o tenía un valor previo automático
+        if (!mediaInput.value.trim() || mediaInput.dataset.autoFilled === 'true') {
+            mediaInput.value = bank[cleanKey];
+            mediaInput.dataset.autoFilled = 'true';
+            if (badge) badge.classList.remove('hidden');
+        }
+    } else {
+        if (mediaInput.dataset.autoFilled === 'true') {
+            mediaInput.value = '';
+            delete mediaInput.dataset.autoFilled;
+        }
+        if (badge) badge.classList.add('hidden');
+    }
+};
+
+// Abre YouTube en una pestaña nueva con el nombre del ejercicio pre-cargado en la búsqueda
+window.searchVideoInYouTube = function() {
+    const nameInput = document.getElementById('ex-modal-name');
+    const exerciseName = (nameInput?.value || '').trim();
+    
+    let searchQuery = 'ejercicio entrenamiento';
+    if (exerciseName) {
+        searchQuery = `${exerciseName} ejercicio`;
+    }
+
+    const ytUrl = `[suspicious link removed]{encodeURIComponent(searchQuery)}`;
+    window.open(ytUrl, '_blank');
 };
