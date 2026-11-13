@@ -752,7 +752,10 @@ window.handleMicroTipoChange = function(val) {
     }
 };
 
-// Guarda los datos del Microciclo y calcula la cantidad de días automáticamente a partir de los días seleccionados
+// ==========================================
+// 🔄 FUNCIÓN ÚNICA Y DEFINITIVA: saveMicrocicloStudent
+// (Reemplaza a las dos versiones duplicadas en src/main.js)
+// ==========================================
 window.saveMicrocicloStudent = async function() {
     if (!currentStudentId) return;
 
@@ -760,65 +763,20 @@ window.saveMicrocicloStudent = async function() {
     const student = studentsDatabase.find(s => String(s.id) === String(currentStudentId));
     if (!student) return;
 
-    const activeDayChips = document.querySelectorAll('.micro-day-chip.bg-sky-500');
-    const diasAsignados = Array.from(activeDayChips).map(chip => chip.getAttribute('data-day'));
-    const diasPorSemana = diasAsignados.length;
+    // 1. Identificar la semana que se está diseñando en Mesociclo
+    const prepWeek = student.mesociclo?.semanaEnPreparacion || 1;
 
-    const prepDay = parseInt(document.getElementById('micro-prep-day-select')?.value) || 1;
-
-    const selectEl = document.getElementById('micro-tipo-select');
-    const customInput = document.getElementById('micro-tipo-custom');
-
-    let tipoMicrociclo = 'Carga';
-    if (selectEl?.value === '__custom__') {
-        tipoMicrociclo = (customInput?.value || '').trim() || 'Tipo Personalizado';
-    } else {
-        tipoMicrociclo = selectEl?.value || 'Carga';
-    }
-
-    const observaciones = (document.getElementById('micro-obs-input')?.value || '').trim();
-
-    const isVisibleMicro = document.getElementById('vis-microciclo')?.checked ?? true;
-    const isVisibleDias = document.getElementById('vis-dias-semana')?.checked ?? true;
-    const isVisibleDiaPrep = document.getElementById('vis-dia-prep')?.checked ?? true;
-
-    student.microciclo = {
-        diasPorSemana,
-        diasAsignados,
-        diaEnPreparacion: prepDay,
-        tipoMicrociclo,
-        observaciones
-    };
-
-    student.visibilitySettings = {
-        ...student.visibilitySettings,
-        microciclo: isVisibleMicro,
-        diasSemana: isVisibleDias,
-        diaEnPreparacion: isVisibleDiaPrep
-    };
-
-    showToast("Guardando Microciclo...");
-    await saveStudentDifferential(student);
-    showToast("¡Microciclo actualizado con éxito!");
-    renderApp();
-};
-
-// Guarda los datos del Microciclo incluyendo el Día en Preparación
-window.saveMicrocicloStudent = async function() {
-    if (!currentStudentId) return;
-
-    studentsDatabase = getLocalStudents();
-    const student = studentsDatabase.find(s => String(s.id) === String(currentStudentId));
-    if (!student) return;
-
+    // 2. Obtener días asignados y cantidad total de días
     const activeDayChips = document.querySelectorAll('.micro-day-chip.bg-sky-500');
     const diasAsignados = Array.from(activeDayChips).map(chip => chip.getAttribute('data-day'));
 
     const activeNumBtn = document.querySelector('.micro-day-num-btn.bg-amber-500');
-    const diasPorSemana = activeNumBtn ? parseInt(activeNumBtn.innerText) || diasAsignados.length : diasAsignados.length;
+    const diasPorSemana = activeNumBtn ? (parseInt(activeNumBtn.innerText) || diasAsignados.length) : (diasAsignados.length || 3);
 
+    // 3. Día en preparación
     const prepDay = parseInt(document.getElementById('micro-prep-day-select')?.value) || 1;
 
+    // 4. Carácter / Tipo de Microciclo (Base o Personalizado)
     const selectEl = document.getElementById('micro-tipo-select');
     const customInput = document.getElementById('micro-tipo-custom');
 
@@ -829,19 +787,28 @@ window.saveMicrocicloStudent = async function() {
         tipoMicrociclo = selectEl?.value || 'Carga';
     }
 
+    // 5. Observaciones específicas
     const observaciones = (document.getElementById('micro-obs-input')?.value || '').trim();
 
+    // 6. Configuración de Visibilidad
     const isVisibleMicro = document.getElementById('vis-microciclo')?.checked ?? true;
     const isVisibleDias = document.getElementById('vis-dias-semana')?.checked ?? true;
     const isVisibleDiaPrep = document.getElementById('vis-dia-prep')?.checked ?? true;
 
-    student.microciclo = {
+    const microData = {
         diasPorSemana,
         diasAsignados,
         diaEnPreparacion: prepDay,
         tipoMicrociclo,
         observaciones
     };
+
+    // 🟢 Guardado global (compatibilidad con vistas generales)
+    student.microciclo = microData;
+
+    // 🟢 Guardado aislado por semana (asegura limpieza entre semanas)
+    if (!student.microcicloByWeek) student.microcicloByWeek = {};
+    student.microcicloByWeek[prepWeek] = microData;
 
     student.visibilitySettings = {
         ...student.visibilitySettings,
@@ -850,9 +817,9 @@ window.saveMicrocicloStudent = async function() {
         diaEnPreparacion: isVisibleDiaPrep
     };
 
-    showToast("Guardando Microciclo...");
+    showToast(`Guardando Microciclo de la Semana ${prepWeek}...`);
     await saveStudentDifferential(student);
-    showToast("¡Microciclo actualizado con éxito!");
+    showToast(`¡Microciclo de la Semana ${prepWeek} guardado con éxito!`);
     renderApp();
 };
 
@@ -1389,21 +1356,27 @@ window.handleExCategoryChange = function(value) {
     }
 };
 
-// Handler al cambiar de Semana en la navegación o en MesocicloView
+// Handler al cambiar de Semana en MesocicloView o selector interactivo
 window.handleWeekChange = async function(newWeek) {
     if (!currentStudentId) return;
     studentsDatabase = getLocalStudents();
     const student = studentsDatabase.find(s => String(s.id) === String(currentStudentId));
     if (!student) return;
 
+    const w = parseInt(newWeek) || 1;
     if (!student.mesociclo) student.mesociclo = {};
-    student.mesociclo.semanaEnPreparacion = parseInt(newWeek) || 1;
+    student.mesociclo.semanaEnPreparacion = w;
 
-    // Resetear día en preparación al día 1 al cambiar de semana
+    // Resetear el día activo a 1 al cambiar de semana
     if (!student.microciclo) student.microciclo = {};
     student.microciclo.diaEnPreparacion = 1;
 
-    showToast(`Cargando Semana ${newWeek}...`);
+    // Sincronizar también el microciclo activo
+    if (student.microcicloByWeek && student.microcicloByWeek[w]) {
+        student.microcicloByWeek[w].diaEnPreparacion = 1;
+    }
+
+    showToast(`Cargando Semana ${w}...`);
     await saveStudentDifferential(student);
     renderApp();
 };
@@ -1415,10 +1388,18 @@ window.handleDayChange = async function(newDay) {
     const student = studentsDatabase.find(s => String(s.id) === String(currentStudentId));
     if (!student) return;
 
-    if (!student.microciclo) student.microciclo = {};
-    student.microciclo.diaEnPreparacion = parseInt(newDay) || 1;
+    const d = parseInt(newDay) || 1;
+    const prepWeek = student.mesociclo?.semanaEnPreparacion || 1;
 
-    showToast(`Cargando Día ${newDay}...`);
+    if (!student.microciclo) student.microciclo = {};
+    student.microciclo.diaEnPreparacion = d;
+
+    if (!student.microcicloByWeek) student.microcicloByWeek = {};
+    if (student.microcicloByWeek[prepWeek]) {
+        student.microcicloByWeek[prepWeek].diaEnPreparacion = d;
+    }
+
+    showToast(`Cargando Día ${d}...`);
     await saveStudentDifferential(student);
     renderApp();
 };

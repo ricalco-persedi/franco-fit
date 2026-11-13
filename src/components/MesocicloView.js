@@ -81,17 +81,14 @@ export function renderMesocicloView(student = {}) {
                 <h3 class="text-xs font-black text-amber-400 uppercase tracking-wider flex items-center gap-1.5">
                     <i data-feather="edit-3" class="w-4 h-4 text-amber-400"></i> 2. Semana en Preparación
                 </h3>
-                
-                <!-- CASILLA DE VISIBILIDAD PARA LA SEMANA EN PREPARACIÓN -->
                 <label class="flex items-center gap-1.5 text-[10px] font-bold cursor-pointer select-none ${visSemanaPrep ? 'text-amber-400' : 'text-slate-500'}">
                     <input type="checkbox" id="vis-semana-prep" ${visSemanaPrep ? 'checked' : ''} class="w-3.5 h-3.5 accent-amber-500 rounded">
                     <span>${visSemanaPrep ? '👁️ Visible al Alumno' : '🔒 Oculto'}</span>
                 </label>
             </div>
-
             <div class="space-y-2">
                 <label class="block text-[10px] font-bold text-slate-300">Seleccionar la Semana que estás diseñando actualmente:</label>
-                <select id="meso-prep-week-select" class="w-full bg-slate-950 border border-amber-500/60 rounded-xl p-3 text-xs text-amber-300 font-black focus:outline-none focus:border-amber-400 cursor-pointer">
+                <select id="meso-prep-week-select" onchange="window.handleWeekChange(this.value)" class="w-full bg-slate-950 border border-amber-500/60 rounded-xl p-3 text-xs text-amber-300 font-black focus:outline-none focus:border-amber-400 cursor-pointer">
                     ${Array.from({ length: totalWeeks }, (_, i) => i + 1).map(w => `
                         <option value="${w}" ${prepWeek === w ? 'selected' : ''}>Semana ${w} ${w === prepWeek ? '(En Edición)' : ''}</option>
                     `).join('')}
