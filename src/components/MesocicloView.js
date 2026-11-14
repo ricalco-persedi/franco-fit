@@ -15,13 +15,12 @@ export function renderMesocicloView(student = {}) {
     const prepWeek = meso.semanaEnPreparacion || 1;
     const visibility = student.visibilitySettings || {};
 
-    // Estados de visibilidad independientes
     const visMesociclo = visibility.mesociclo !== false;
     const visSemanaPrep = visibility.semanaEnPreparacion !== false;
     const visEnfoqueMeso = visibility.enfoqueMesociclo !== false;
 
-    // Números de semanas habituales (1, 2, 3, 4, 6, 8, 12)
     const semanasSugeridas = [1, 2, 3, 4, 6, 8, 12];
+    const microByWeek = student.microcicloByWeek || {};
 
     return `
     <div class="space-y-4">
@@ -39,43 +38,37 @@ export function renderMesocicloView(student = {}) {
             </button>
         </div>
 
-        <!-- SECCIÓN 1: DURACIÓN TOTAL EN SEMANAS + VISIBILIDAD -->
+        <!-- SECCIÓN 1: DURACIÓN TOTAL EN SEMANAS -->
         <section class="bg-slate-900/90 rounded-2xl p-4 border border-slate-800 shadow-xl space-y-3">
             <div class="flex items-center justify-between border-b border-slate-800 pb-2">
                 <h3 class="text-xs font-bold text-slate-300 uppercase tracking-wider flex items-center gap-1.5">
                     <i data-feather="clock" class="w-4 h-4 text-sky-400"></i> 1. Duración Total del Mesociclo
                 </h3>
-                
                 <label class="flex items-center gap-1.5 text-[10px] font-bold cursor-pointer select-none ${visMesociclo ? 'text-amber-400' : 'text-slate-500'}">
                     <input type="checkbox" id="vis-mesociclo" ${visMesociclo ? 'checked' : ''} class="w-3.5 h-3.5 accent-amber-500 rounded">
-                    <span>${visMesociclo ? '👁️ Visible al Alumno' : '🔒 Oculto'}</span>
+                    <span>${visMesociclo ? '👁️ Visible' : '🔒 Oculto'}</span>
                 </label>
             </div>
-
             <div class="space-y-3">
                 <label class="block text-[10px] font-bold text-slate-400">Cantidad Total de Semanas que abarcará</label>
-                
                 <div class="flex flex-wrap gap-2">
                     ${semanasSugeridas.map(sw => `
-                        <button type="button" onclick="window.setMesoWeeksPreset(${sw})" 
-                            class="meso-week-btn text-xs font-black px-3 py-2 rounded-xl border transition cursor-pointer ${totalWeeks === sw ? 'bg-amber-500 text-slate-950 border-amber-400 shadow-lg' : 'bg-slate-950 text-slate-300 border-slate-800 hover:text-white'}">
-                            ${sw} ${sw === 1 ? 'Semana' : 'Semanas'}
-                        </button>
+                    <button type="button" onclick="window.setMesoWeeksPreset(${sw})" class="meso-week-btn text-xs font-black px-3 py-2 rounded-xl border transition cursor-pointer ${totalWeeks === sw ? 'bg-amber-500 text-slate-950 border-amber-400 shadow-lg' : 'bg-slate-950 text-slate-300 border-slate-800 hover:text-white'}">
+                        ${sw} ${sw === 1 ? 'Semana' : 'Semanas'}
+                    </button>
                     `).join('')}
                 </div>
-
                 <div class="bg-slate-950 p-3 rounded-xl border border-slate-800 flex items-center justify-between gap-3">
                     <span class="text-[11px] font-bold text-slate-300">Duración personalizada:</span>
                     <div class="flex items-center gap-2">
-                        <input type="number" id="meso-weeks-input" min="1" max="52" value="${totalWeeks}" onchange="window.updatePrepWeeksDropdown()"
-                            class="w-20 bg-slate-900 border border-amber-500/50 rounded-xl p-2 text-xs text-amber-400 font-black text-center focus:outline-none">
+                        <input type="number" id="meso-weeks-input" min="1" max="52" value="${totalWeeks}" onchange="window.updatePrepWeeksDropdown()" class="w-20 bg-slate-900 border border-amber-500/50 rounded-xl p-2 text-xs text-amber-400 font-black text-center focus:outline-none">
                         <span class="text-xs text-slate-400 font-semibold">semanas</span>
                     </div>
                 </div>
             </div>
         </section>
 
-        <!-- SECCIÓN 2: SEMANA EN PREPARACIÓN + VISIBILIDAD -->
+        <!-- SECCIÓN 2: SEMANA EN PREPARACIÓN -->
         <section class="bg-slate-900/90 rounded-2xl p-4 border border-amber-500/40 shadow-xl space-y-3">
             <div class="flex items-center justify-between border-b border-slate-800 pb-2">
                 <h3 class="text-xs font-black text-amber-400 uppercase tracking-wider flex items-center gap-1.5">
@@ -83,39 +76,39 @@ export function renderMesocicloView(student = {}) {
                 </h3>
                 <label class="flex items-center gap-1.5 text-[10px] font-bold cursor-pointer select-none ${visSemanaPrep ? 'text-amber-400' : 'text-slate-500'}">
                     <input type="checkbox" id="vis-semana-prep" ${visSemanaPrep ? 'checked' : ''} class="w-3.5 h-3.5 accent-amber-500 rounded">
-                    <span>${visSemanaPrep ? '👁️ Visible al Alumno' : '🔒 Oculto'}</span>
+                    <span>${visSemanaPrep ? '👁️ Visible' : '🔒 Oculto'}</span>
                 </label>
             </div>
             <div class="space-y-2">
                 <label class="block text-[10px] font-bold text-slate-300">Seleccionar la Semana que estás diseñando actualmente:</label>
                 <select id="meso-prep-week-select" onchange="window.handleWeekChange(this.value)" class="w-full bg-slate-950 border border-amber-500/60 rounded-xl p-3 text-xs text-amber-300 font-black focus:outline-none focus:border-amber-400 cursor-pointer">
-                    ${Array.from({ length: totalWeeks }, (_, i) => i + 1).map(w => `
-                        <option value="${w}" ${prepWeek === w ? 'selected' : ''}>Semana ${w} ${w === prepWeek ? '(En Edición)' : ''}</option>
-                    `).join('')}
+                    ${Array.from({ length: totalWeeks }, (_, i) => i + 1).map(w => {
+                        const isLoaded = !!microByWeek[w];
+                        const labelState = isLoaded ? `(Cargada: ${microByWeek[w].diasAsignados?.join(', ') || 'Sin días'})` : '(Sin configurar)';
+                        return `<option value="${w}" ${prepWeek === w ? 'selected' : ''}>Semana ${w} ${w === prepWeek ? '➔ [EN EDICIÓN]' : labelState}</option>`;
+                    }).join('')}
                 </select>
-                <p class="text-[10px] text-slate-400 italic">Los ejercicios, cargas y series asignados se vincularán a esta semana específica.</p>
+                <p class="text-[10px] text-slate-400 italic">Al cambiar de semana, los ejercicios y microciclos se actualizarán automáticamente a la semana seleccionada.</p>
             </div>
         </section>
 
-        <!-- SECCIÓN 3: ENFOQUE ESPECÍFICO DEL MESOCICLO + VISIBILIDAD -->
+        <!-- SECCIÓN 3: ENFOQUE & METAS -->
         <section class="bg-slate-900/90 rounded-2xl p-4 border border-slate-800 shadow-xl space-y-3">
             <div class="flex items-center justify-between border-b border-slate-800 pb-2">
                 <h3 class="text-xs font-bold text-slate-300 uppercase tracking-wider flex items-center gap-1.5">
                     <i data-feather="file-text" class="w-4 h-4 text-emerald-400"></i> Enfoque & Metas del Mesociclo
                 </h3>
-
                 <label class="flex items-center gap-1.5 text-[10px] font-bold cursor-pointer select-none ${visEnfoqueMeso ? 'text-amber-400' : 'text-slate-500'}">
                     <input type="checkbox" id="vis-enfoque-meso" ${visEnfoqueMeso ? 'checked' : ''} class="w-3.5 h-3.5 accent-amber-500 rounded">
-                    <span>${visEnfoqueMeso ? '👁️ Visible al Alumno' : '🔒 Oculto'}</span>
+                    <span>${visEnfoqueMeso ? '👁️ Visible' : '🔒 Oculto'}</span>
                 </label>
             </div>
-
             <div>
-                <textarea id="meso-enfoque-input" rows="4" placeholder="Describa las metas específicas de este mesociclo (ej: Bloque de Acumulación de volumen, Intensificación de cargas, Semana de descarga/Deload...)" class="w-full bg-slate-950 border border-slate-800 rounded-xl p-3 text-xs text-slate-200 focus:outline-none focus:border-amber-500 leading-relaxed">${meso.enfoque || ''}</textarea>
+                <textarea id="meso-enfoque-input" rows="4" placeholder="Describa las metas específicas de este mesociclo..." class="w-full bg-slate-950 border border-slate-800 rounded-xl p-3 text-xs text-slate-200 focus:outline-none focus:border-amber-500 leading-relaxed">${meso.enfoque || ''}</textarea>
             </div>
         </section>
 
-        <!-- BOTÓN FINAL DE GUARDADO -->
+        <!-- BOTÓN FINAL -->
         <button onclick="window.saveMesocicloStudent()" class="w-full bg-amber-500 hover:bg-amber-400 text-slate-950 text-xs font-black py-3 rounded-2xl shadow-2xl transition active:scale-95 flex items-center justify-center gap-2 cursor-pointer">
             <i data-feather="check-circle" class="w-4 h-4"></i> Guardar Mesociclo y Semana Activa
         </button>

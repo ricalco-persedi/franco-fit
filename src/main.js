@@ -1356,7 +1356,7 @@ window.handleExCategoryChange = function(value) {
     }
 };
 
-// Handler al cambiar de Semana en MesocicloView o selector interactivo
+// Handler al cambiar de Semana (Mesociclo ➔ Microciclo ➔ Ejercicios)
 window.handleWeekChange = async function(newWeek) {
     if (!currentStudentId) return;
     studentsDatabase = getLocalStudents();
@@ -1371,7 +1371,7 @@ window.handleWeekChange = async function(newWeek) {
     if (!student.microciclo) student.microciclo = {};
     student.microciclo.diaEnPreparacion = 1;
 
-    // Sincronizar también el microciclo activo
+    // Si la semana ya tiene microciclo, sincronizar el día activo
     if (student.microcicloByWeek && student.microcicloByWeek[w]) {
         student.microcicloByWeek[w].diaEnPreparacion = 1;
     }

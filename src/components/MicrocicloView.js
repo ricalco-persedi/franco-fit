@@ -1,5 +1,6 @@
 /**
  * Componente para renderizar la gestión de la Entidad Relacional Microciclo
+ * Garantiza el aislamiento estricto de días, tipo u observaciones por semana activa.
  */
 export function renderMicrocicloView(student = {}) {
     if (!student || !student.id) {
@@ -11,15 +12,17 @@ export function renderMicrocicloView(student = {}) {
     }
 
     const prepWeek = student.mesociclo?.semanaEnPreparacion || 1;
-    
-    // Lectura aislada por semana en preparación
-    const microByWeek = student.microcicloByWeek || {};
-    const weekMicro = microByWeek[prepWeek] || (prepWeek === 1 ? student.microciclo : null) || {};
 
-    const diasAsignados = weekMicro.diasAsignados || student.microciclo?.diasAsignados || ['Lunes', 'Miércoles', 'Viernes'];
-    const prepDay = weekMicro.diaEnPreparacion || student.microciclo?.diaEnPreparacion || 1;
-    const currentTipo = weekMicro.tipoMicrociclo || student.microciclo?.tipoMicrociclo || 'Carga';
-    const observaciones = weekMicro.observaciones !== undefined ? weekMicro.observaciones : '';
+    // 🟢 Lectura AISLADA por semana en preparación (sin fallbacks cruzados)
+    const microByWeek = student.microcicloByWeek || {};
+    const weekMicro = microByWeek[prepWeek] || null;
+
+    // Si la semana no ha sido guardada previamente, no hereda días de otras semanas
+    const diasAsignados = weekMicro ? (weekMicro.diasAsignados || []) : [];
+    const prepDay = weekMicro ? (weekMicro.diaEnPreparacion || 1) : 1;
+    const currentTipo = weekMicro ? (weekMicro.tipoMicrociclo || 'Carga') : 'Carga';
+    const observaciones = weekMicro ? (weekMicro.observaciones || '') : '';
+    const isWeekConfigured = !!weekMicro;
 
     const visibility = student.visibilitySettings || {};
     const visMicrociclo = visibility.microciclo !== false;
@@ -28,25 +31,27 @@ export function renderMicrocicloView(student = {}) {
 
     const diasSemanaBase = ['Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado', 'Domingo'];
     const tiposMicroBase = ['Ajuste', 'Carga', 'Impacto', 'Regenerativo / Descarga', 'Restablecimiento', 'Competencia'];
-    
+
     if (currentTipo && !tiposMicroBase.includes(currentTipo)) {
         tiposMicroBase.push(currentTipo);
     }
-    const diasSeleccionados = Array.isArray(diasAsignados) ? diasAsignados : ['Lunes', 'Miércoles', 'Viernes'];
+    const diasSeleccionados = Array.isArray(diasAsignados) ? diasAsignados : [];
 
     return `
     <div class="space-y-4">
         <!-- HEADER DE LA ENTIDAD -->
         <div class="bg-slate-900/90 rounded-2xl p-4 border border-amber-500/30 shadow-xl flex justify-between items-center">
-            <div class="flex items-center gap-2">
-                <i data-feather="grid" class="w-5 h-5 text-amber-400"></i>
-                <div>
-                    <h2 class="text-xs font-black text-amber-400 uppercase tracking-wider">Estructura del Microciclo (Semana ${prepWeek})</h2>
-                    <span class="text-[10px] text-slate-400">Días asignados y carácter del microciclo</span>
+            <div class="flex items-center gap-2 min-w-0">
+                <i data-feather="grid" class="w-5 h-5 text-amber-400 shrink-0"></i>
+                <div class="min-w-0">
+                    <h2 class="text-xs font-black text-amber-400 uppercase tracking-wider truncate">Microciclo - Semana ${prepWeek}</h2>
+                    <span class="text-[10px] ${isWeekConfigured ? 'text-emerald-400 font-bold' : 'text-amber-300 font-bold'} block truncate">
+                        ${isWeekConfigured ? '✓ Datos de esta semana cargados' : '⚠️ Semana sin configurar aún'}
+                    </span>
                 </div>
             </div>
-            <button onclick="window.saveMicrocicloStudent()" class="bg-amber-500 hover:bg-amber-400 text-slate-950 text-xs font-black px-3.5 py-2 rounded-xl shadow-lg transition active:scale-95 flex items-center gap-1.5 cursor-pointer">
-                <i data-feather="save" class="w-3.5 h-3.5"></i> Guardar
+            <button onclick="window.saveMicrocicloStudent()" class="bg-amber-500 hover:bg-amber-400 text-slate-950 text-xs font-black px-3.5 py-2 rounded-xl shadow-lg transition active:scale-95 flex items-center gap-1.5 cursor-pointer shrink-0">
+                <i data-feather="save" class="w-3.5 h-3.5"></i> Guardar Semana ${prepWeek}
             </button>
         </div>
 
@@ -54,15 +59,15 @@ export function renderMicrocicloView(student = {}) {
         <section class="bg-slate-900/90 rounded-2xl p-4 border border-slate-800 shadow-xl space-y-3">
             <div class="flex items-center justify-between border-b border-slate-800 pb-2">
                 <h3 class="text-xs font-bold text-slate-300 uppercase tracking-wider flex items-center gap-1.5">
-                    <i data-feather="calendar" class="w-4 h-4 text-sky-400"></i> 1. Días de Entrenamiento Asignados
+                    <i data-feather="calendar" class="w-4 h-4 text-sky-400"></i> 1. Días de Entrenamiento (Semana ${prepWeek})
                 </h3>
                 <label class="flex items-center gap-1.5 text-[10px] font-bold cursor-pointer select-none ${visDiasSemana ? 'text-amber-400' : 'text-slate-500'}">
                     <input type="checkbox" id="vis-dias-semana" ${visDiasSemana ? 'checked' : ''} class="w-3.5 h-3.5 accent-amber-500 rounded">
-                    <span>${visDiasSemana ? '👁️ Visible al Alumno' : '🔒 Oculto'}</span>
+                    <span>${visDiasSemana ? '👁️ Visible' : '🔒 Oculto'}</span>
                 </label>
             </div>
             <div class="space-y-2">
-                <label class="block text-[10px] font-bold text-slate-400">Toca para seleccionar los días específicos de la semana:</label>
+                <label class="block text-[10px] font-bold text-slate-400">Toca para seleccionar los días específicos de esta semana:</label>
                 <div class="flex flex-wrap gap-1.5" id="micro-days-selector-container">
                     ${diasSemanaBase.map(dia => {
                         const isSelected = diasSeleccionados.includes(dia);
@@ -83,30 +88,30 @@ export function renderMicrocicloView(student = {}) {
                 </h3>
                 <label class="flex items-center gap-1.5 text-[10px] font-bold cursor-pointer select-none ${visDiaPrep ? 'text-amber-400' : 'text-slate-500'}">
                     <input type="checkbox" id="vis-dia-prep" ${visDiaPrep ? 'checked' : ''} class="w-3.5 h-3.5 accent-amber-500 rounded">
-                    <span>${visDiaPrep ? '👁️ Visible al Alumno' : '🔒 Oculto'}</span>
+                    <span>${visDiaPrep ? '👁️ Visible' : '🔒 Oculto'}</span>
                 </label>
             </div>
             <div class="space-y-2">
                 <label class="block text-[10px] font-bold text-slate-300">Selecciona el día de la semana que estás diseñando actualmente:</label>
                 <select id="micro-prep-day-select" onchange="window.handleDayChange(this.value)" class="w-full bg-slate-950 border border-amber-500/60 rounded-xl p-3 text-xs text-amber-300 font-black focus:outline-none focus:border-amber-400 cursor-pointer">
-                    ${diasSeleccionados.map((dia, idx) => {
+                    ${diasSeleccionados.length > 0 ? diasSeleccionados.map((dia, idx) => {
                         const dayNum = idx + 1;
                         return `<option value="${dayNum}" ${prepDay === dayNum ? 'selected' : ''}>Día ${dayNum} - ${dia} ${prepDay === dayNum ? '(En Edición)' : ''}</option>`;
-                    }).join('')}
+                    }).join('') : `<option value="1">Día 1 (Selecciona días arriba)</option>`}
                 </select>
-                <p class="text-[10px] text-slate-400 italic">Los ejercicios, series y cargas que configures a continuación se vincularán a este día específico.</p>
+                <p class="text-[10px] text-slate-400 italic">Los ejercicios, series y cargas que configures a continuación se vincularán a este día específico de la Semana ${prepWeek}.</p>
             </div>
         </section>
 
-        <!-- SECCIÓN 3: TIPO DE MICROCICLO + VISIBILIDAD -->
+        <!-- SECCIÓN 3: TIPO DE MICROCICLO -->
         <section class="bg-slate-900/90 rounded-2xl p-4 border border-slate-800 shadow-xl space-y-3">
             <div class="flex items-center justify-between border-b border-slate-800 pb-2">
                 <h3 class="text-xs font-bold text-slate-300 uppercase tracking-wider flex items-center gap-1.5">
-                    <i data-feather="activity" class="w-4 h-4 text-emerald-400"></i> 3. Carácter del Microciclo
+                    <i data-feather="activity" class="w-4 h-4 text-emerald-400"></i> 3. Carácter del Microciclo (Semana ${prepWeek})
                 </h3>
                 <label class="flex items-center gap-1.5 text-[10px] font-bold cursor-pointer select-none ${visMicrociclo ? 'text-amber-400' : 'text-slate-500'}">
                     <input type="checkbox" id="vis-microciclo" ${visMicrociclo ? 'checked' : ''} class="w-3.5 h-3.5 accent-amber-500 rounded">
-                    <span>${visMicrociclo ? '👁️ Visible al Alumno' : '🔒 Oculto'}</span>
+                    <span>${visMicrociclo ? '👁️ Visible' : '🔒 Oculto'}</span>
                 </label>
             </div>
             <div class="space-y-2">
@@ -123,7 +128,7 @@ export function renderMicrocicloView(student = {}) {
             </div>
         </section>
 
-        <!-- SECCIÓN 4: OBSERVACIONES Y NOTAS TÉCNICAS -->
+        <!-- SECCIÓN 4: OBSERVACIONES -->
         <section class="bg-slate-900/90 rounded-2xl p-4 border border-slate-800 shadow-xl space-y-3">
             <h3 class="text-xs font-bold text-slate-300 uppercase tracking-wider border-b border-slate-800 pb-2 flex items-center gap-1.5">
                 <i data-feather="clipboard" class="w-4 h-4 text-amber-400"></i> Observaciones del Microciclo (Semana ${prepWeek})
