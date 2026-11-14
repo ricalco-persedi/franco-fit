@@ -179,22 +179,6 @@ function renderExerciseModalHTML() {
                     </div>
                     <input type="url" id="ex-modal-media-url" placeholder="https://..." class="w-full bg-slate-950 border border-slate-800 rounded-xl p-2.5 text-xs text-white font-semibold focus:outline-none focus:border-amber-500">
                     <p id="ex-modal-video-badge" class="text-[9px] text-emerald-400 font-bold hidden mt-1">✨ Video autocompletado desde tu Banco de Videos</p>
-
-                    <!-- VISOR INTERNO IN-APP -->
-                    <div id="ex-modal-yt-embed-container" class="hidden mt-2 p-2 bg-slate-950 border border-red-500/40 rounded-xl space-y-2">
-                        <div class="flex justify-between items-center">
-                            <span class="text-[10px] font-bold text-red-400 flex items-center gap-1">
-                                <i data-feather="youtube" class="w-3 h-3"></i> Visor / Buscador YouTube In-App
-                            </span>
-                            <button type="button" onclick="window.closeInAppYtSearch()" class="text-[9px] bg-slate-800 text-slate-300 hover:text-white px-2 py-0.5 rounded-lg">
-                                Cerrar Visor
-                            </button>
-                        </div>
-                        <div class="w-full h-64 rounded-lg overflow-hidden border border-slate-800">
-                            <iframe id="ex-modal-yt-iframe" src="about:blank" class="w-full h-full border-0"></iframe>
-                        </div>
-                        <p class="text-[9px] text-slate-400 italic text-center">Copia el enlace del video deseado y pégalo en la casilla de arriba.</p>
-                    </div>
                 </div>
 
                 <div>

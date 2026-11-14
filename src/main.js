@@ -1433,37 +1433,31 @@ window.autoSuggestVideoLink = function(nameValue) {
     }
 };
 
-// Abre la búsqueda en YouTube en una pestaña emergente o activa el panel interno
+// Abre la búsqueda directa en YouTube en una ventana emergente flotante pop-up
 window.searchVideoInYouTube = function() {
     const nameInput = document.getElementById('ex-modal-name');
     const exerciseName = (nameInput?.value || '').trim();
     
-    let searchQuery = 'ejercicio entrenamiento';
-    if (exerciseName) {
-        searchQuery = `${exerciseName} ejercicio`;
+    if (!exerciseName) {
+        showToast("Escribe primero el nombre del ejercicio para buscar su video.");
+        if (nameInput) nameInput.focus();
+        return;
     }
 
+    // Construye la búsqueda directa concatenando el nombre del ejercicio
+    const searchQuery = `${exerciseName} ejercicio entrenamiento`;
     const encodedQuery = encodeURIComponent(searchQuery);
     const ytUrl = `[suspicious link removed]{encodedQuery}`;
 
-    // Intentar abrir el panel integrado in-app primero
-    const embedContainer = document.getElementById('ex-modal-yt-embed-container');
-    const embedIframe = document.getElementById('ex-modal-yt-iframe');
-    
-    if (embedContainer && embedIframe) {
-        embedIframe.src = ytUrl;
-        embedContainer.classList.remove('hidden');
-        showToast("Buscador de YouTube abierto dentro de la App");
-    } else {
-        // Ventana emergente con dimensiones ajustadas tipo popup
-        window.open(ytUrl, 'YouTubeSearch', 'width=500,height=700,scrollbars=yes,resizable=yes');
-    }
-};
+    // Dimensiones y posición centrada para la ventana flotante pop-up
+    const width = 480;
+    const height = 660;
+    const left = Math.max(0, Math.round((window.screen.width - width) / 2));
+    const top = Math.max(0, Math.round((window.screen.height - height) / 2));
 
-// Cierra el panel de búsqueda in-app dentro del modal
-window.closeInAppYtSearch = function() {
-    const embedContainer = document.getElementById('ex-modal-yt-embed-container');
-    const embedIframe = document.getElementById('ex-modal-yt-iframe');
-    if (embedIframe) embedIframe.src = 'about:blank';
-    if (embedContainer) embedContainer.classList.add('hidden');
+    window.open(
+        ytUrl,
+        'YouTubeVideoSearchPopup',
+        `width=${width},height=${height},top=${top},left=${left},scrollbars=yes,resizable=yes`
+    );
 };
