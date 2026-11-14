@@ -1,8 +1,3 @@
-/**
- * Componente para el Módulo: RESUMEN DE DATOS CARGADOS (Checklist del Profesor)
- * Revisa entidad por entidad el estado de carga del alumno seleccionado,
- * especificando semanas, días y ejercicios individualmente.
- */
 export function renderResumenView(student = {}) {
     if (!student || !student.id) {
         return `
@@ -12,25 +7,21 @@ export function renderResumenView(student = {}) {
         </div>`;
     }
 
-    // 1. Evaluación de Ficha Técnica
     const antropo = student.datosAntropometricos || {};
     const hasAntropo = !!(antropo.peso || antropo.altura || antropo.grasa);
     const hasLesiones = !!(student.historialLesiones && student.historialLesiones.trim());
     const hasEvaluacion = !!(student.evaluacionInicial && student.evaluacionInicial.trim());
     const hasPersonalData = !!(student.lastname || student.firstname || student.dni);
 
-    // 2. Evaluación de Macrociclo
     const macro = student.macrociclo || {};
     const hasMacroFase = !!(macro.fase && macro.fase !== 'Adaptación');
     const hasMacroObj = !!(macro.objetivo && macro.objetivo.trim());
 
-    // 3. Evaluación de Mesociclo y Semanas Específicas
     const meso = student.mesociclo || {};
     const totalWeeksCount = parseInt(student.totalWeeks || meso.numeroSemanas) || 4;
     const hasMesoEnfoque = !!(meso.enfoque && meso.enfoque.trim());
     const routine = student.routine || {};
 
-    // Identificación individual de semanas que tienen datos
     const loadedWeeksList = [];
     for (let w = 1; w <= totalWeeksCount; w++) {
         const weekData = routine[w] || {};
@@ -42,7 +33,6 @@ export function renderResumenView(student = {}) {
     }
     const hasWeeksLoaded = loadedWeeksList.length > 0;
 
-    // 4. Evaluación de Microciclo por Semana
     const microByWeekObj = student.microcicloByWeek || {};
     const microWeekDetails = [];
 
@@ -54,7 +44,6 @@ export function renderResumenView(student = {}) {
     }
     const hasMicroDetails = microWeekDetails.length > 0;
 
-    // 5. Evaluación de Ejercicios Desglosados por Día y Semana
     const exerciseDetailsByDay = [];
     let grandTotalExercises = 0;
 
@@ -76,18 +65,15 @@ export function renderResumenView(student = {}) {
 
     const hasExercisesLoaded = grandTotalExercises > 0;
 
-    // Métricas de Ejercicio
     const allExercisesList = Object.values(routine).flatMap(w => Object.values(w).flat());
     const hasSeriesConfig = allExercisesList.some(ex => ex.series || ex.tipoSerie || ex.setRest);
     const hasRepsConfig = allExercisesList.some(ex => ex.repeticiones || ex.repsRange || (ex.rpe && ex.rpe !== '-'));
     const hasCargaConfig = allExercisesList.some(ex => ex.cargaKg || ex.porcentajeRM);
 
-    // 6. Evaluación de Nutrición
     const nutrition = student.nutrition || {};
     const hasDiet = !!(nutrition.diet && nutrition.diet.trim());
     const hasSupplements = !!(nutrition.supplements && nutrition.supplements.trim());
 
-    // Helper para dibujar cada elemento de la lista
     function renderCheckItem(label, isCompleted, detailsHTML = '') {
         return `
         <div class="flex items-start justify-between gap-2 p-2.5 rounded-xl border ${isCompleted ? 'bg-emerald-950/20 border-emerald-500/30' : 'bg-slate-950/60 border-slate-800/80'}">
@@ -108,7 +94,6 @@ export function renderResumenView(student = {}) {
 
     return `
     <div class="space-y-4">
-        <!-- HEADER DEL MÓDULO -->
         <div class="bg-slate-900/90 rounded-2xl p-4 border border-amber-500/30 shadow-xl flex justify-between items-center">
             <div class="flex items-center gap-2 min-w-0">
                 <i data-feather="check-square" class="w-5 h-5 text-amber-400 shrink-0"></i>
@@ -124,7 +109,6 @@ export function renderResumenView(student = {}) {
             </span>
         </div>
 
-        <!-- 1. FICHA TÉCNICA -->
         <section class="bg-slate-900/90 rounded-2xl p-4 border border-slate-800 shadow-xl space-y-3">
             <h3 class="text-xs font-black text-amber-400 uppercase tracking-wider border-b border-slate-800 pb-2 flex items-center gap-1.5">
                 <i data-feather="user" class="w-4 h-4 text-amber-400"></i> Módulo: Ficha Técnica
@@ -137,7 +121,6 @@ export function renderResumenView(student = {}) {
             </div>
         </section>
 
-        <!-- 2. MACROCICLO -->
         <section class="bg-slate-900/90 rounded-2xl p-4 border border-slate-800 shadow-xl space-y-3">
             <h3 class="text-xs font-black text-sky-400 uppercase tracking-wider border-b border-slate-800 pb-2 flex items-center gap-1.5">
                 <i data-feather="target" class="w-4 h-4 text-sky-400"></i> Módulo: Macrociclo
@@ -148,7 +131,6 @@ export function renderResumenView(student = {}) {
             </div>
         </section>
 
-        <!-- 3. MESOCICLO Y SEMANAS IDENTIFICADAS -->
         <section class="bg-slate-900/90 rounded-2xl p-4 border border-slate-800 shadow-xl space-y-3">
             <h3 class="text-xs font-black text-emerald-400 uppercase tracking-wider border-b border-slate-800 pb-2 flex items-center gap-1.5">
                 <i data-feather="calendar" class="w-4 h-4 text-emerald-400"></i> Módulo: Mesociclo
@@ -159,7 +141,6 @@ export function renderResumenView(student = {}) {
             </div>
         </section>
 
-        <!-- 4. MICROCICLO POR SEMANA -->
         <section class="bg-slate-900/90 rounded-2xl p-4 border border-slate-800 shadow-xl space-y-3">
             <h3 class="text-xs font-black text-amber-400 uppercase tracking-wider border-b border-slate-800 pb-2 flex items-center gap-1.5">
                 <i data-feather="grid" class="w-4 h-4 text-amber-400"></i> Módulo: Microciclo (Días por Semana)
@@ -169,7 +150,6 @@ export function renderResumenView(student = {}) {
             </div>
         </section>
 
-        <!-- 5. EJERCICIOS Y RUTINAS DESGLOSADAS -->
         <section class="bg-slate-900/90 rounded-2xl p-4 border border-slate-800 shadow-xl space-y-3">
             <h3 class="text-xs font-black text-purple-400 uppercase tracking-wider border-b border-slate-800 pb-2 flex items-center gap-1.5">
                 <i data-feather="film" class="w-4 h-4 text-purple-400"></i> Módulo: Ejercicios (Desglose por Día y Semana)
@@ -182,7 +162,6 @@ export function renderResumenView(student = {}) {
             </div>
         </section>
 
-        <!-- 6. NUTRICIÓN -->
         <section class="bg-slate-900/90 rounded-2xl p-4 border border-slate-800 shadow-xl space-y-3">
             <h3 class="text-xs font-black text-teal-400 uppercase tracking-wider border-b border-slate-800 pb-2 flex items-center gap-1.5">
                 <i data-feather="heart" class="w-4 h-4 text-teal-400"></i> Módulo: Nutrición

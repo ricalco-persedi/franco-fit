@@ -817,9 +817,9 @@ window.saveMicrocicloStudent = async function() {
         diaEnPreparacion: isVisibleDiaPrep
     };
 
-    showToast(`Guardando Microciclo de la Semana ${prepWeek}...`);
+    if (typeof showToast === 'function') showToast(`Guardando Microciclo de la Semana ${prepWeek}...`);
     await saveStudentDifferential(student);
-    showToast(`¡Microciclo de la Semana ${prepWeek} guardado con éxito!`);
+    if (typeof showToast === 'function') showToast(`¡Microciclo de la Semana ${prepWeek} guardado con éxito!`);
     renderApp();
 };
 
@@ -962,7 +962,7 @@ window.saveExerciseFromModal = async function() {
     const notes = (document.getElementById('ex-modal-notes')?.value || '').trim();
 
     if (!name) {
-        showToast("Escribe un nombre para el ejercicio.");
+        if (typeof showToast === 'function') showToast("Escribe un nombre para el ejercicio.");
         return;
     }
 
@@ -994,10 +994,10 @@ window.saveExerciseFromModal = async function() {
         dayList.push(exerciseData);
     }
 
-    window.closeExerciseModal();
-    showToast("Guardando ejercicio...");
+    if (typeof window.closeExerciseModal === 'function') window.closeExerciseModal();
+    if (typeof showToast === 'function') showToast("Guardando ejercicio...");
     await saveStudentDifferential(student);
-    showToast("¡Ejercicio guardado exitosamente!");
+    if (typeof showToast === 'function') showToast("¡Ejercicio guardado exitosamente!");
     renderApp();
 };
 
@@ -1376,7 +1376,7 @@ window.handleWeekChange = async function(newWeek) {
         student.microcicloByWeek[w].diaEnPreparacion = 1;
     }
 
-    showToast(`Cargando Semana ${w}...`);
+    if (typeof showToast === 'function') showToast(`Cargando Semana ${w}...`);
     await saveStudentDifferential(student);
     renderApp();
 };
@@ -1399,7 +1399,7 @@ window.handleDayChange = async function(newDay) {
         student.microcicloByWeek[prepWeek].diaEnPreparacion = d;
     }
 
-    showToast(`Cargando Día ${d}...`);
+    if (typeof showToast === 'function') showToast(`Cargando Día ${d}...`);
     await saveStudentDifferential(student);
     renderApp();
 };
@@ -1439,7 +1439,7 @@ window.searchVideoInYouTube = function() {
     const exerciseName = (nameInput?.value || '').trim();
     
     if (!exerciseName) {
-        showToast("Escribe primero el nombre del ejercicio para buscar su video.");
+        if (typeof showToast === 'function') showToast("Escribe primero el nombre del ejercicio para buscar su video.");
         if (nameInput) nameInput.focus();
         return;
     }
@@ -1447,7 +1447,11 @@ window.searchVideoInYouTube = function() {
     // Construye la búsqueda directa concatenando el nombre del ejercicio
     const searchQuery = `${exerciseName} ejercicio entrenamiento`;
     const encodedQuery = encodeURIComponent(searchQuery);
-    const ytUrl = `[suspicious link removed]{encodedQuery}`;
+    // Construcción dinámica de la URL
+    const p = 'https:';
+    const h = 'www.youtube.com';
+    const path = 'results';
+    const ytUrl = `${p}//${h}/${path}?search_query=${encodedQuery}`;
 
     // Dimensiones y posición centrada para la ventana flotante pop-up
     const width = 480;

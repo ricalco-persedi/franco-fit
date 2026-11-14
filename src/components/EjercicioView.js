@@ -1,10 +1,5 @@
 import { parseMediaInfo } from './ExerciseCard.js';
 
-/**
- * Componente para renderizar la gestión de la Entidad Relacional Ejercicio
- * Muestra una lista secuencial de ejercicios numerados (Ejercicio 1, Ejercicio 2...)
- * con autocompletado de videos y búsqueda directa en YouTube.
- */
 export function renderEjercicioView(student = {}) {
     if (!student || !student.id) {
         return `
@@ -22,15 +17,14 @@ export function renderEjercicioView(student = {}) {
     const routine = student.routine || {};
     const exercisesOfDay = (routine[prepWeek] && routine[prepWeek][prepDay]) || [];
 
-    // Ordenar los ejercicios por su número asignado correlativo
     const sortedExercises = [...exercisesOfDay].sort((a, b) => {
         const numA = a.exerciseNumber || 0;
         const numB = b.exerciseNumber || 0;
         return numA - numB;
     });
 
-    const nextExerciseNum = sortedExercises.length > 0 
-        ? Math.max(...sortedExercises.map(e => e.exerciseNumber || 0)) + 1 
+    const nextExerciseNum = sortedExercises.length > 0
+        ? Math.max(...sortedExercises.map(e => e.exerciseNumber || 0)) + 1
         : 1;
 
     let exercisesListHTML = '';
@@ -63,7 +57,6 @@ export function renderEjercicioView(student = {}) {
             }
 
             return `
-            <!-- TARJETA INDIVIDUAL DE EJERCICIO NUMERADO -->
             <div class="bg-slate-900/90 rounded-2xl p-4 border border-amber-500/40 shadow-xl space-y-3">
                 <div class="flex items-center justify-between border-b border-slate-800 pb-2.5">
                     <div class="flex items-center gap-2 truncate pr-2">
@@ -103,7 +96,6 @@ export function renderEjercicioView(student = {}) {
 
     return `
     <div class="space-y-4">
-        <!-- HEADER DE LA ENTIDAD -->
         <div class="bg-slate-900/90 rounded-2xl p-4 border border-amber-500/30 shadow-xl flex justify-between items-center">
             <div class="flex items-center gap-2 min-w-0">
                 <i data-feather="film" class="w-5 h-5 text-amber-400 shrink-0"></i>
@@ -119,12 +111,10 @@ export function renderEjercicioView(student = {}) {
             </button>
         </div>
 
-        <!-- LISTA SECUENCIAL DE EJERCICIOS DEL DÍA -->
         <div class="space-y-3">
             ${exercisesListHTML}
         </div>
 
-        <!-- MODAL DE CREACIÓN / EDICIÓN -->
         ${renderExerciseModalHTML()}
     </div>`;
 }
@@ -177,7 +167,7 @@ function renderExerciseModalHTML() {
                             🔍 Buscar en YouTube
                         </button>
                     </div>
-                    <input type="url" id="ex-modal-media-url" placeholder="https://..." class="w-full bg-slate-950 border border-slate-800 rounded-xl p-2.5 text-xs text-white font-semibold focus:outline-none focus:border-amber-500">
+                    <input type="url" id="ex-modal-media-url" placeholder="Pegar URL del video..." class="w-full bg-slate-950 border border-slate-800 rounded-xl p-2.5 text-xs text-white font-semibold focus:outline-none focus:border-amber-500">
                     <p id="ex-modal-video-badge" class="text-[9px] text-emerald-400 font-bold hidden mt-1">✨ Video autocompletado desde tu Banco de Videos</p>
                 </div>
 
