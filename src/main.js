@@ -1433,7 +1433,7 @@ window.autoSuggestVideoLink = function(nameValue) {
     }
 };
 
-// Abre YouTube en una pestaña nueva con el nombre del ejercicio pre-cargado en la búsqueda
+// Abre la búsqueda en YouTube en una pestaña emergente o activa el panel interno
 window.searchVideoInYouTube = function() {
     const nameInput = document.getElementById('ex-modal-name');
     const exerciseName = (nameInput?.value || '').trim();
@@ -1443,6 +1443,27 @@ window.searchVideoInYouTube = function() {
         searchQuery = `${exerciseName} ejercicio`;
     }
 
-    const ytUrl = `[suspicious link removed]{encodeURIComponent(searchQuery)}`;
-    window.open(ytUrl, '_blank');
+    const encodedQuery = encodeURIComponent(searchQuery);
+    const ytUrl = `[suspicious link removed]{encodedQuery}`;
+
+    // Intentar abrir el panel integrado in-app primero
+    const embedContainer = document.getElementById('ex-modal-yt-embed-container');
+    const embedIframe = document.getElementById('ex-modal-yt-iframe');
+    
+    if (embedContainer && embedIframe) {
+        embedIframe.src = ytUrl;
+        embedContainer.classList.remove('hidden');
+        showToast("Buscador de YouTube abierto dentro de la App");
+    } else {
+        // Ventana emergente con dimensiones ajustadas tipo popup
+        window.open(ytUrl, 'YouTubeSearch', 'width=500,height=700,scrollbars=yes,resizable=yes');
+    }
+};
+
+// Cierra el panel de búsqueda in-app dentro del modal
+window.closeInAppYtSearch = function() {
+    const embedContainer = document.getElementById('ex-modal-yt-embed-container');
+    const embedIframe = document.getElementById('ex-modal-yt-iframe');
+    if (embedIframe) embedIframe.src = 'about:blank';
+    if (embedContainer) embedContainer.classList.add('hidden');
 };
