@@ -190,7 +190,7 @@ window.handleProfLogin = async function() {
 };
 
 // ==========================================
-// 🎨 RENDERIZADO PRINCIPAL (renderApp)
+// 🎨 RENDERIZADO PRINCIPAL (renderApp en src/main.js)
 // ==========================================
 export function renderApp() {
     const appEl = document.getElementById('app');
@@ -234,18 +234,12 @@ export function renderApp() {
             contentHTML = renderMicrocicloView(currentStudent);
         } else if (activeRelationalTab === 'ejercicio') {
             contentHTML = renderEjercicioView(currentStudent);
-        } else if (activeRelationalTab === 'series') {
-            contentHTML = renderSeriesView(currentStudent);
-        } else if (activeRelationalTab === 'repeticiones') {
-            contentHTML = renderRepeticionesView(currentStudent);
-        } else if (activeRelationalTab === 'carga') {
-            contentHTML = renderCargaView(currentStudent);
         } else if (activeRelationalTab === 'visibilidad') {
             contentHTML = renderVisibilidadView(currentStudent);
         } else if (activeRelationalTab === 'resumen') {
             contentHTML = renderResumenView(currentStudent);
         } else {
-            contentHTML = renderRoutineView(true, currentStudent);
+            contentHTML = renderEjercicioView(currentStudent); // Pestaña por defecto
         }
 
         mainContentHTML = `
@@ -260,9 +254,6 @@ export function renderApp() {
     appEl.innerHTML = `${renderHeader(currentStudent, activeRelationalTab)}${mainContentHTML}`;
     bindEvents();
 
-    if (currentStudentId && activeRelationalTab === 'sesion') {
-        loadStudentData(currentStudentId);
-    }
     if (typeof feather !== 'undefined') feather.replace();
 }
 
@@ -1389,34 +1380,7 @@ window.saveCargaStudent = async function() {
     renderApp();
 };
 
-// ⚡ 5. Edición Rápida Directa en Tarjeta (In-Line Quick Update)
-window.quickUpdateExerciseProp = async function(exId, propName, value) {
-    if (!currentStudentId) return;
-    studentsDatabase = getLocalStudents();
-    const student = studentsDatabase.find(s => String(s.id) === String(currentStudentId));
-    if (!student) return;
 
-    const prepWeek = student.mesociclo?.semanaEnPreparacion || 1;
-    const microByW = (student.microcicloByWeek && student.microcicloByWeek[prepWeek]) || {};
-    const prepDay = microByW.diaEnPreparacion || student.microciclo?.diaEnPreparacion || 1;
-
-    const dayList = student.routine?.[prepWeek]?.[prepDay] || [];
-    const ex = dayList.find(e => String(e.id) === String(exId));
-    if (!ex) return;
-
-    // Actualización directa de la propiedad
-    if (propName === 'series') {
-        ex[propName] = parseInt(value) || 4;
-    } else if (propName === 'repeticiones') {
-        ex.repeticiones = value;
-        ex.repsRange = value;
-    } else {
-        ex[propName] = value;
-    }
-
-    showToast(`Actualizado: ${propName} = ${value}`);
-    await saveStudentDifferential(student);
-};
 
 // Exportación del PDF unificado con todas las semanas y días del alumno
 window.exportFullPDF = function() {
