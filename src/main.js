@@ -904,7 +904,7 @@ export async function loadAndSyncVideoBank() {
     return getVideoBank();
 }
 
-// 1. Abrir Modal para Nuevo Ejercicio (SIEMPRE RESTABLECE A LOS VALORES POR DEFECTO ESTÁNDAR)
+// 1. Abrir Modal para Nuevo Ejercicio (RESTABLECE A VALORES ESTÁNDAR POR DEFECTO)
 window.openAddExerciseModal = function(nextNum) {
     const modal = document.getElementById('exercise-entity-modal');
     if (!modal) return;
@@ -933,16 +933,23 @@ window.openAddExerciseModal = function(nextNum) {
     const badge = document.getElementById('ex-modal-video-badge');
     if (badge) badge.classList.add('hidden');
 
-    // 🟢 RESTABLECER VALORES POR DEFECTO ESTÁNDAR (Nunca hereda del ejercicio anterior)
+    // Restablecer valores por defecto estándar
     document.getElementById('ex-modal-series').value = 4;
     document.getElementById('ex-modal-tipo-serie').value = 'Normal';
     document.getElementById('ex-modal-set-rest').value = '90s';
     document.getElementById('ex-modal-block-rest').value = '120s';
-
     document.getElementById('ex-modal-reps').value = '8-12';
-    document.getElementById('ex-modal-rpe').value = '8';
-    document.getElementById('ex-modal-tempo').value = '3-0-1-0';
 
+    // RPE Desplegable por defecto
+    const rpeSelect = document.getElementById('ex-modal-rpe-select');
+    const rpeCustom = document.getElementById('ex-modal-rpe-custom');
+    if (rpeSelect) rpeSelect.value = 'RPE 8 (Exigente / 2 reps en reserva)';
+    if (rpeCustom) {
+        rpeCustom.value = '';
+        rpeCustom.classList.add('hidden');
+    }
+
+    document.getElementById('ex-modal-tempo').value = '3-0-1-0';
     document.getElementById('ex-modal-carga').value = '0';
     document.getElementById('ex-modal-rm').value = '75%';
     document.getElementById('ex-modal-progression').value = 'Lineal';
@@ -950,7 +957,20 @@ window.openAddExerciseModal = function(nextNum) {
     modal.classList.remove('hidden');
 };
 
-// 4. Guardar Ejercicio desde el Modal 'Todo en Uno'
+// Maneja el despliegue del campo de texto cuando el profesor elige RPE personalizado
+window.handleExRpeSelectChange = function(value) {
+    const customInput = document.getElementById('ex-modal-rpe-custom');
+    if (!customInput) return;
+    if (value === '__custom__') {
+        customInput.classList.remove('hidden');
+        customInput.focus();
+    } else {
+        customInput.classList.add('hidden');
+        customInput.value = '';
+    }
+};
+
+// 3. Guardar Ejercicio desde el Modal
 window.saveExerciseFromModal = async function() {
     if (!currentStudentId) return;
     studentsDatabase = getLocalStudents();
@@ -969,28 +989,29 @@ window.saveExerciseFromModal = async function() {
         return;
     }
 
+    // Lectura de RPE/RIR
+    const rpeSelectVal = document.getElementById('ex-modal-rpe-select')?.value;
+    const rpeCustomVal = (document.getElementById('ex-modal-rpe-custom')?.value || '').trim();
+    let rpe = 'RPE 8 (Exigente / 2 reps en reserva)';
+    if (rpeSelectVal === '__custom__') {
+        rpe = rpeCustomVal || 'RPE Personalizado';
+    } else {
+        rpe = rpeSelectVal || '-';
+    }
+
+    // Resto de variables
     const catSelect = document.getElementById('ex-modal-category')?.value;
     const catCustom = (document.getElementById('ex-modal-category-custom')?.value || '').trim();
-    let category = 'Peso Libre';
-    if (catSelect === '__custom__') {
-        category = catCustom || 'Categoría Personalizada';
-    } else {
-        category = catSelect || 'Peso Libre';
-    }
+    let category = catSelect === '__custom__' ? (catCustom || 'Personalizada') : (catSelect || 'Peso Libre');
 
     const mediaUrl = (document.getElementById('ex-modal-media-url')?.value || '').trim();
     const notes = (document.getElementById('ex-modal-notes')?.value || '').trim();
-
-    // Recopilación de variables 'Todo en Uno'
     const series = parseInt(document.getElementById('ex-modal-series')?.value) || 4;
     const tipoSerie = document.getElementById('ex-modal-tipo-serie')?.value || 'Normal';
     const setRest = (document.getElementById('ex-modal-set-rest')?.value || '').trim() || '90s';
     const blockRest = (document.getElementById('ex-modal-block-rest')?.value || '').trim() || '120s';
-
     const repeticiones = (document.getElementById('ex-modal-reps')?.value || '').trim() || '8-12';
-    const rpe = (document.getElementById('ex-modal-rpe')?.value || '').trim() || '8';
     const tempo = (document.getElementById('ex-modal-tempo')?.value || '').trim() || '3-0-1-0';
-
     const cargaKg = (document.getElementById('ex-modal-carga')?.value || '').trim() || '0';
     const porcentajeRM = (document.getElementById('ex-modal-rm')?.value || '').trim() || '75%';
     const progression = document.getElementById('ex-modal-progression')?.value || 'Lineal';
@@ -1001,56 +1022,38 @@ window.saveExerciseFromModal = async function() {
 
     const dayList = student.routine[prepWeek][prepDay];
 
+    const exData = {
+        exerciseNumber: exNum,
+        name: exName,
+        category,
+        mediaUrl,
+        notes,
+        series,
+        tipoSerie,
+        setRest,
+        blockRest,
+        repeticiones,
+        repsRange: repeticiones,
+        rpe,
+        tempo,
+        cargaKg,
+        porcentajeRM,
+        progression,
+        visible: true
+    };
+
     if (exId) {
-        // Modo Edición
         const existingIdx = dayList.findIndex(e => String(e.id) === String(exId));
         if (existingIdx !== -1) {
-            dayList[existingIdx] = {
-                ...dayList[existingIdx],
-                exerciseNumber: exNum,
-                name: exName,
-                category,
-                mediaUrl,
-                notes,
-                series,
-                tipoSerie,
-                setRest,
-                blockRest,
-                repeticiones,
-                repsRange: repeticiones,
-                rpe,
-                tempo,
-                cargaKg,
-                porcentajeRM,
-                progression
-            };
+            dayList[existingIdx] = { ...dayList[existingIdx], ...exData };
         }
     } else {
-        // Modo Carga Nueva
-        const newExObj = {
+        dayList.push({
             id: 'ex_' + Date.now() + '_' + Math.floor(Math.random() * 1000),
-            exerciseNumber: exNum,
-            name: exName,
-            category,
-            mediaUrl,
-            notes,
-            series,
-            tipoSerie,
-            setRest,
-            blockRest,
-            repeticiones,
-            repsRange: repeticiones,
-            rpe,
-            tempo,
-            cargaKg,
-            porcentajeRM,
-            progression,
-            visible: true
-        };
-        dayList.push(newExObj);
+            ...exData
+        });
     }
 
-    // Autoguardar en el Banco de Videos local y nube si hay enlace
     if (mediaUrl) {
         syncVideoBankToSupabase(exName, mediaUrl);
     }
@@ -1062,7 +1065,7 @@ window.saveExerciseFromModal = async function() {
     renderApp();
 };
 
-// 2. Abrir Modal para Editar Ejercicio (Recupera los datos EXACTOS GUARDADOS PREVIAMENTE)
+// 2. Abrir Modal para Editar Ejercicio (Carga el RPE/RIR exacto previamente guardado)
 window.editExerciseInModal = function(exId) {
     if (!currentStudentId) return;
     studentsDatabase = getLocalStudents();
@@ -1076,55 +1079,56 @@ window.editExerciseInModal = function(exId) {
     const routine = student.routine || {};
     const weekRoutine = routine[prepWeek] || {};
     const dayExercises = weekRoutine[prepDay] || [];
-
     const ex = dayExercises.find(e => String(e.id) === String(exId));
     if (!ex) return;
 
     const modal = document.getElementById('exercise-entity-modal');
     if (!modal) return;
 
-    const titleEl = document.getElementById('ex-modal-title');
-    if (titleEl) {
-        titleEl.innerHTML = `<i data-feather="edit-2" class="w-4 h-4"></i> Editar Ejercicio ${ex.exerciseNumber || 1}: ${ex.name || ''}`;
-        if (typeof feather !== 'undefined') feather.replace();
-    }
-
     document.getElementById('ex-modal-id').value = ex.id || '';
     document.getElementById('ex-modal-num').value = ex.exerciseNumber || 1;
     document.getElementById('ex-modal-num-display').value = ex.exerciseNumber || 1;
     document.getElementById('ex-modal-name').value = ex.name || '';
 
-    const catSelect = document.getElementById('ex-modal-category');
-    const catCustom = document.getElementById('ex-modal-category-custom');
-    const baseCategories = ['Peso Libre', 'Máquinas', 'Calistenia / Peso Corporal', 'Cardio', 'Flexibilidad / Movilidad'];
+    // RPE/RIR: Selecciona la opción coincidente o activa la opción personalizada
+    const rpePresets = [
+        '-',
+        'RPE 6 (Fácil / Calentamiento)',
+        'RPE 7 (Moderado / 3 reps en reserva)',
+        'RPE 8 (Exigente / 2 reps en reserva)',
+        'RPE 9 (Muy exigente / 1 rep en reserva)',
+        'RPE 10 (Fallo muscular / 0 reps en reserva)',
+        'RIR 3',
+        'RIR 2',
+        'RIR 1',
+        'RIR 0 (Fallo)'
+    ];
 
-    if (baseCategories.includes(ex.category)) {
-        if (catSelect) catSelect.value = ex.category;
-        if (catCustom) {
-            catCustom.value = '';
-            catCustom.classList.add('hidden');
+    const rpeSelect = document.getElementById('ex-modal-rpe-select');
+    const rpeCustom = document.getElementById('ex-modal-rpe-custom');
+    const currentRpe = ex.rpe || 'RPE 8 (Exigente / 2 reps en reserva)';
+
+    if (rpePresets.includes(currentRpe)) {
+        if (rpeSelect) rpeSelect.value = currentRpe;
+        if (rpeCustom) {
+            rpeCustom.value = '';
+            rpeCustom.classList.add('hidden');
         }
     } else {
-        if (catSelect) catSelect.value = '__custom__';
-        if (catCustom) {
-            catCustom.value = ex.category || '';
-            catCustom.classList.remove('hidden');
+        if (rpeSelect) rpeSelect.value = '__custom__';
+        if (rpeCustom) {
+            rpeCustom.value = currentRpe;
+            rpeCustom.classList.remove('hidden');
         }
     }
 
-    document.getElementById('ex-modal-media-url').value = ex.mediaUrl || '';
-    document.getElementById('ex-modal-notes').value = ex.notes || '';
-
-    // Cargar datos exactos guardados previamente del ejercicio
+    // Carga de las demás variables
     document.getElementById('ex-modal-series').value = ex.series || 4;
     document.getElementById('ex-modal-tipo-serie').value = ex.tipoSerie || 'Normal';
     document.getElementById('ex-modal-set-rest').value = ex.setRest || '90s';
     document.getElementById('ex-modal-block-rest').value = ex.blockRest || '120s';
-
     document.getElementById('ex-modal-reps').value = ex.repeticiones || ex.repsRange || '8-12';
-    document.getElementById('ex-modal-rpe').value = ex.rpe || '8';
     document.getElementById('ex-modal-tempo').value = ex.tempo || '3-0-1-0';
-
     document.getElementById('ex-modal-carga').value = ex.cargaKg !== undefined ? ex.cargaKg : '0';
     document.getElementById('ex-modal-rm').value = ex.porcentajeRM || '75%';
     document.getElementById('ex-modal-progression').value = ex.progression || 'Lineal';

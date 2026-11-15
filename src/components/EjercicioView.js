@@ -1,7 +1,9 @@
-/**
- * Componente: EjercicioView.js (Versión 'Todo en Uno' + Edición Directa en Tarjeta)
- */
+import { parseMediaInfo } from './ExerciseCard.js';
 
+/**
+ * Componente: EjercicioView.js
+ * Modal 'Todo en Uno' + Ajuste Rápido en Tarjeta + Lista Desplegable Completa de RPE/RIR
+ */
 export function renderEjercicioView(student = {}) {
     if (!student || !student.id) {
         return `
@@ -31,6 +33,20 @@ export function renderEjercicioView(student = {}) {
         ? Math.max(...sortedExercises.map(e => e.exerciseNumber || 0)) + 1
         : 1;
 
+    // Presets oficiales de RPE/RIR
+    const rpePresets = [
+        '-',
+        'RPE 6 (Fácil / Calentamiento)',
+        'RPE 7 (Moderado / 3 reps en reserva)',
+        'RPE 8 (Exigente / 2 reps en reserva)',
+        'RPE 9 (Muy exigente / 1 rep en reserva)',
+        'RPE 10 (Fallo muscular / 0 reps en reserva)',
+        'RIR 3',
+        'RIR 2',
+        'RIR 1',
+        'RIR 0 (Fallo)'
+    ];
+
     let exercisesListHTML = '';
 
     if (sortedExercises.length === 0) {
@@ -58,17 +74,20 @@ export function renderEjercicioView(student = {}) {
             const tipoSerieVal = ex.tipoSerie || 'Normal';
             const setRestVal = ex.setRest || '90s';
             const repsVal = ex.repeticiones || ex.repsRange || '8-12';
-            const rpeVal = ex.rpe || '8';
+            const rpeVal = ex.rpe || 'RPE 8 (Exigente / 2 reps en reserva)';
             const tempoVal = ex.tempo || '3-0-1-0';
             const cargaVal = ex.cargaKg !== undefined ? ex.cargaKg : '0';
             const rmVal = ex.porcentajeRM || '75%';
 
             let mediaPreview = '';
-            if (media.type === 'video') {
+            if (media.type === 'video' || media.type === 'youtube') {
                 mediaPreview = `<div class="aspect-video w-full rounded-xl overflow-hidden bg-slate-950 border border-slate-800 my-2"><iframe src="${media.embedUrl}" class="w-full h-full border-0" allowfullscreen></iframe></div>`;
             } else if (media.type === 'image') {
                 mediaPreview = `<div class="h-32 w-full rounded-xl overflow-hidden bg-slate-950 border border-slate-800 my-2"><img src="${media.originalUrl}" alt="${exName}" class="w-full h-full object-cover"></div>`;
             }
+
+            // Opciones para el select in-line de RPE
+            const isCustomRpe = rpeVal && rpeVal !== '-' && !rpePresets.includes(rpeVal);
 
             return `
             <div class="bg-slate-900/90 rounded-2xl p-4 border border-amber-500/40 shadow-xl space-y-3">
@@ -125,12 +144,15 @@ export function renderEjercicioView(student = {}) {
                             </div>
                         </div>
 
-                        <!-- Repeticiones & RPE -->
+                        <!-- Repeticiones & RPE / RIR (Con Desplegable) -->
                         <div class="bg-slate-900 p-2 rounded-lg border border-slate-800 space-y-1">
-                            <label class="text-[9px] font-bold text-slate-400 block uppercase">Reps / Esfuerzo</label>
+                            <label class="text-[9px] font-bold text-slate-400 block uppercase">Reps / Esfuerzo (RPE/RIR)</label>
                             <div class="flex gap-1">
-                                <input type="text" value="${repsVal}" placeholder="8-12" onchange="window.quickUpdateExerciseProp('${exId}', 'repeticiones', this.value)" class="w-full bg-slate-950 border border-amber-500/40 rounded p-1 text-center font-black text-emerald-400 focus:outline-none">
-                                <input type="text" value="${rpeVal}" placeholder="RPE 8" onchange="window.quickUpdateExerciseProp('${exId}', 'rpe', this.value)" class="w-14 bg-slate-950 border border-slate-800 rounded p-1 text-center text-[10px] text-slate-300 font-bold focus:outline-none">
+                                <input type="text" value="${repsVal}" placeholder="8-12" onchange="window.quickUpdateExerciseProp('${exId}', 'repeticiones', this.value)" class="w-1/2 bg-slate-950 border border-amber-500/40 rounded p-1 text-center font-black text-emerald-400 focus:outline-none">
+                                <select onchange="window.quickUpdateExerciseProp('${exId}', 'rpe', this.value)" class="w-1/2 bg-slate-950 border border-slate-800 rounded p-1 text-[9px] text-emerald-300 font-bold focus:outline-none cursor-pointer truncate">
+                                    ${rpePresets.map(r => `<option value="${r}" ${rpeVal === r ? 'selected' : ''}>${r}</option>`).join('')}
+                                    ${isCustomRpe ? `<option value="${rpeVal}" selected>${rpeVal}</option>` : ''}
+                                </select>
                             </div>
                         </div>
 
@@ -192,42 +214,23 @@ export function renderEjercicioView(student = {}) {
     </div>`;
 }
 
-function parseMediaInfo(url) {
-    if (!url || typeof url !== 'string') return { type: 'none', originalUrl: '' };
-    const trimmed = url.trim();
-
-    const ytDomain = "youtube" + ".com";
-    if (trimmed.includes(ytDomain) || trimmed.includes("youtu.be")) {
-        let videoId = '';
-        if (trimmed.includes('youtu.be/')) {
-            videoId = trimmed.split('youtu.be/')[1].split('?')[0];
-        } else if (trimmed.includes('watch?v=')) {
-            videoId = trimmed.split('watch?v=')[1].split('&')[0];
-        } else if (trimmed.includes('/embed/')) {
-            videoId = trimmed.split('/embed/')[1].split('?')[0];
-        }
-
-        if (videoId) {
-            return {
-                type: 'video',
-                originalUrl: trimmed,
-                embedUrl: 'https://www.' + ytDomain + '/embed/' + videoId + '?autoplay=0&rel=0'
-            };
-        }
-    }
-
-    if (trimmed.match(/\.(jpeg|jpg|gif|png|webp)($|\?)/i)) {
-        return { type: 'image', originalUrl: trimmed };
-    }
-
-    return { type: 'link', originalUrl: trimmed };
-}
-
 function renderExerciseModalHTML() {
+    const rpePresets = [
+        '-',
+        'RPE 6 (Fácil / Calentamiento)',
+        'RPE 7 (Moderado / 3 reps en reserva)',
+        'RPE 8 (Exigente / 2 reps en reserva)',
+        'RPE 9 (Muy exigente / 1 rep en reserva)',
+        'RPE 10 (Fallo muscular / 0 reps en reserva)',
+        'RIR 3',
+        'RIR 2',
+        'RIR 1',
+        'RIR 0 (Fallo)'
+    ];
+
     return `
     <div id="exercise-entity-modal" class="fixed inset-0 bg-slate-950/80 backdrop-blur-md z-50 flex items-center justify-center p-4 hidden">
         <div class="bg-slate-900 border border-amber-500/40 rounded-2xl w-full max-w-md p-5 space-y-4 shadow-2xl max-h-[90vh] overflow-y-auto">
-
             <div class="flex justify-between items-center border-b border-slate-800 pb-3">
                 <h3 id="ex-modal-title" class="text-xs font-black text-amber-400 uppercase tracking-wider flex items-center gap-2">
                     <i data-feather="plus-circle" class="w-4 h-4"></i> Cargar Ejercicio 'Todo en Uno'
@@ -236,7 +239,6 @@ function renderExerciseModalHTML() {
                     <i data-feather="x" class="w-5 h-5"></i>
                 </button>
             </div>
-
             <form onsubmit="event.preventDefault(); window.saveExerciseFromModal();" class="space-y-4">
                 <input type="hidden" id="ex-modal-id">
                 <input type="hidden" id="ex-modal-num" value="1">
@@ -331,7 +333,7 @@ function renderExerciseModalHTML() {
                 <!-- BLOQUE 3: REPETICIONES, RPE Y TEMPO -->
                 <div class="bg-slate-950 p-3 rounded-xl border border-slate-800 space-y-3">
                     <h4 class="text-[10px] font-black text-emerald-400 uppercase tracking-wider flex items-center gap-1.5 border-b border-slate-800/80 pb-1.5">
-                        <i data-feather="repeat" class="w-3.5 h-3.5 text-emerald-400"></i> 3. Repeticiones, RPE y Tempo
+                        <i data-feather="repeat" class="w-3.5 h-3.5 text-emerald-400"></i> 3. Repeticiones, RPE / RIR y Tempo
                     </h4>
 
                     <div class="grid grid-cols-3 gap-2">
@@ -339,14 +341,23 @@ function renderExerciseModalHTML() {
                             <label class="block text-[9px] font-bold text-slate-400 mb-1">Repeticiones</label>
                             <input type="text" id="ex-modal-reps" placeholder="8-12" value="8-12" class="w-full bg-slate-900 border border-emerald-500/50 rounded-xl p-2 text-xs text-emerald-400 font-black text-center focus:outline-none">
                         </div>
-                        <div>
+
+                        <!-- LISTA DESPLEGABLE RPE/RIR + OPCIÓN PERSONALIZADA -->
+                        <div class="col-span-2">
                             <label class="block text-[9px] font-bold text-slate-400 mb-1">Carácter (RPE / RIR)</label>
-                            <input type="text" id="ex-modal-rpe" placeholder="8" value="8" class="w-full bg-slate-900 border border-slate-800 rounded-xl p-2 text-xs text-slate-200 font-bold text-center focus:outline-none">
+                            <div class="space-y-1.5">
+                                <select id="ex-modal-rpe-select" onchange="window.handleExRpeSelectChange(this.value)" class="w-full bg-slate-900 border border-slate-800 rounded-xl p-2 text-xs text-emerald-300 font-bold focus:outline-none cursor-pointer">
+                                    ${rpePresets.map(r => `<option value="${r}">${r}</option>`).join('')}
+                                    <option value="__custom__">➕ Escribir Personalizado...</option>
+                                </select>
+                                <input type="text" id="ex-modal-rpe-custom" placeholder="Escribe RPE/RIR personalizado..." class="hidden w-full bg-slate-900 border border-amber-500/60 rounded-xl p-2 text-xs text-amber-300 font-bold focus:outline-none">
+                            </div>
                         </div>
-                        <div>
-                            <label class="block text-[9px] font-bold text-slate-400 mb-1">Tempo Execution</label>
-                            <input type="text" id="ex-modal-tempo" placeholder="3-0-1-0" value="3-0-1-0" class="w-full bg-slate-900 border border-slate-800 rounded-xl p-2 text-xs text-slate-200 font-mono text-center focus:outline-none">
-                        </div>
+                    </div>
+
+                    <div>
+                        <label class="block text-[9px] font-bold text-slate-400 mb-1">Tempo Execution / Cadencia</label>
+                        <input type="text" id="ex-modal-tempo" placeholder="3-0-1-0" value="3-0-1-0" class="w-full bg-slate-900 border border-slate-800 rounded-xl p-2 text-xs text-slate-200 font-mono text-center focus:outline-none">
                     </div>
                 </div>
 
@@ -359,7 +370,7 @@ function renderExerciseModalHTML() {
                     <div class="grid grid-cols-3 gap-2">
                         <div>
                             <label class="block text-[9px] font-bold text-slate-400 mb-1">Carga (Kg)</label>
-                            <input type="text" id="ex-modal-carga" placeholder="0" value="0" class="w-full bg-slate-900 border border-sky-500/50 rounded-xl p-2 text-xs text-sky-300 font-black text-center focus:outline-none">
+                            <input type="number" step="0.5" id="ex-modal-carga" placeholder="0" value="0" class="w-full bg-slate-900 border border-sky-500/50 rounded-xl p-2 text-xs text-sky-300 font-black text-center focus:outline-none">
                         </div>
                         <div>
                             <label class="block text-[9px] font-bold text-slate-400 mb-1">% 1RM</label>
