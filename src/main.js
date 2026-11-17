@@ -1478,56 +1478,71 @@ window.handleWeekChange = async function(newWeek) {
   renderApp();
 };
 
-// Handler de cambio de día activo con guardado instantáneo en Supabase
+// Handler al cambiar de Día en Preparación en el Item 2
 window.handleDayChange = async function(newDay) {
-  if (!currentStudentId) return;
-  const students = await fetchStudentsFromSupabase();
-  const student = students.find(s => String(s.id) === String(currentStudentId));
-  if (!student) return;
+    if (!currentStudentId) return;
+    studentsDatabase = getLocalStudents();
+    const student = studentsDatabase.find(s => String(s.id) === String(currentStudentId));
+    if (!student) return;
 
-  const d = parseInt(newDay) || 1;
-  const prepWeek = student.mesociclo?.semanaEnPreparacion || 1;
+    const d = parseInt(newDay) || 1;
+    const prepWeek = student.mesociclo?.semanaEnPreparacion || 1;
 
-  if (!student.microcicloByWeek) student.microcicloByWeek = {};
-  if (!student.microcicloByWeek[prepWeek]) {
-    student.microcicloByWeek[prepWeek] = { diasAsignados: [], diaEnPreparacion: 1, tipoMicrociclo: 'Carga' };
-  }
-  student.microcicloByWeek[prepWeek].diaEnPreparacion = d;
+    if (!student.microcicloByWeek) student.microcicloByWeek = {};
+    if (student.microcicloByWeek[prepWeek]) {
+        student.microcicloByWeek[prepWeek].diaEnPreparacion = d;
+    }
 
-  await saveStudentDifferential(student);
-  renderApp();
+    await saveStudentDifferential(student);
+    renderApp();
 };
 
-// Selección/desselección de días en Microciclo con guardado inmediato
+// Handler para selección múltiple de días en Microciclo (Item 1)
 window.toggleMicroDaySelectionAuto = async function(dayName) {
-  if (!currentStudentId) return;
-  const students = await fetchStudentsFromSupabase();
-  const student = students.find(s => String(s.id) === String(currentStudentId));
-  if (!student) return;
+    if (!currentStudentId) return;
+    studentsDatabase = getLocalStudents();
+    const student = studentsDatabase.find(s => String(s.id) === String(currentStudentId));
+    if (!student) return;
 
-  const prepWeek = student.mesociclo?.semanaEnPreparacion || 1;
-  if (!student.microcicloByWeek) student.microcicloByWeek = {};
-  if (!student.microcicloByWeek[prepWeek]) {
-    student.microcicloByWeek[prepWeek] = { diasAsignados: [], diaEnPreparacion: 1, tipoMicrociclo: 'Carga', observaciones: '' };
-  }
+    const prepWeek = student.mesociclo?.semanaEnPreparacion || 1;
+    if (!student.microcicloByWeek) student.microcicloByWeek = {};
+    if (!student.microcicloByWeek[prepWeek]) {
+        student.microcicloByWeek[prepWeek] = {
+            diasPorSemana: 0,
+            diasAsignados: [],
+            diaEnPreparacion: 1,
+            tipoMicrociclo: 'Carga',
+            observaciones: ''
+        };
+    }
 
-  const wMicro = student.microcicloByWeek[prepWeek];
-  let dias = Array.isArray(wMicro.diasAsignados) ? [...wMicro.diasAsignados] : [];
+    const wMicro = student.microcicloByWeek[prepWeek];
+    let dias = Array.isArray(wMicro.diasAsignados) ? [...wMicro.diasAsignados] : [];
 
-  if (dias.includes(dayName)) {
-    dias = dias.filter(d => d !== dayName);
-  } else {
-    dias.push(dayName);
-  }
+    const diasSemanaOrden = ['Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado', 'Domingo'];
 
-  wMicro.diasAsignados = dias;
-  wMicro.diasPorSemana = dias.length;
-  if (wMicro.diaEnPreparacion > dias.length && dias.length > 0) {
-    wMicro.diaEnPreparacion = 1;
-  }
+    if (dias.includes(dayName)) {
+        // Desmarcar el día si ya estaba activo
+        dias = dias.filter(d => d !== dayName);
+    } else {
+        // Agregar el día si se marca por primera vez
+        dias.push(dayName);
+    }
 
-  await saveStudentDifferential(student);
-  renderApp();
+    // Ordenar de Lunes a Domingo
+    dias.sort((a, b) => diasSemanaOrden.indexOf(a) - diasSemanaOrden.indexOf(b));
+
+    wMicro.diasAsignados = dias;
+    wMicro.diasPorSemana = dias.length;
+
+    // Ajustar el día en preparación si excede el rango
+    if (wMicro.diaEnPreparacion > dias.length && dias.length > 0) {
+        wMicro.diaEnPreparacion = 1;
+    }
+
+    // Persistir estado en Supabase y actualizar interfaz en vivo
+    await saveStudentDifferential(student);
+    renderApp();
 };
 
 // Auto-guardado de campos de Mesociclo
