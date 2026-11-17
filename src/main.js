@@ -1,10 +1,8 @@
 import {
-    supabase,                     
-    logoutSupabase,               
+    supabase,
+    logoutSupabase,
     fetchStudentsFromSupabase,
     saveStudentDifferential,
-    saveExerciseDifferential,
-    deleteExerciseDifferential,
     getLocalStudents,
     setLocalStudents,
     generateUUID,
@@ -1452,52 +1450,165 @@ window.handleExCategoryChange = function(value) {
     }
 };
 
-// Handler al cambiar de Semana (Mesociclo ➔ Microciclo ➔ Ejercicios)
+// Handler de cambio de semana con guardado instantáneo en Supabase
 window.handleWeekChange = async function(newWeek) {
-    if (!currentStudentId) return;
-    studentsDatabase = getLocalStudents();
-    const student = studentsDatabase.find(s => String(s.id) === String(currentStudentId));
-    if (!student) return;
+  if (!currentStudentId) return;
+  const students = await fetchStudentsFromSupabase();
+  const student = students.find(s => String(s.id) === String(currentStudentId));
+  if (!student) return;
 
-    const w = parseInt(newWeek) || 1;
-    if (!student.mesociclo) student.mesociclo = {};
-    student.mesociclo.semanaEnPreparacion = w;
+  const w = parseInt(newWeek) || 1;
+  if (!student.mesociclo) student.mesociclo = {};
+  student.mesociclo.semanaEnPreparacion = w;
 
-    // Resetear el día activo a 1 al cambiar de semana
-    if (!student.microciclo) student.microciclo = {};
-    student.microciclo.diaEnPreparacion = 1;
+  // Asegurar estructura limpia para la semana si no existe aún
+  if (!student.microcicloByWeek) student.microcicloByWeek = {};
+  if (!student.microcicloByWeek[w]) {
+    student.microcicloByWeek[w] = {
+      diasPorSemana: 0,
+      diasAsignados: [],
+      diaEnPreparacion: 1,
+      tipoMicrociclo: 'Carga',
+      observaciones: ''
+    };
+  }
 
-    // Si la semana ya tiene microciclo, sincronizar el día activo
-    if (student.microcicloByWeek && student.microcicloByWeek[w]) {
-        student.microcicloByWeek[w].diaEnPreparacion = 1;
-    }
-
-    if (typeof showToast === 'function') showToast(`Cargando Semana ${w}...`);
-    await saveStudentDifferential(student);
-    renderApp();
+  showToast(`Cargando Semana ${w}...`);
+  await saveStudentDifferential(student);
+  renderApp();
 };
 
-// Handler al cambiar de Día en MicrocicloView
+// Handler de cambio de día activo con guardado instantáneo en Supabase
 window.handleDayChange = async function(newDay) {
-    if (!currentStudentId) return;
-    studentsDatabase = getLocalStudents();
-    const student = studentsDatabase.find(s => String(s.id) === String(currentStudentId));
-    if (!student) return;
+  if (!currentStudentId) return;
+  const students = await fetchStudentsFromSupabase();
+  const student = students.find(s => String(s.id) === String(currentStudentId));
+  if (!student) return;
 
-    const d = parseInt(newDay) || 1;
-    const prepWeek = student.mesociclo?.semanaEnPreparacion || 1;
+  const d = parseInt(newDay) || 1;
+  const prepWeek = student.mesociclo?.semanaEnPreparacion || 1;
 
-    if (!student.microciclo) student.microciclo = {};
-    student.microciclo.diaEnPreparacion = d;
+  if (!student.microcicloByWeek) student.microcicloByWeek = {};
+  if (!student.microcicloByWeek[prepWeek]) {
+    student.microcicloByWeek[prepWeek] = { diasAsignados: [], diaEnPreparacion: 1, tipoMicrociclo: 'Carga' };
+  }
+  student.microcicloByWeek[prepWeek].diaEnPreparacion = d;
 
-    if (!student.microcicloByWeek) student.microcicloByWeek = {};
-    if (student.microcicloByWeek[prepWeek]) {
-        student.microcicloByWeek[prepWeek].diaEnPreparacion = d;
+  await saveStudentDifferential(student);
+  renderApp();
+};
+
+// Selección/desselección de días en Microciclo con guardado inmediato
+window.toggleMicroDaySelectionAuto = async function(dayName) {
+  if (!currentStudentId) return;
+  const students = await fetchStudentsFromSupabase();
+  const student = students.find(s => String(s.id) === String(currentStudentId));
+  if (!student) return;
+
+  const prepWeek = student.mesociclo?.semanaEnPreparacion || 1;
+  if (!student.microcicloByWeek) student.microcicloByWeek = {};
+  if (!student.microcicloByWeek[prepWeek]) {
+    student.microcicloByWeek[prepWeek] = { diasAsignados: [], diaEnPreparacion: 1, tipoMicrociclo: 'Carga', observaciones: '' };
+  }
+
+  const wMicro = student.microcicloByWeek[prepWeek];
+  let dias = Array.isArray(wMicro.diasAsignados) ? [...wMicro.diasAsignados] : [];
+
+  if (dias.includes(dayName)) {
+    dias = dias.filter(d => d !== dayName);
+  } else {
+    dias.push(dayName);
+  }
+
+  wMicro.diasAsignados = dias;
+  wMicro.diasPorSemana = dias.length;
+  if (wMicro.diaEnPreparacion > dias.length && dias.length > 0) {
+    wMicro.diaEnPreparacion = 1;
+  }
+
+  await saveStudentDifferential(student);
+  renderApp();
+};
+
+// Auto-guardado de campos de Mesociclo
+window.saveMesocicloStudentAuto = async function() {
+  if (!currentStudentId) return;
+  const students = await fetchStudentsFromSupabase();
+  const student = students.find(s => String(s.id) === String(currentStudentId));
+  if (!student) return;
+
+  const numWeeks = parseInt(document.getElementById('meso-weeks-input')?.value) || 4;
+  const prepWeek = parseInt(document.getElementById('meso-prep-week-select')?.value) || 1;
+  const enfoque = (document.getElementById('meso-enfoque-input')?.value || '').trim();
+
+  student.totalWeeks = numWeeks;
+  student.mesociclo = { numeroSemanas: numWeeks, semanaEnPreparacion: prepWeek, enfoque };
+  student.visibilitySettings = {
+    ...student.visibilitySettings,
+    mesociclo: document.getElementById('vis-mesociclo')?.checked ?? true,
+    semanaEnPreparacion: document.getElementById('vis-semana-prep')?.checked ?? true,
+    enfoqueMesociclo: document.getElementById('vis-enfoque-meso')?.checked ?? true
+  };
+
+  await saveStudentDifferential(student);
+  renderApp();
+};
+
+window.setMesoWeeksPresetAuto = async function(weeks) {
+  const input = document.getElementById('meso-weeks-input');
+  if (input) input.value = weeks;
+  await window.saveMesocicloStudentAuto();
+};
+
+// Auto-guardado de campos de Microciclo
+window.saveMicrocicloStudentAuto = async function() {
+  if (!currentStudentId) return;
+  const students = await fetchStudentsFromSupabase();
+  const student = students.find(s => String(s.id) === String(currentStudentId));
+  if (!student) return;
+
+  const prepWeek = student.mesociclo?.semanaEnPreparacion || 1;
+  if (!student.microcicloByWeek) student.microcicloByWeek = {};
+  if (!student.microcicloByWeek[prepWeek]) {
+    student.microcicloByWeek[prepWeek] = { diasAsignados: [], diaEnPreparacion: 1, tipoMicrociclo: 'Carga', observaciones: '' };
+  }
+
+  const selectEl = document.getElementById('micro-tipo-select');
+  const customInput = document.getElementById('micro-tipo-custom');
+  let tipo = 'Carga';
+  if (selectEl?.value === '__custom__') {
+    tipo = (customInput?.value || '').trim() || 'Tipo Personalizado';
+  } else {
+    tipo = selectEl?.value || 'Carga';
+  }
+
+  const obs = (document.getElementById('micro-obs-input')?.value || '').trim();
+
+  student.microcicloByWeek[prepWeek].tipoMicrociclo = tipo;
+  student.microcicloByWeek[prepWeek].observaciones = obs;
+  student.visibilitySettings = {
+    ...student.visibilitySettings,
+    microciclo: document.getElementById('vis-microciclo')?.checked ?? true,
+    diasSemana: document.getElementById('vis-dias-semana')?.checked ?? true,
+    diaEnPreparacion: document.getElementById('vis-dia-prep')?.checked ?? true
+  };
+
+  await saveStudentDifferential(student);
+  renderApp();
+};
+
+window.handleMicroTipoChangeAuto = function(val) {
+  const customInput = document.getElementById('micro-tipo-custom');
+  if (customInput) {
+    if (val === '__custom__') {
+      customInput.classList.remove('hidden');
+      customInput.focus();
+    } else {
+      customInput.classList.add('hidden');
+      customInput.value = '';
+      window.saveMicrocicloStudentAuto();
     }
-
-    if (typeof showToast === 'function') showToast(`Cargando Día ${d}...`);
-    await saveStudentDifferential(student);
-    renderApp();
+  }
 };
 
 // Sugiere la URL del video automáticamente cuando el profesor escribe el nombre del ejercicio
