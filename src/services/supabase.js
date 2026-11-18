@@ -1,16 +1,14 @@
 import { createClient } from '@supabase/supabase-js';
 
-const SUPABASE_URL = import.meta.env?.VITE_SUPABASE_URL || '';
-const SUPABASE_ANON_KEY = import.meta.env?.VITE_SUPABASE_ANON_KEY || '';
+const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL || '';
+const SUPABASE_ANON_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY || '';
 
 export const supabase = (SUPABASE_URL && SUPABASE_ANON_KEY)
   ? createClient(SUPABASE_URL, SUPABASE_ANON_KEY)
   : null;
 
-const LOCAL_STORAGE_KEY = 'fit_students_db';
-
 export function generateUUID() {
-  if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
+  if (typeof crypto !== 'undefined' && crypto.randomUUID) {
     return crypto.randomUUID();
   }
   return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
@@ -20,84 +18,44 @@ export function generateUUID() {
   });
 }
 
-export function getLocalStudents() {
+// Lectura 100% directa desde la base de datos de Supabase
+export async function fetchStudentsFromSupabase() {
+  if (!supabase) return [];
   try {
-    const raw = localStorage.getItem(LOCAL_STORAGE_KEY);
-    return raw ? JSON.parse(raw) : [];
-  } catch (e) {
-    console.warn('Error leyendo LocalStorage:', e);
+    const { data, error } = await supabase.from('alumnos').select('*');
+    if (error || !data) return [];
+    
+    return data.map(st => ({
+      id: st.id,
+      studentNumber: parseInt(st.student_number) || 1,
+      lastname: st.apellido || '',
+      firstname: st.nombre || '',
+      dni: st.dni || '',
+      accessToken: st.access_token || '',
+      cycleType: st.cycle_type || 'Mesociclo',
+      totalWeeks: parseInt(st.total_weeks) || 4,
+      datosAntropometricos: st.datos_antropometricos || {},
+      historialLesiones: st.historial_lesiones || '',
+      evaluacionInicial: st.evaluacion_inicial || '',
+      macrociclo: st.macrociclo || {},
+      mesociclo: st.mesociclo || {},
+      microciclo: st.microciclo || {},
+      microcicloByWeek: st.microciclo_by_week || {},
+      visibilitySettings: st.visibility_settings || {},
+      routine: st.routine || {},
+      draftRoutine: st.draft_routine || {},
+      nutrition: st.nutrition || {},
+      history: Array.isArray(st.history) ? st.history : []
+    }));
+  } catch (err) {
+    console.error('Error al conectar con Supabase:', err);
     return [];
   }
 }
 
-export function setLocalStudents(students) {
-  try {
-    localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(students));
-  } catch (e) {
-    console.warn('Error guardando LocalStorage:', e);
-  }
-}
-
-// 🟢 Consulta directa a Supabase como Fuente Única de la Verdad
-export async function fetchStudentsFromSupabase() {
-  if (!supabase) {
-    return getLocalStudents();
-  }
-  try {
-    const { data, error } = await supabase.from('alumnos').select('*');
-    if (error) {
-      console.warn('Error consultando Supabase, usando copia local:', error.message);
-      return getLocalStudents();
-    }
-    if (data && Array.isArray(data)) {
-      const formatted = data.map(st => ({
-        id: st.id || st._id,
-        studentNumber: parseInt(st.student_number || st.studentNumber) || 1,
-        lastname: st.apellido || st.lastname || '',
-        firstname: st.nombre || st.firstname || '',
-        dni: st.dni || '',
-        accessToken: st.access_token || st.accessToken || '',
-        cycleType: st.cycle_type || st.cycleType || 'Mesociclo',
-        totalWeeks: parseInt(st.total_weeks || st.totalWeeks) || 4,
-        datosAntropometricos: st.datos_antropometricos || st.datosAntropometricos || { peso: null, altura: null, grasa: null },
-        historialLesiones: st.historial_lesiones || st.historialLesiones || '',
-        evaluacionInicial: st.evaluacion_inicial || st.evaluacionInicial || '',
-        macrociclo: st.macrociclo || { fase: 'Adaptación', objetivo: '' },
-        mesociclo: st.mesociclo || { numeroSemanas: 4, semanaEnPreparacion: 1, enfoque: '' },
-        microciclo: st.microciclo || { diasPorSemana: 3, diasAsignados: ['Lunes', 'Miércoles', 'Viernes'], diaEnPreparacion: 1, tipoMicrociclo: 'Carga' },
-        microcicloByWeek: st.microciclo_by_week || st.microcicloByWeek || {},
-        visibilitySettings: st.visibility_settings || st.visibilitySettings || {},
-        routine: st.routine || {},
-        draftRoutine: st.draft_routine || st.draftRoutine || {},
-        nutrition: st.nutrition || { diet: '', supplements: '' },
-        history: Array.isArray(st.history) ? st.history : []
-      }));
-
-      // Actualizar copia local de respaldo
-      setLocalStudents(formatted);
-      return formatted;
-    }
-    return getLocalStudents();
-  } catch (err) {
-    console.warn('Excepción de red al leer alumnos de Supabase:', err);
-    return getLocalStudents();
-  }
-}
-
-// 🟢 Persistencia Directa en Supabase
+// 🟢 PERSISTENCIA 100% DIRECTA EN SUPABASE (SIN LOCALSTORAGE)
 export async function saveStudentDifferential(student) {
   if (!student || !student.id) return { error: 'ID de alumno inválido' };
-
-  // 1. Actualización inmediata en memoria local
-  const localList = getLocalStudents();
-  const idx = localList.findIndex(s => String(s.id) === String(student.id));
-  if (idx >= 0) {
-    localList[idx] = student;
-  } else {
-    localList.push(student);
-  }
-  setLocalStudents(localList);
-
   if (!supabase) return { data: student };
 
   try {
@@ -124,90 +82,101 @@ export async function saveStudentDifferential(student) {
       visibility_settings: student.visibilitySettings || {}
     };
 
-    const { data, error } = await supabase
-      .from('alumnos')
-      .upsert(payload, { onConflict: 'id' });
-
+    const { data, error } = await supabase.from('alumnos').upsert(payload).select();
     if (error) {
-      console.warn('Error al guardar en Supabase:', error.message);
-      return { error };
+      console.error('Error al guardar alumno en Supabase:', error.message);
+      return { error: error.message };
     }
-    return { data };
+    return { data: data?.[0] || student };
   } catch (err) {
-    console.warn('Excepción al guardar en Supabase:', err);
-    return { error: err };
+    console.error('Excepción de red al guardar en Supabase:', err);
+    return { error: err.message };
   }
 }
 
 export async function loginProfesorWithSupabase(email, password) {
-  if (!supabase) return { error: { message: 'Supabase no está configurado.' } };
-  return await supabase.auth.signInWithPassword({
-    email: email.trim(),
-    password: password.trim()
-  });
+  if (!supabase) return { error: 'Supabase no inicializado' };
+  return await supabase.auth.signInWithPassword({ email, password });
 }
 
 export async function logoutSupabase() {
-  if (supabase) {
-    await supabase.auth.signOut();
-  }
+  if (!supabase) return;
+  await supabase.auth.signOut();
 }
 
 export async function syncVideoBankToSupabase(exerciseName, url) {
   if (!supabase || !exerciseName || !url) return;
   try {
-    const cleanKey = exerciseName.trim().toLowerCase();
-    const { data: existing } = await supabase.from('app_settings').select('data').eq('id', 'video_bank').maybeSingle();
-    const bank = existing?.data || {};
-    bank[cleanKey] = url.trim();
-    await supabase.from('app_settings').upsert({ id: 'video_bank', data: bank });
+    await supabase.from('video_bank').upsert({
+      exercise_name: exerciseName.trim().toLowerCase(),
+      video_url: url.trim(),
+      updated_at: new Date().toISOString()
+    });
   } catch (e) {
-    console.warn('Error sincronizando banco de videos:', e);
+    console.warn('Error sincronizando Banco de Videos en Supabase:', e);
   }
 }
 
 export async function fetchVideoBankFromSupabase() {
   if (!supabase) return {};
   try {
-    const { data } = await supabase.from('app_settings').select('data').eq('id', 'video_bank').maybeSingle();
-    return data?.data || {};
+    const { data } = await supabase.from('video_bank').select('*');
+    const bank = {};
+    if (data) {
+      data.forEach(item => {
+        if (item.exercise_name && item.video_url) {
+          bank[item.exercise_name] = item.video_url;
+        }
+      });
+    }
+    return bank;
   } catch (e) {
+    console.warn('Error leyendo Banco de Videos:', e);
     return {};
   }
 }
 
 export async function fetchStudentByToken(token) {
-  if (!token) return null;
-  const cleanToken = String(token).trim();
-  if (supabase) {
-    try {
-      const { data, error } = await supabase.rpc('obtener_alumno_por_token', { p_token: cleanToken });
-      if (!error && data && data.length > 0) {
-        const st = Array.isArray(data) ? data[0] : data;
-        return {
-          id: st.id,
-          studentNumber: parseInt(st.student_number) || 1,
-          lastname: st.apellido || '',
-          firstname: st.nombre || '',
-          dni: st.dni || '',
-          totalWeeks: parseInt(st.total_weeks) || 4,
-          datosAntropometricos: st.datos_antropometricos || {},
-          historialLesiones: st.historial_lesiones || '',
-          evaluacionInicial: st.evaluacion_inicial || '',
-          routine: st.routine || {},
-          visibilitySettings: st.visibility_settings || {},
-          microcicloByWeek: st.microciclo_by_week || {},
-          accessToken: st.access_token || cleanToken
-        };
-      }
-    } catch (e) {}
+  if (!supabase || !token) return null;
+  try {
+    const { data, error } = await supabase
+      .from('alumnos')
+      .select('*')
+      .eq('access_token', token)
+      .maybeSingle();
+
+    if (error || !data) return null;
+    return {
+      id: data.id,
+      studentNumber: parseInt(data.student_number) || 1,
+      lastname: data.apellido || '',
+      firstname: data.nombre || '',
+      dni: data.dni || '',
+      accessToken: data.access_token || '',
+      cycleType: data.cycle_type || 'Mesociclo',
+      totalWeeks: parseInt(data.total_weeks) || 4,
+      datosAntropometricos: data.datos_antropometricos || {},
+      historialLesiones: data.historial_lesiones || '',
+      evaluacionInicial: data.evaluacion_inicial || '',
+      macrociclo: data.macrociclo || {},
+      mesociclo: data.mesociclo || {},
+      microciclo: data.microciclo || {},
+      microcicloByWeek: data.microciclo_by_week || {},
+      visibilitySettings: data.visibility_settings || {},
+      routine: data.routine || {},
+      draftRoutine: data.draft_routine || {},
+      nutrition: data.nutrition || {},
+      history: Array.isArray(data.history) ? data.history : []
+    };
+  } catch (err) {
+    console.error('Error buscando alumno por token:', err);
+    return null;
   }
-  const localList = getLocalStudents();
-  return localList.find(s => s.accessToken === cleanToken) || null;
 }
 
 export async function generateStudentAccessToken(studentId) {
-  const newToken = generateUUID();
+  if (!studentId) return null;
+  const newToken = 'st_' + generateUUID().substring(0, 12);
   const students = await fetchStudentsFromSupabase();
   const st = students.find(s => String(s.id) === String(studentId));
   if (st) {

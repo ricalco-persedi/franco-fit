@@ -3,8 +3,6 @@ import {
     logoutSupabase,
     fetchStudentsFromSupabase,
     saveStudentDifferential,
-    getLocalStudents,
-    setLocalStudents,
     generateUUID,
     fetchStudentByToken,
     generateStudentAccessToken,
@@ -1450,18 +1448,21 @@ window.handleExCategoryChange = function(value) {
     }
 };
 
-// Handler de cambio de semana con guardado instantáneo en Supabase
+// Handlers de cambio de semana y días operando 100% DIRECTO con Supabase
+
 window.handleWeekChange = async function(newWeek) {
   if (!currentStudentId) return;
-  const students = await fetchStudentsFromSupabase();
-  const student = students.find(s => String(s.id) === String(currentStudentId));
+  showToast(`Cargando Semana ${newWeek} desde Supabase...`);
+
+  studentsDatabase = await fetchStudentsFromSupabase();
+  const student = studentsDatabase.find(s => String(s.id) === String(currentStudentId));
   if (!student) return;
 
   const w = parseInt(newWeek) || 1;
   if (!student.mesociclo) student.mesociclo = {};
   student.mesociclo.semanaEnPreparacion = w;
 
-  // Asegurar estructura limpia para la semana si no existe aún
+  // Garantizar estructura aislada para la semana sin herencias ni fallbacks
   if (!student.microcicloByWeek) student.microcicloByWeek = {};
   if (!student.microcicloByWeek[w]) {
     student.microcicloByWeek[w] = {
@@ -1473,83 +1474,79 @@ window.handleWeekChange = async function(newWeek) {
     };
   }
 
-  showToast(`Cargando Semana ${w}...`);
   await saveStudentDifferential(student);
+  studentsDatabase = await fetchStudentsFromSupabase();
   renderApp();
 };
 
-// Handler al cambiar de Día en Preparación en el Item 2
 window.handleDayChange = async function(newDay) {
-    if (!currentStudentId) return;
-    studentsDatabase = getLocalStudents();
-    const student = studentsDatabase.find(s => String(s.id) === String(currentStudentId));
-    if (!student) return;
+  if (!currentStudentId) return;
+  studentsDatabase = await fetchStudentsFromSupabase();
+  const student = studentsDatabase.find(s => String(s.id) === String(currentStudentId));
+  if (!student) return;
 
-    const d = parseInt(newDay) || 1;
-    const prepWeek = student.mesociclo?.semanaEnPreparacion || 1;
+  const prepWeek = parseInt(student.mesociclo?.semanaEnPreparacion) || 1;
+  if (!student.microcicloByWeek) student.microcicloByWeek = {};
+  if (!student.microcicloByWeek[prepWeek]) {
+    student.microcicloByWeek[prepWeek] = {
+      diasPorSemana: 0,
+      diasAsignados: [],
+      diaEnPreparacion: 1,
+      tipoMicrociclo: 'Carga',
+      observaciones: ''
+    };
+  }
 
-    if (!student.microcicloByWeek) student.microcicloByWeek = {};
-    if (student.microcicloByWeek[prepWeek]) {
-        student.microcicloByWeek[prepWeek].diaEnPreparacion = d;
-    }
+  const d = parseInt(newDay) || 1;
+  student.microcicloByWeek[prepWeek].diaEnPreparacion = d;
 
-    await saveStudentDifferential(student);
-    renderApp();
+  await saveStudentDifferential(student);
+  studentsDatabase = await fetchStudentsFromSupabase();
+  renderApp();
 };
 
-// Handler para selección múltiple de días en Microciclo (Item 1)
 window.toggleMicroDaySelectionAuto = async function(dayName) {
-    if (!currentStudentId) return;
-    studentsDatabase = getLocalStudents();
-    const student = studentsDatabase.find(s => String(s.id) === String(currentStudentId));
-    if (!student) return;
+  if (!currentStudentId) return;
+  studentsDatabase = await fetchStudentsFromSupabase();
+  const student = studentsDatabase.find(s => String(s.id) === String(currentStudentId));
+  if (!student) return;
 
-    const prepWeek = student.mesociclo?.semanaEnPreparacion || 1;
-    if (!student.microcicloByWeek) student.microcicloByWeek = {};
-    if (!student.microcicloByWeek[prepWeek]) {
-        student.microcicloByWeek[prepWeek] = {
-            diasPorSemana: 0,
-            diasAsignados: [],
-            diaEnPreparacion: 1,
-            tipoMicrociclo: 'Carga',
-            observaciones: ''
-        };
-    }
+  const prepWeek = parseInt(student.mesociclo?.semanaEnPreparacion) || 1;
+  if (!student.microcicloByWeek) student.microcicloByWeek = {};
+  if (!student.microcicloByWeek[prepWeek]) {
+    student.microcicloByWeek[prepWeek] = {
+      diasPorSemana: 0,
+      diasAsignados: [],
+      diaEnPreparacion: 1,
+      tipoMicrociclo: 'Carga',
+      observaciones: ''
+    };
+  }
 
-    const wMicro = student.microcicloByWeek[prepWeek];
-    let dias = Array.isArray(wMicro.diasAsignados) ? [...wMicro.diasAsignados] : [];
+  const wMicro = student.microcicloByWeek[prepWeek];
+  let dias = Array.isArray(wMicro.diasAsignados) ? [...wMicro.diasAsignados] : [];
 
-    const diasSemanaOrden = ['Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado', 'Domingo'];
+  if (dias.includes(dayName)) {
+    dias = dias.filter(d => d !== dayName);
+  } else {
+    dias.push(dayName);
+  }
 
-    if (dias.includes(dayName)) {
-        // Desmarcar el día si ya estaba activo
-        dias = dias.filter(d => d !== dayName);
-    } else {
-        // Agregar el día si se marca por primera vez
-        dias.push(dayName);
-    }
+  wMicro.diasAsignados = dias;
+  wMicro.diasPorSemana = dias.length;
+  if (wMicro.diaEnPreparacion > dias.length && dias.length > 0) {
+    wMicro.diaEnPreparacion = 1;
+  }
 
-    // Ordenar de Lunes a Domingo
-    dias.sort((a, b) => diasSemanaOrden.indexOf(a) - diasSemanaOrden.indexOf(b));
-
-    wMicro.diasAsignados = dias;
-    wMicro.diasPorSemana = dias.length;
-
-    // Ajustar el día en preparación si excede el rango
-    if (wMicro.diaEnPreparacion > dias.length && dias.length > 0) {
-        wMicro.diaEnPreparacion = 1;
-    }
-
-    // Persistir estado en Supabase y actualizar interfaz en vivo
-    await saveStudentDifferential(student);
-    renderApp();
+  await saveStudentDifferential(student);
+  studentsDatabase = await fetchStudentsFromSupabase();
+  renderApp();
 };
 
-// Auto-guardado de campos de Mesociclo
 window.saveMesocicloStudentAuto = async function() {
   if (!currentStudentId) return;
-  const students = await fetchStudentsFromSupabase();
-  const student = students.find(s => String(s.id) === String(currentStudentId));
+  studentsDatabase = await fetchStudentsFromSupabase();
+  const student = studentsDatabase.find(s => String(s.id) === String(currentStudentId));
   if (!student) return;
 
   const numWeeks = parseInt(document.getElementById('meso-weeks-input')?.value) || 4;
@@ -1557,15 +1554,26 @@ window.saveMesocicloStudentAuto = async function() {
   const enfoque = (document.getElementById('meso-enfoque-input')?.value || '').trim();
 
   student.totalWeeks = numWeeks;
-  student.mesociclo = { numeroSemanas: numWeeks, semanaEnPreparacion: prepWeek, enfoque };
+  student.mesociclo = {
+    ...student.mesociclo,
+    numeroSemanas: numWeeks,
+    semanaEnPreparacion: prepWeek,
+    enfoque
+  };
+
+  const isVisibleMeso = document.getElementById('vis-mesociclo')?.checked ?? true;
+  const isVisibleSemanas = document.getElementById('vis-semanas-totales')?.checked ?? true;
+  const isVisibleSemanaPrep = document.getElementById('vis-semana-prep')?.checked ?? true;
+
   student.visibilitySettings = {
     ...student.visibilitySettings,
-    mesociclo: document.getElementById('vis-mesociclo')?.checked ?? true,
-    semanaEnPreparacion: document.getElementById('vis-semana-prep')?.checked ?? true,
-    enfoqueMesociclo: document.getElementById('vis-enfoque-meso')?.checked ?? true
+    mesociclo: isVisibleMeso,
+    semanasTotales: isVisibleSemanas,
+    semanaEnPreparacion: isVisibleSemanaPrep
   };
 
   await saveStudentDifferential(student);
+  studentsDatabase = await fetchStudentsFromSupabase();
   renderApp();
 };
 
@@ -1578,37 +1586,49 @@ window.setMesoWeeksPresetAuto = async function(weeks) {
 // Auto-guardado de campos de Microciclo
 window.saveMicrocicloStudentAuto = async function() {
   if (!currentStudentId) return;
-  const students = await fetchStudentsFromSupabase();
-  const student = students.find(s => String(s.id) === String(currentStudentId));
+  studentsDatabase = await fetchStudentsFromSupabase();
+  const student = studentsDatabase.find(s => String(s.id) === String(currentStudentId));
   if (!student) return;
 
-  const prepWeek = student.mesociclo?.semanaEnPreparacion || 1;
+  const prepWeek = parseInt(student.mesociclo?.semanaEnPreparacion) || 1;
   if (!student.microcicloByWeek) student.microcicloByWeek = {};
   if (!student.microcicloByWeek[prepWeek]) {
-    student.microcicloByWeek[prepWeek] = { diasAsignados: [], diaEnPreparacion: 1, tipoMicrociclo: 'Carga', observaciones: '' };
+    student.microcicloByWeek[prepWeek] = {
+      diasPorSemana: 0,
+      diasAsignados: [],
+      diaEnPreparacion: 1,
+      tipoMicrociclo: 'Carga',
+      observaciones: ''
+    };
   }
 
   const selectEl = document.getElementById('micro-tipo-select');
   const customInput = document.getElementById('micro-tipo-custom');
-  let tipo = 'Carga';
+  let tipoMicrociclo = 'Carga';
   if (selectEl?.value === '__custom__') {
-    tipo = (customInput?.value || '').trim() || 'Tipo Personalizado';
+    tipoMicrociclo = (customInput?.value || '').trim() || 'Tipo Personalizado';
   } else {
-    tipo = selectEl?.value || 'Carga';
+    tipoMicrociclo = selectEl?.value || 'Carga';
   }
 
-  const obs = (document.getElementById('micro-obs-input')?.value || '').trim();
+  const observaciones = (document.getElementById('micro-obs-input')?.value || '').trim();
 
-  student.microcicloByWeek[prepWeek].tipoMicrociclo = tipo;
-  student.microcicloByWeek[prepWeek].observaciones = obs;
+  student.microcicloByWeek[prepWeek].tipoMicrociclo = tipoMicrociclo;
+  student.microcicloByWeek[prepWeek].observaciones = observaciones;
+
+  const isVisibleMicro = document.getElementById('vis-microciclo')?.checked ?? true;
+  const isVisibleDias = document.getElementById('vis-dias-semana')?.checked ?? true;
+  const isVisibleDiaPrep = document.getElementById('vis-dia-prep')?.checked ?? true;
+
   student.visibilitySettings = {
     ...student.visibilitySettings,
-    microciclo: document.getElementById('vis-microciclo')?.checked ?? true,
-    diasSemana: document.getElementById('vis-dias-semana')?.checked ?? true,
-    diaEnPreparacion: document.getElementById('vis-dia-prep')?.checked ?? true
+    microciclo: isVisibleMicro,
+    diasSemana: isVisibleDias,
+    diaEnPreparacion: isVisibleDiaPrep
   };
 
   await saveStudentDifferential(student);
+  studentsDatabase = await fetchStudentsFromSupabase();
   renderApp();
 };
 
