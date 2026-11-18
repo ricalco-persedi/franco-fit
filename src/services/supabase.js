@@ -18,42 +18,44 @@ export function generateUUID() {
   });
 }
 
-// Lectura 100% directa desde la base de datos de Supabase
+// 🟢 LECTURA 100% DIRECTA DE SUPABASE
 export async function fetchStudentsFromSupabase() {
   if (!supabase) return [];
   try {
     const { data, error } = await supabase.from('alumnos').select('*');
     if (error || !data) return [];
-    
-    return data.map(st => ({
-      id: st.id,
-      studentNumber: parseInt(st.student_number) || 1,
-      lastname: st.apellido || '',
-      firstname: st.nombre || '',
-      dni: st.dni || '',
-      accessToken: st.access_token || '',
-      cycleType: st.cycle_type || 'Mesociclo',
-      totalWeeks: parseInt(st.total_weeks) || 4,
-      datosAntropometricos: st.datos_antropometricos || {},
-      historialLesiones: st.historial_lesiones || '',
-      evaluacionInicial: st.evaluacion_inicial || '',
-      macrociclo: st.macrociclo || {},
-      mesociclo: st.mesociclo || {},
-      microciclo: st.microciclo || {},
-      microcicloByWeek: st.microciclo_by_week || {},
-      visibilitySettings: st.visibility_settings || {},
-      routine: st.routine || {},
-      draftRoutine: st.draft_routine || {},
-      nutrition: st.nutrition || {},
-      history: Array.isArray(st.history) ? st.history : []
-    }));
+    return data.map(st => {
+      const microObj = st.microciclo || {};
+      return {
+        id: st.id,
+        studentNumber: parseInt(st.student_number) || 1,
+        lastname: st.apellido || '',
+        firstname: st.nombre || '',
+        dni: st.dni || '',
+        accessToken: st.access_token || '',
+        cycleType: st.cycle_type || 'Mesociclo',
+        totalWeeks: parseInt(st.total_weeks) || 4,
+        datosAntropometricos: st.datos_antropometricos || {},
+        historialLesiones: st.historial_lesiones || '',
+        evaluacionInicial: st.evaluacion_inicial || '',
+        macrociclo: st.macrociclo || {},
+        mesociclo: st.mesociclo || {},
+        microciclo: microObj,
+        microcicloByWeek: microObj.byWeek || microObj.microcicloByWeek || {},
+        visibilitySettings: st.visibility_settings || {},
+        routine: st.routine || {},
+        draftRoutine: st.draft_routine || {},
+        nutrition: st.nutrition || {},
+        history: Array.isArray(st.history) ? st.history : []
+      };
+    });
   } catch (err) {
     console.error('Error al conectar con Supabase:', err);
     return [];
   }
 }
 
-// 🟢 PERSISTENCIA 100% DIRECTA EN SUPABASE (SIN LOCALSTORAGE)
+// 🟢 GUARDADO 100% DIRECTO EN SUPABASE
 export async function saveStudentDifferential(student) {
   if (!student || !student.id) return { error: 'ID de alumno inválido' };
   if (!supabase) return { data: student };
@@ -77,8 +79,10 @@ export async function saveStudentDifferential(student) {
       evaluacion_inicial: student.evaluacionInicial || '',
       macrociclo: student.macrociclo || {},
       mesociclo: student.mesociclo || {},
-      microciclo: student.microciclo || {},
-      microciclo_by_week: student.microcicloByWeek || {},
+      microciclo: {
+        ...(student.microciclo || {}),
+        byWeek: student.microcicloByWeek || {}
+      },
       visibility_settings: student.visibilitySettings || {}
     };
 
@@ -87,7 +91,7 @@ export async function saveStudentDifferential(student) {
       console.error('Error al guardar alumno en Supabase:', error.message);
       return { error: error.message };
     }
-    return { data: data?.[0] || student };
+    return { data: (data && data[0]) ? data[0] : student };
   } catch (err) {
     console.error('Excepción de red al guardar en Supabase:', err);
     return { error: err.message };
@@ -113,7 +117,7 @@ export async function syncVideoBankToSupabase(exerciseName, url) {
       updated_at: new Date().toISOString()
     });
   } catch (e) {
-    console.warn('Error sincronizando Banco de Videos en Supabase:', e);
+    console.warn('Error sincronizando Banco de Videos:', e);
   }
 }
 
@@ -146,6 +150,7 @@ export async function fetchStudentByToken(token) {
       .maybeSingle();
 
     if (error || !data) return null;
+    const microObj = data.microciclo || {};
     return {
       id: data.id,
       studentNumber: parseInt(data.student_number) || 1,
@@ -160,8 +165,8 @@ export async function fetchStudentByToken(token) {
       evaluacionInicial: data.evaluacion_inicial || '',
       macrociclo: data.macrociclo || {},
       mesociclo: data.mesociclo || {},
-      microciclo: data.microciclo || {},
-      microcicloByWeek: data.microciclo_by_week || {},
+      microciclo: microObj,
+      microcicloByWeek: microObj.byWeek || microObj.microcicloByWeek || {},
       visibilitySettings: data.visibility_settings || {},
       routine: data.routine || {},
       draftRoutine: data.draft_routine || {},
