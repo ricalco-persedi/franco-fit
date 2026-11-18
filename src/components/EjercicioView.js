@@ -191,6 +191,7 @@ export function renderEjercicioView(student = {}) {
 
     return `
     <div class="space-y-4">
+        <!-- HEADER DE LA ENTIDAD CON ANCHO COMPLETO -->
         <div class="bg-slate-900/90 rounded-2xl p-4 border border-amber-500/30 shadow-xl flex justify-between items-center">
             <div class="flex items-center gap-2 min-w-0">
                 <i data-feather="film" class="w-5 h-5 text-amber-400 shrink-0"></i>
@@ -201,13 +202,17 @@ export function renderEjercicioView(student = {}) {
                     </span>
                 </div>
             </div>
-            <button onclick="window.openAddExerciseModal(${nextExerciseNum})" class="bg-amber-500 hover:bg-amber-400 text-slate-950 text-xs font-black px-3.5 py-2 rounded-xl shadow-lg transition active:scale-95 flex items-center gap-1 shrink-0 cursor-pointer">
-                <i data-feather="plus-circle" class="w-4 h-4"></i> + Agregar Ejercicio ${nextExerciseNum}
-            </button>
         </div>
 
         <div class="space-y-3">
             ${exercisesListHTML}
+        </div>
+
+        <!-- BOTÓN DE AGREGAR EJERCICIO DESTACADO AL PIE DE LA PÁGINA -->
+        <div class="pt-2">
+            <button onclick="window.openAddExerciseModal(${nextExerciseNum})" class="w-full bg-amber-500 hover:bg-amber-400 text-slate-950 text-xs font-black py-3 rounded-2xl shadow-xl transition active:scale-95 flex items-center justify-center gap-2 cursor-pointer">
+                <i data-feather="plus-circle" class="w-4 h-4"></i> + Agregar Ejercicio ${nextExerciseNum}
+            </button>
         </div>
 
         ${renderExerciseModalHTML()}
@@ -248,7 +253,6 @@ function renderExerciseModalHTML() {
                     <h4 class="text-[10px] font-black text-amber-400 uppercase tracking-wider flex items-center gap-1.5 border-b border-slate-800/80 pb-1.5">
                         <i data-feather="info" class="w-3.5 h-3.5 text-amber-400"></i> 1. Identificación y Demostración
                     </h4>
-
                     <div class="grid grid-cols-3 gap-2">
                         <div>
                             <label class="block text-[9px] font-bold text-slate-400 mb-1">N° Orden</label>
@@ -297,7 +301,6 @@ function renderExerciseModalHTML() {
                     <h4 class="text-[10px] font-black text-amber-400 uppercase tracking-wider flex items-center gap-1.5 border-b border-slate-800/80 pb-1.5">
                         <i data-feather="layers" class="w-3.5 h-3.5 text-amber-400"></i> 2. Series y Tiempos de Descanso
                     </h4>
-
                     <div class="grid grid-cols-2 gap-2">
                         <div>
                             <label class="block text-[9px] font-bold text-slate-400 mb-1">Número de Series</label>
@@ -335,14 +338,11 @@ function renderExerciseModalHTML() {
                     <h4 class="text-[10px] font-black text-emerald-400 uppercase tracking-wider flex items-center gap-1.5 border-b border-slate-800/80 pb-1.5">
                         <i data-feather="repeat" class="w-3.5 h-3.5 text-emerald-400"></i> 3. Repeticiones, RPE / RIR y Tempo
                     </h4>
-
                     <div class="grid grid-cols-3 gap-2">
                         <div>
                             <label class="block text-[9px] font-bold text-slate-400 mb-1">Repeticiones</label>
                             <input type="text" id="ex-modal-reps" placeholder="8-12" value="8-12" class="w-full bg-slate-900 border border-emerald-500/50 rounded-xl p-2 text-xs text-emerald-400 font-black text-center focus:outline-none">
                         </div>
-
-                        <!-- LISTA DESPLEGABLE RPE/RIR + OPCIÓN PERSONALIZADA -->
                         <div class="col-span-2">
                             <label class="block text-[9px] font-bold text-slate-400 mb-1">Carácter (RPE / RIR)</label>
                             <div class="space-y-1.5">
@@ -366,7 +366,6 @@ function renderExerciseModalHTML() {
                     <h4 class="text-[10px] font-black text-sky-400 uppercase tracking-wider flex items-center gap-1.5 border-b border-slate-800/80 pb-1.5">
                         <i data-feather="activity" class="w-3.5 h-3.5 text-sky-400"></i> 4. Prescripción de Cargas e Intensidad
                     </h4>
-
                     <div class="grid grid-cols-3 gap-2">
                         <div>
                             <label class="block text-[9px] font-bold text-slate-400 mb-1">Carga (Kg)</label>
