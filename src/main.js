@@ -29,14 +29,14 @@ import { renderStudentPwaView } from './components/StudentPwaView.js';
 import { renderResumenView } from './components/ResumenView.js';
 
 // Constantes internas de compatibilidad
-const _ID = 'i' + 'd';
-const _NAME = 'n' + 'a' + 'm' + 'e';
-const _PIN = 'p' + 'i' + 'n';
-const _MAP = 'm' + 'a' + 'p';
-const _JOIN = 'j' + 'o' + 'i' + 'n';
-const _FIND = 'f' + 'i' + 'n' + 'd';
-const _DIET = 'd' + 'i' + 'e' + 't';
-const _SUPPLEMENTS = 's' + 'u' + 'p' + 'p' + 'l' + 'e' + 'm' + 'e' + 'n' + 't' + 's';
+const _ID = 'id';
+const _NAME = 'name';
+const _PIN = 'pin';
+const _MAP = 'map';
+const _JOIN = 'join';
+const _FIND = 'find';
+const _DIET = 'diet';
+const _SUPPLEMENTS = 'supplements';
 
 // ==========================================
 // 📌 ESTADO GLOBAL DE LA APLICACIÓN
@@ -47,7 +47,7 @@ let currentStudentId = null;
 let isProfLoggedIn = false;
 let selectedWeek = 1;
 let selectedDay = 1;
-let activeRelationalTab = 'ficha'; // 'ficha' | 'macrociclo' | 'mesociclo' | 'microciclo' | 'sesion' | 'visibilidad'
+let activeRelationalTab = 'ficha'; // 'ficha' | 'macrociclo' | 'mesociclo' | 'microciclo' | 'ejercicio' | 'visibilidad' | 'resumen'
 let deferredPwaPrompt = null;
 
 // Evento PWA para instalación móvil
@@ -65,8 +65,8 @@ document.addEventListener('DOMContentLoaded', async () => {
 });
 
 async function loadExternalLibraries() {
-    const featherCDN = 'https://' + 'unpkg' + '.' + 'com/feather-icons';
-    const chartCDN = 'https://' + 'cdn' + '.' + 'jsdelivr' + '.' + 'net/npm/chart.js';
+    const featherCDN = 'https://unpkg.com/feather-icons';
+    const chartCDN = 'https://cdn.jsdelivr.net/npm/chart.js';
     const loadScript = (src) => new Promise((resolve) => {
         if (document.querySelector(`script[src="${src}"]`)) return resolve();
         const script = document.createElement('script');
@@ -85,7 +85,7 @@ async function loadInitialData() {
 async function restoreSession() {
     const urlParams = new URLSearchParams(window.location.search);
     const tokenParam = urlParams.get('token');
-    
+
     // 1. Acceso de Alumno vía Token
     if (tokenParam) {
         currentRole = 'student';
@@ -124,8 +124,6 @@ async function restoreSession() {
         } catch (e) {
             console.warn('Error restaurando alumno activo:', e);
         }
-
-        // 📹 Cargar y sincronizar el banco de videos cuando el profesor SÍ está autenticado
         loadAndSyncVideoBank();
     } else {
         isProfLoggedIn = false;
@@ -146,18 +144,15 @@ function renderLoginView() {
                 <h1 class="text-sm font-black text-amber-400 uppercase tracking-wider">FC Training</h1>
                 <p class="text-xs text-slate-400 font-semibold">Acceso Exclusivo de Administración</p>
             </div>
-
             <form onsubmit="event.preventDefault(); window.handleProfLogin();" class="space-y-4">
                 <div>
                     <label class="block text-[11px] font-bold text-slate-300 mb-1">Correo Electrónico</label>
                     <input type="email" id="login-email" required placeholder="profesor@fctraining.ar" class="w-full bg-slate-950 border border-slate-800 rounded-xl p-3 text-xs text-white font-semibold focus:outline-none focus:border-amber-500">
                 </div>
-
                 <div>
                     <label class="block text-[11px] font-bold text-slate-300 mb-1">Contraseña</label>
                     <input type="password" id="login-password" required placeholder="••••••••" class="w-full bg-slate-950 border border-slate-800 rounded-xl p-3 text-xs text-white font-semibold focus:outline-none focus:border-amber-500">
                 </div>
-
                 <button type="submit" class="w-full bg-amber-500 hover:bg-amber-400 text-slate-950 text-xs font-black py-3 rounded-xl shadow-lg transition active:scale-95 cursor-pointer">
                     Iniciar Sesión
                 </button>
@@ -166,19 +161,15 @@ function renderLoginView() {
     </div>`;
 }
 
-// Controlador para procesar el inicio de sesión con Supabase
 window.handleProfLogin = async function() {
     const email = document.getElementById('login-email')?.value || '';
     const password = document.getElementById('login-password')?.value || '';
-
     showToast("Verificando credenciales...");
     const { data, error } = await loginProfesorWithSupabase(email, password);
-
     if (error) {
         showToast("Error: " + (error.message || "Credenciales inválidas"));
         return;
     }
-
     isProfLoggedIn = true;
     localStorage.setItem('fit_prof_logged_in', 'true');
     showToast("¡Bienvenido Profesor!");
@@ -186,13 +177,13 @@ window.handleProfLogin = async function() {
 };
 
 // ==========================================
-// 🎨 RENDERIZADO PRINCIPAL (renderApp en src/main.js)
+// 🎨 RENDERIZADO PRINCIPAL (renderApp)
 // ==========================================
 export function renderApp() {
     const appEl = document.getElementById('app');
     if (!appEl) return;
 
-    studentsDatabase = getLocalStudents();
+    // 🟢 Lectura directa desde el estado en memoria RAM filtrado de Supabase
     const currentStudent = studentsDatabase.find(s => String(s.id) === String(currentStudentId));
 
     // 👁️ VISTA EXCLUSIVA PWA ALUMNO (SI INGRESA VÍA TOKEN)
@@ -237,7 +228,6 @@ export function renderApp() {
         } else {
             contentHTML = renderEjercicioView(currentStudent); // Pestaña por defecto
         }
-
         mainContentHTML = `
         <div class="pt-4 pb-20 max-w-md mx-auto px-4 space-y-4">
             ${pwaBanner}
@@ -247,9 +237,9 @@ export function renderApp() {
         </div>`;
     }
 
-    appEl.innerHTML = `${renderHeader(currentStudent, activeRelationalTab)}${mainContentHTML}`;
+    appEl.innerHTML = `${renderHeader(currentStudent, activeRelationalTab)}
+    ${mainContentHTML}`;
     bindEvents();
-
     if (typeof feather !== 'undefined') feather.replace();
 }
 
@@ -297,8 +287,8 @@ function renderProfStudentListHTML(list = []) {
     if (!list || list.length === 0) {
         return `<div class="p-4 text-xs text-slate-500 text-center italic bg-slate-950 rounded-xl border border-slate-800">No se encontraron alumnos registrados.</div>`;
     }
-    return list[_MAP](st => {
-        const stId = String(st[_ID] || '');
+    return list.map(st => {
+        const stId = String(st.id || '');
         const num = st.studentNumber ? `#${st.studentNumber} - ` : '';
         const macro = st.macrociclo?.fase || st.cycleType || 'Mesociclo';
         return `
@@ -311,7 +301,7 @@ function renderProfStudentListHTML(list = []) {
                 Gestionar →
             </span>
         </div>`;
-    })[_JOIN]('');
+    }).join('');
 }
 
 function bindEvents() {
@@ -319,19 +309,11 @@ function bindEvents() {
     if (btnLogout) {
         btnLogout.onclick = async () => {
             showToast("Cerrando sesión...");
-            
-            // 1. Cerrar sesión en Supabase
             await logoutSupabase();
-
-            // 2. Limpiar variables de estado
             isProfLoggedIn = false;
             currentStudentId = null;
-
-            // 3. Limpiar almacenamiento local
             localStorage.removeItem('fit_prof_logged_in');
             localStorage.removeItem('fit_active_student_id');
-
-            // 4. Re-renderizar para mostrar la pantalla de Login
             renderApp();
             showToast("Sesión cerrada correctamente.");
         };
@@ -339,7 +321,7 @@ function bindEvents() {
 }
 
 // ==========================================
-// 🌐 NAVEGACIÓN Y HANDLERS GLOBALES
+// 🌐 NAVEGACIÓN Y HANDLERS GLOBALES (100% SUPABASE)
 // ==========================================
 window.switchRelationalTab = function(tabName) {
     activeRelationalTab = tabName;
@@ -389,8 +371,9 @@ window.registerNewStudentPrompt = async function() {
         historialLesiones: '',
         evaluacionInicial: '',
         macrociclo: { fase: 'Adaptación', objetivo: '' },
-        mesociclo: { numeroSemanas: 4 },
+        mesociclo: { numeroSemanas: 4, semanaEnPreparacion: 1, enfoque: '' },
         microciclo: { diasPorSemana: 3 },
+        microcicloByWeek: {},
         visibilitySettings: {},
         routine: {},
         draftRoutine: {},
@@ -398,6 +381,7 @@ window.registerNewStudentPrompt = async function() {
         history: []
     };
 
+    showToast("Registrando en Supabase...");
     await saveStudentDifferential(newStudent);
     studentsDatabase = await fetchStudentsFromSupabase();
     currentStudentId = newStudent.id;
@@ -407,10 +391,8 @@ window.registerNewStudentPrompt = async function() {
 };
 
 function loadStudentData(studentId) {
-    studentsDatabase = getLocalStudents();
-    const st = studentsDatabase[_FIND](s => String(s[_ID]) === String(studentId));
+    const st = studentsDatabase.find(s => String(s.id) === String(studentId));
     if (!st) return;
-
     populateWeekSelectors(st.totalWeeks || 4);
     populateDaySelectors();
     renderExercises();
@@ -447,11 +429,8 @@ function populateDaySelectors() {
 function renderExercises() {
     const container = document.getElementById('exercise-list');
     if (!container) return;
-
-    studentsDatabase = getLocalStudents();
-    const st = studentsDatabase[_FIND](s => String(s[_ID]) === String(currentStudentId));
+    const st = studentsDatabase.find(s => String(s.id) === String(currentStudentId));
     if (!st) return;
-
     const exercises = (st.routine && st.routine[selectedWeek] && st.routine[selectedWeek][selectedDay]) || [];
     if (exercises.length === 0) {
         container.innerHTML = `
@@ -462,8 +441,7 @@ function renderExercises() {
         if (typeof feather !== 'undefined') feather.replace();
         return;
     }
-
-    container.innerHTML = exercises[_MAP](ex => createExerciseCardHTML(ex, true))[_JOIN]('');
+    container.innerHTML = exercises.map(ex => createExerciseCardHTML(ex, true)).join('');
     if (typeof feather !== 'undefined') feather.replace();
 }
 
@@ -495,7 +473,7 @@ export function showToast(message) {
     let toast = document.getElementById('app-toast');
     if (!toast) {
         toast = document.createElement('div');
-        toast[_ID] = 'app-toast';
+        toast.id = 'app-toast';
         toast.className = 'fixed bottom-16 left-1/2 -translate-x-1/2 bg-amber-500 text-slate-950 text-xs font-black px-4 py-2.5 rounded-2xl shadow-2xl z-50 transition-all duration-300 opacity-0 pointer-events-none';
         document.body.appendChild(toast);
     }
@@ -532,8 +510,6 @@ window.installPWA = async function() {
 
 window.saveFichaStudent = async function() {
     if (!currentStudentId) return;
-
-    studentsDatabase = getLocalStudents();
     const student = studentsDatabase.find(s => String(s.id) === String(currentStudentId));
     if (!student) return;
 
@@ -541,16 +517,13 @@ window.saveFichaStudent = async function() {
     student.lastname = (document.getElementById('ficha-lastname')?.value || '').trim();
     student.firstname = (document.getElementById('ficha-firstname')?.value || '').trim();
     student.dni = (document.getElementById('ficha-dni')?.value || '').trim();
-
     student.datosAntropometricos = {
         peso: parseFloat(document.getElementById('ficha-peso')?.value) || null,
         altura: parseFloat(document.getElementById('ficha-altura')?.value) || null,
         grasa: parseFloat(document.getElementById('ficha-grasa')?.value) || null
     };
-
     student.historialLesiones = (document.getElementById('ficha-lesiones')?.value || '').trim();
     student.evaluacionInicial = (document.getElementById('ficha-evaluacion')?.value || '').trim();
-
     student.visibilitySettings = {
         ...student.visibilitySettings,
         antropometria: document.getElementById('vis-antropo')?.checked ?? true,
@@ -560,35 +533,30 @@ window.saveFichaStudent = async function() {
 
     showToast("Guardando cambios en la ficha...");
     await saveStudentDifferential(student);
+    studentsDatabase = await fetchStudentsFromSupabase();
     showToast("¡Ficha del alumno actualizada!");
     renderApp();
 };
 
 window.saveMacrocicloStudent = async function() {
     if (!currentStudentId) return;
-
-    studentsDatabase = getLocalStudents();
     const student = studentsDatabase.find(s => String(s.id) === String(currentStudentId));
     if (!student) return;
 
     const selectEl = document.getElementById('macro-fase-select');
     const customInput = document.getElementById('macro-fase-custom');
-
     let fase = 'Adaptación';
     if (selectEl?.value === '__custom__') {
         fase = (customInput?.value || '').trim() || 'Fase Personalizada';
     } else {
         fase = selectEl?.value || 'Adaptación';
     }
-
     const objetivo = (document.getElementById('macro-objetivo')?.value || '').trim();
     const isVisibleMacro = document.getElementById('vis-macrociclo')?.checked ?? true;
     const isVisibleObjetivos = document.getElementById('vis-objetivos')?.checked ?? true;
 
     student.macrociclo = { fase, objetivo };
-    student.cycleType = fase; // Compatibilidad de columna en Supabase
-
-    // Guarda los estados de visibilidad independientes
+    student.cycleType = fase;
     student.visibilitySettings = {
         ...student.visibilitySettings,
         macrociclo: isVisibleMacro,
@@ -597,11 +565,11 @@ window.saveMacrocicloStudent = async function() {
 
     showToast("Guardando Macrociclo...");
     await saveStudentDifferential(student);
+    studentsDatabase = await fetchStudentsFromSupabase();
     showToast("¡Macrociclo actualizado con éxito!");
     renderApp();
 };
 
-// Maneja el despliegue del campo de texto cuando el profesor elige personalizar una fase
 window.handleMacroFaseChange = function(value) {
     const customInput = document.getElementById('macro-fase-custom');
     if (!customInput) return;
@@ -614,14 +582,12 @@ window.handleMacroFaseChange = function(value) {
     }
 };
 
-// Selecciona un preset numérico de semanas (1, 2, 3...) y actualiza el desplegable de semanas en preparación
 window.setMesoWeeksPreset = function(weeks) {
     const input = document.getElementById('meso-weeks-input');
     if (input) {
         input.value = weeks;
         window.updatePrepWeeksDropdown();
     }
-    
     document.querySelectorAll('.meso-week-btn').forEach(btn => {
         btn.classList.remove('bg-amber-500', 'text-slate-950', 'border-amber-400', 'shadow-lg');
         btn.classList.add('bg-slate-950', 'text-slate-300', 'border-slate-800');
@@ -632,29 +598,24 @@ window.setMesoWeeksPreset = function(weeks) {
     }
 };
 
-// Guarda los datos del Mesociclo (Duración total + Semana en preparación)
 window.saveMesocicloStudent = async function() {
     if (!currentStudentId) return;
-
-    studentsDatabase = getLocalStudents();
     const student = studentsDatabase.find(s => String(s.id) === String(currentStudentId));
     if (!student) return;
 
     const numWeeks = parseInt(document.getElementById('meso-weeks-input')?.value) || 4;
     const prepWeek = parseInt(document.getElementById('meso-prep-week-select')?.value) || 1;
     const enfoque = (document.getElementById('meso-enfoque-input')?.value || '').trim();
-
     const isVisibleMeso = document.getElementById('vis-mesociclo')?.checked ?? true;
     const isVisibleSemanaPrep = document.getElementById('vis-semana-prep')?.checked ?? true;
     const isVisibleEnfoque = document.getElementById('vis-enfoque-meso')?.checked ?? true;
 
-    student.mesociclo = { 
-        numeroSemanas: numWeeks, 
+    student.mesociclo = {
+        numeroSemanas: numWeeks,
         semanaEnPreparacion: prepWeek,
-        enfoque 
+        enfoque
     };
     student.totalWeeks = numWeeks;
-
     student.visibilitySettings = {
         ...student.visibilitySettings,
         mesociclo: isVisibleMeso,
@@ -664,19 +625,17 @@ window.saveMesocicloStudent = async function() {
 
     showToast("Guardando Mesociclo...");
     await saveStudentDifferential(student);
+    studentsDatabase = await fetchStudentsFromSupabase();
     showToast("¡Mesociclo actualizado con éxito!");
     renderApp();
 };
 
-// Actualiza dinámicamente las opciones del selector de "Semana en Preparación" según la cantidad de semanas
 window.updatePrepWeeksDropdown = function() {
     const weeksInput = document.getElementById('meso-weeks-input');
     const prepSelect = document.getElementById('meso-prep-week-select');
     if (!weeksInput || !prepSelect) return;
-
     const totalWeeks = parseInt(weeksInput.value) || 4;
     const currentPrepVal = parseInt(prepSelect.value) || 1;
-
     let html = '';
     for (let w = 1; w <= totalWeeks; w++) {
         const isSelected = (w === currentPrepVal || (w === totalWeeks && currentPrepVal > totalWeeks));
@@ -685,7 +644,6 @@ window.updatePrepWeeksDropdown = function() {
     prepSelect.innerHTML = html;
 };
 
-// Cambia la selección de cantidad de días por semana (1 a 7)
 window.setMicroDaysCount = function(count) {
     document.querySelectorAll('.micro-day-num-btn').forEach((btn, idx) => {
         if (idx + 1 === count) {
@@ -698,7 +656,6 @@ window.setMicroDaysCount = function(count) {
     });
 };
 
-// Activa o desactiva la selección de un día específico y actualiza el desplegable de "Día en Preparación"
 window.toggleMicroDaySelection = function(btnEl, dayName) {
     if (!btnEl) return;
     const isSelected = btnEl.classList.contains('bg-sky-500');
@@ -710,7 +667,6 @@ window.toggleMicroDaySelection = function(btnEl, dayName) {
         btnEl.classList.add('bg-sky-500', 'text-slate-950', 'border-sky-400', 'shadow-md', 'font-black');
     }
 
-    // Actualiza dinámicamente el selector del "Día en Preparación"
     const activeChips = document.querySelectorAll('.micro-day-chip.bg-sky-500');
     const prepSelect = document.getElementById('micro-prep-day-select');
     if (prepSelect) {
@@ -726,7 +682,6 @@ window.toggleMicroDaySelection = function(btnEl, dayName) {
     }
 };
 
-// Despliega el campo de texto cuando se elige un tipo de microciclo personalizado
 window.handleMicroTipoChange = function(val) {
     const customInput = document.getElementById('micro-tipo-custom');
     if (!customInput) return;
@@ -739,34 +694,20 @@ window.handleMicroTipoChange = function(val) {
     }
 };
 
-// ==========================================
-// 🔄 FUNCIÓN ÚNICA Y DEFINITIVA: saveMicrocicloStudent
-// (Reemplaza a las dos versiones duplicadas en src/main.js)
-// ==========================================
 window.saveMicrocicloStudent = async function() {
     if (!currentStudentId) return;
-
-    studentsDatabase = getLocalStudents();
     const student = studentsDatabase.find(s => String(s.id) === String(currentStudentId));
     if (!student) return;
 
-    // 1. Identificar la semana que se está diseñando en Mesociclo
     const prepWeek = student.mesociclo?.semanaEnPreparacion || 1;
-
-    // 2. Obtener días asignados y cantidad total de días
     const activeDayChips = document.querySelectorAll('.micro-day-chip.bg-sky-500');
     const diasAsignados = Array.from(activeDayChips).map(chip => chip.getAttribute('data-day'));
-
     const activeNumBtn = document.querySelector('.micro-day-num-btn.bg-amber-500');
     const diasPorSemana = activeNumBtn ? (parseInt(activeNumBtn.innerText) || diasAsignados.length) : (diasAsignados.length || 3);
-
-    // 3. Día en preparación
     const prepDay = parseInt(document.getElementById('micro-prep-day-select')?.value) || 1;
 
-    // 4. Carácter / Tipo de Microciclo (Base o Personalizado)
     const selectEl = document.getElementById('micro-tipo-select');
     const customInput = document.getElementById('micro-tipo-custom');
-
     let tipoMicrociclo = 'Carga';
     if (selectEl?.value === '__custom__') {
         tipoMicrociclo = (customInput?.value || '').trim() || 'Tipo Personalizado';
@@ -774,10 +715,7 @@ window.saveMicrocicloStudent = async function() {
         tipoMicrociclo = selectEl?.value || 'Carga';
     }
 
-    // 5. Observaciones específicas
     const observaciones = (document.getElementById('micro-obs-input')?.value || '').trim();
-
-    // 6. Configuración de Visibilidad
     const isVisibleMicro = document.getElementById('vis-microciclo')?.checked ?? true;
     const isVisibleDias = document.getElementById('vis-dias-semana')?.checked ?? true;
     const isVisibleDiaPrep = document.getElementById('vis-dia-prep')?.checked ?? true;
@@ -790,13 +728,9 @@ window.saveMicrocicloStudent = async function() {
         observaciones
     };
 
-    // 🟢 Guardado global (compatibilidad con vistas generales)
     student.microciclo = microData;
-
-    // 🟢 Guardado aislado por semana (asegura limpieza entre semanas)
     if (!student.microcicloByWeek) student.microcicloByWeek = {};
     student.microcicloByWeek[prepWeek] = microData;
-
     student.visibilitySettings = {
         ...student.visibilitySettings,
         microciclo: isVisibleMicro,
@@ -806,57 +740,46 @@ window.saveMicrocicloStudent = async function() {
 
     if (typeof showToast === 'function') showToast(`Guardando Microciclo de la Semana ${prepWeek}...`);
     await saveStudentDifferential(student);
+    studentsDatabase = await fetchStudentsFromSupabase();
     if (typeof showToast === 'function') showToast(`¡Microciclo de la Semana ${prepWeek} guardado con éxito!`);
     renderApp();
 };
 
-// Alterna la visibilidad directa de un día en 1 toque desde la Planilla
 window.toggleDayVisibilityDirect = async function(week, day) {
     if (!currentStudentId) return;
-    studentsDatabase = getLocalStudents();
     const student = studentsDatabase.find(s => String(s.id) === String(currentStudentId));
     if (!student) return;
 
     const key = `semana_${week}_dia_${day}`;
     const currentVis = student.visibilitySettings?.[key] !== false;
-
     student.visibilitySettings = {
         ...student.visibilitySettings,
         [key]: !currentVis
     };
-
     await saveStudentDifferential(student);
+    studentsDatabase = await fetchStudentsFromSupabase();
     showToast(`Día ${day} de Semana ${week}: ${!currentVis ? '👁️ Publicado' : '🔒 Oculto'}`);
     renderApp();
 };
 
-// Alterna la visibilidad directa de una semana completa en 1 toque
 window.toggleWeekVisibilityDirect = async function(week) {
     if (!currentStudentId) return;
-    studentsDatabase = getLocalStudents();
     const student = studentsDatabase.find(s => String(s.id) === String(currentStudentId));
     if (!student) return;
 
     const key = `semana_${week}`;
     const currentVis = student.visibilitySettings?.[key] !== false;
-
     student.visibilitySettings = {
         ...student.visibilitySettings,
         [key]: !currentVis
     };
-
     await saveStudentDifferential(student);
+    studentsDatabase = await fetchStudentsFromSupabase();
     showToast(`Semana ${week}: ${!currentVis ? '👁️ Publicada' : '🔒 Oculta'}`);
     renderApp();
 };
 
-// ==========================================
-// 📹 GESTIÓN DEL BANCO DE VIDEOS (SINCRONIZADO)
-// ==========================================
-
 const VIDEO_BANK_KEY = 'fit_video_bank';
-
-// Lee el banco de videos desde la memoria local
 export function getVideoBank() {
     try {
         const raw = localStorage.getItem(VIDEO_BANK_KEY);
@@ -866,27 +789,20 @@ export function getVideoBank() {
     }
 }
 
-// Guarda un video en la memoria local y lo sube inmediatamente a Supabase
 export async function saveToVideoBank(exerciseName, url) {
     if (!exerciseName || !url) return;
     const cleanKey = exerciseName.trim().toLowerCase();
     if (!cleanKey) return;
-
     const bank = getVideoBank();
     bank[cleanKey] = url.trim();
-
-    // 1. Guardado local de acceso rápido
     try {
         localStorage.setItem(VIDEO_BANK_KEY, JSON.stringify(bank));
     } catch (e) {
         console.warn('Error guardando en LocalStorage:', e);
     }
-
-    // 2. Sincronización en la nube para disponibilidad multi-dispositivo
     await syncVideoBankToSupabase(bank);
 }
 
-// Descarga el banco de videos de Supabase al iniciar sesión y lo fusiona
 export async function loadAndSyncVideoBank() {
     const remoteBank = await fetchVideoBankFromSupabase();
     if (remoteBank && typeof remoteBank === 'object') {
@@ -900,22 +816,18 @@ export async function loadAndSyncVideoBank() {
     return getVideoBank();
 }
 
-// 1. Abrir Modal para Nuevo Ejercicio (RESTABLECE A VALORES ESTÁNDAR POR DEFECTO)
 window.openAddExerciseModal = function(nextNum) {
     const modal = document.getElementById('exercise-entity-modal');
     if (!modal) return;
-
     const titleEl = document.getElementById('ex-modal-title');
     if (titleEl) {
         titleEl.innerHTML = `<i data-feather="plus-circle" class="w-4 h-4"></i> Cargar Ejercicio ${nextNum || 1} ('Todo en Uno')`;
         if (typeof feather !== 'undefined') feather.replace();
     }
-
     document.getElementById('ex-modal-id').value = '';
     document.getElementById('ex-modal-num').value = nextNum || 1;
     document.getElementById('ex-modal-num-display').value = nextNum || 1;
     document.getElementById('ex-modal-name').value = '';
-
     const catSelect = document.getElementById('ex-modal-category');
     if (catSelect) catSelect.value = 'Peso Libre';
     const catCustom = document.getElementById('ex-modal-category-custom');
@@ -923,20 +835,16 @@ window.openAddExerciseModal = function(nextNum) {
         catCustom.value = '';
         catCustom.classList.add('hidden');
     }
-
     document.getElementById('ex-modal-media-url').value = '';
     document.getElementById('ex-modal-notes').value = '';
     const badge = document.getElementById('ex-modal-video-badge');
     if (badge) badge.classList.add('hidden');
 
-    // Restablecer valores por defecto estándar
     document.getElementById('ex-modal-series').value = 4;
     document.getElementById('ex-modal-tipo-serie').value = 'Normal';
     document.getElementById('ex-modal-set-rest').value = '90s';
     document.getElementById('ex-modal-block-rest').value = '120s';
     document.getElementById('ex-modal-reps').value = '8-12';
-
-    // RPE Desplegable por defecto
     const rpeSelect = document.getElementById('ex-modal-rpe-select');
     const rpeCustom = document.getElementById('ex-modal-rpe-custom');
     if (rpeSelect) rpeSelect.value = 'RPE 8 (Exigente / 2 reps en reserva)';
@@ -944,16 +852,13 @@ window.openAddExerciseModal = function(nextNum) {
         rpeCustom.value = '';
         rpeCustom.classList.add('hidden');
     }
-
     document.getElementById('ex-modal-tempo').value = '3-0-1-0';
     document.getElementById('ex-modal-carga').value = '0';
     document.getElementById('ex-modal-rm').value = '75%';
     document.getElementById('ex-modal-progression').value = 'Lineal';
-
     modal.classList.remove('hidden');
 };
 
-// Maneja el despliegue del campo de texto cuando el profesor elige RPE personalizado
 window.handleExRpeSelectChange = function(value) {
     const customInput = document.getElementById('ex-modal-rpe-custom');
     if (!customInput) return;
@@ -966,10 +871,8 @@ window.handleExRpeSelectChange = function(value) {
     }
 };
 
-// 3. Guardar Ejercicio desde el Modal
 window.saveExerciseFromModal = async function() {
     if (!currentStudentId) return;
-    studentsDatabase = getLocalStudents();
     const student = studentsDatabase.find(s => String(s.id) === String(currentStudentId));
     if (!student) return;
 
@@ -985,7 +888,6 @@ window.saveExerciseFromModal = async function() {
         return;
     }
 
-    // Lectura de RPE/RIR
     const rpeSelectVal = document.getElementById('ex-modal-rpe-select')?.value;
     const rpeCustomVal = (document.getElementById('ex-modal-rpe-custom')?.value || '').trim();
     let rpe = 'RPE 8 (Exigente / 2 reps en reserva)';
@@ -995,11 +897,9 @@ window.saveExerciseFromModal = async function() {
         rpe = rpeSelectVal || '-';
     }
 
-    // Resto de variables
     const catSelect = document.getElementById('ex-modal-category')?.value;
     const catCustom = (document.getElementById('ex-modal-category-custom')?.value || '').trim();
     let category = catSelect === '__custom__' ? (catCustom || 'Personalizada') : (catSelect || 'Peso Libre');
-
     const mediaUrl = (document.getElementById('ex-modal-media-url')?.value || '').trim();
     const notes = (document.getElementById('ex-modal-notes')?.value || '').trim();
     const series = parseInt(document.getElementById('ex-modal-series')?.value) || 4;
@@ -1017,7 +917,6 @@ window.saveExerciseFromModal = async function() {
     if (!student.routine[prepWeek][prepDay]) student.routine[prepWeek][prepDay] = [];
 
     const dayList = student.routine[prepWeek][prepDay];
-
     const exData = {
         exerciseNumber: exNum,
         name: exName,
@@ -1057,21 +956,19 @@ window.saveExerciseFromModal = async function() {
     showToast(`Guardando ${exName}...`);
     window.closeExerciseModal();
     await saveStudentDifferential(student);
+    studentsDatabase = await fetchStudentsFromSupabase();
     showToast(`¡${exName} guardado con éxito!`);
     renderApp();
 };
 
-// 2. Abrir Modal para Editar Ejercicio (Carga el RPE/RIR exacto previamente guardado)
 window.editExerciseInModal = function(exId) {
     if (!currentStudentId) return;
-    studentsDatabase = getLocalStudents();
     const student = studentsDatabase.find(s => String(s.id) === String(currentStudentId));
     if (!student) return;
 
     const prepWeek = student.mesociclo?.semanaEnPreparacion || 1;
     const microByW = (student.microcicloByWeek && student.microcicloByWeek[prepWeek]) || {};
     const prepDay = microByW.diaEnPreparacion || student.microciclo?.diaEnPreparacion || 1;
-
     const routine = student.routine || {};
     const weekRoutine = routine[prepWeek] || {};
     const dayExercises = weekRoutine[prepDay] || [];
@@ -1086,7 +983,6 @@ window.editExerciseInModal = function(exId) {
     document.getElementById('ex-modal-num-display').value = ex.exerciseNumber || 1;
     document.getElementById('ex-modal-name').value = ex.name || '';
 
-    // RPE/RIR: Selecciona la opción coincidente o activa la opción personalizada
     const rpePresets = [
         '-',
         'RPE 6 (Fácil / Calentamiento)',
@@ -1099,7 +995,6 @@ window.editExerciseInModal = function(exId) {
         'RIR 1',
         'RIR 0 (Fallo)'
     ];
-
     const rpeSelect = document.getElementById('ex-modal-rpe-select');
     const rpeCustom = document.getElementById('ex-modal-rpe-custom');
     const currentRpe = ex.rpe || 'RPE 8 (Exigente / 2 reps en reserva)';
@@ -1118,7 +1013,6 @@ window.editExerciseInModal = function(exId) {
         }
     }
 
-    // Carga de las demás variables
     document.getElementById('ex-modal-series').value = ex.series || 4;
     document.getElementById('ex-modal-tipo-serie').value = ex.tipoSerie || 'Normal';
     document.getElementById('ex-modal-set-rest').value = ex.setRest || '90s';
@@ -1132,33 +1026,28 @@ window.editExerciseInModal = function(exId) {
     modal.classList.remove('hidden');
 };
 
-// 3. Cerrar Modal
 window.closeExerciseModal = function() {
     const modal = document.getElementById('exercise-entity-modal');
     if (modal) modal.classList.add('hidden');
 };
 
-// Elimina un ejercicio del día activo
 window.deleteExerciseFromRoutine = async function(exerciseId) {
     if (!confirm("¿Deseas eliminar este ejercicio de la sesión?")) return;
-    studentsDatabase = getLocalStudents();
     const student = studentsDatabase.find(s => String(s.id) === String(currentStudentId));
     if (!student) return;
 
     const prepWeek = student.mesociclo?.semanaEnPreparacion || 1;
     const prepDay = student.microciclo?.diaEnPreparacion || 1;
-
     if (student.routine?.[prepWeek]?.[prepDay]) {
         student.routine[prepWeek][prepDay] = student.routine[prepWeek][prepDay].filter(e => String(e.id) !== String(exerciseId));
         await saveStudentDifferential(student);
+        studentsDatabase = await fetchStudentsFromSupabase();
         showToast("Ejercicio eliminado.");
         renderApp();
     }
 };
 
-// Alterna el estado de visibilidad individual de un ejercicio
 window.toggleExerciseVisibility = async function(exerciseId) {
-    studentsDatabase = getLocalStudents();
     const student = studentsDatabase.find(s => String(s.id) === String(currentStudentId));
     if (!student) return;
 
@@ -1170,15 +1059,41 @@ window.toggleExerciseVisibility = async function(exerciseId) {
 
     ex.visible = (ex.visible === false) ? true : false;
     await saveStudentDifferential(student);
+    studentsDatabase = await fetchStudentsFromSupabase();
     showToast(`Ejercicio: ${ex.visible ? '👁️ Visible' : '🔒 Oculto'}`);
     renderApp();
 };
 
-// Actualiza el número de series de un ejercicio específico desde los botones preset
+window.quickUpdateExerciseProp = async function(exId, propName, value) {
+    if (!currentStudentId) return;
+    const student = studentsDatabase.find(s => String(s.id) === String(currentStudentId));
+    if (!student) return;
+
+    const prepWeek = student.mesociclo?.semanaEnPreparacion || 1;
+    const microByW = (student.microcicloByWeek && student.microcicloByWeek[prepWeek]) || {};
+    const prepDay = microByW.diaEnPreparacion || student.microciclo?.diaEnPreparacion || 1;
+
+    const dayList = student.routine?.[prepWeek]?.[prepDay] || [];
+    const ex = dayList.find(e => String(e.id) === String(exId));
+    if (!ex) return;
+
+    if (propName === 'series') {
+        ex[propName] = parseInt(value) || 4;
+    } else if (propName === 'repeticiones') {
+        ex.repeticiones = value;
+        ex.repsRange = value;
+    } else {
+        ex[propName] = value;
+    }
+
+    showToast(`Actualizado: ${propName} = ${value}`);
+    await saveStudentDifferential(student);
+    studentsDatabase = await fetchStudentsFromSupabase();
+};
+
 window.setSeriesCountForEx = function(exId, count) {
     const input = document.getElementById(`series-count-input-${exId}`);
     if (input) input.value = count;
-
     document.querySelectorAll(`.series-count-btn-${exId}`).forEach(btn => {
         btn.classList.remove('bg-amber-500', 'text-slate-950', 'border-amber-400', 'shadow-md');
         btn.classList.add('bg-slate-950', 'text-slate-400', 'border-slate-800');
@@ -1189,11 +1104,9 @@ window.setSeriesCountForEx = function(exId, count) {
     }
 };
 
-// Actualiza el tiempo de descanso de un ejercicio específico desde los botones preset
 window.setSeriesRestForEx = function(exId, restStr) {
     const customInput = document.getElementById(`series-rest-custom-${exId}`);
     if (customInput) customInput.value = restStr;
-
     document.querySelectorAll(`.series-rest-btn-${exId}`).forEach(btn => {
         btn.classList.remove('bg-sky-500', 'text-slate-950', 'border-sky-400', 'font-black', 'shadow');
         btn.classList.add('bg-slate-950', 'text-slate-400', 'border-slate-800');
@@ -1204,17 +1117,13 @@ window.setSeriesRestForEx = function(exId, restStr) {
     }
 };
 
-// Guarda la configuración de series para todos los ejercicios del día activo
 window.saveSeriesStudent = async function() {
     if (!currentStudentId) return;
-
-    studentsDatabase = getLocalStudents();
     const student = studentsDatabase.find(s => String(s.id) === String(currentStudentId));
     if (!student) return;
 
     const prepWeek = student.mesociclo?.semanaEnPreparacion || 1;
     const prepDay = student.microciclo?.diaEnPreparacion || 1;
-
     const dayList = student.routine?.[prepWeek]?.[prepDay] || [];
     if (dayList.length === 0) return;
 
@@ -1224,7 +1133,6 @@ window.saveSeriesStudent = async function() {
         const tipoSelect = document.getElementById(`series-tipo-select-${exId}`);
         const restInput = document.getElementById(`series-rest-custom-${exId}`);
         const visCheck = document.getElementById(`vis-series-ex-${exId}`);
-
         if (countInput) ex.series = parseInt(countInput.value) || 3;
         if (tipoSelect) ex.tipoSerie = tipoSelect.value;
         if (restInput) ex.setRest = (restInput.value || '').trim() || '60s';
@@ -1239,15 +1147,14 @@ window.saveSeriesStudent = async function() {
 
     showToast("Guardando configuración de Series...");
     await saveStudentDifferential(student);
+    studentsDatabase = await fetchStudentsFromSupabase();
     showToast("¡Series actualizadas exitosamente!");
     renderApp();
 };
 
-// Actualiza el rango de repeticiones de un ejercicio desde los botones preset
 window.setRepsPresetForEx = function(exId, presetStr) {
     const input = document.getElementById(`reps-input-${exId}`);
     if (input) input.value = presetStr;
-
     document.querySelectorAll(`.reps-preset-btn-${exId}`).forEach(btn => {
         btn.classList.remove('bg-amber-500', 'text-slate-950', 'border-amber-400', 'font-black', 'shadow');
         btn.classList.add('bg-slate-950', 'text-slate-400', 'border-slate-800');
@@ -1258,11 +1165,9 @@ window.setRepsPresetForEx = function(exId, presetStr) {
     }
 };
 
-// Actualiza el tempo de ejecución de un ejercicio desde los botones preset
 window.setTempoPresetForEx = function(exId, tempoStr) {
     const input = document.getElementById(`reps-tempo-input-${exId}`);
     if (input) input.value = tempoStr;
-
     document.querySelectorAll(`.tempo-btn-${exId}`).forEach(btn => {
         btn.classList.remove('bg-sky-500', 'text-slate-950', 'border-sky-400', 'font-black', 'shadow');
         btn.classList.add('bg-slate-950', 'text-slate-400', 'border-slate-800');
@@ -1273,17 +1178,13 @@ window.setTempoPresetForEx = function(exId, tempoStr) {
     }
 };
 
-// Guarda la configuración de repeticiones para todos los ejercicios del día activo
 window.saveRepeticionesStudent = async function() {
     if (!currentStudentId) return;
-
-    studentsDatabase = getLocalStudents();
     const student = studentsDatabase.find(s => String(s.id) === String(currentStudentId));
     if (!student) return;
 
     const prepWeek = student.mesociclo?.semanaEnPreparacion || 1;
     const prepDay = student.microciclo?.diaEnPreparacion || 1;
-
     const dayList = student.routine?.[prepWeek]?.[prepDay] || [];
     if (dayList.length === 0) return;
 
@@ -1311,21 +1212,19 @@ window.saveRepeticionesStudent = async function() {
 
     showToast("Guardando configuración de Repeticiones...");
     await saveStudentDifferential(student);
+    studentsDatabase = await fetchStudentsFromSupabase();
     showToast("¡Repeticiones actualizadas exitosamente!");
     renderApp();
 };
 
-// Establece el valor del campo de Carga en Kg desde los presets táctiles
 window.setCargaPresetForEx = function(exId, valStr) {
     const input = document.getElementById(`carga-kg-input-${exId}`);
     if (input) input.value = valStr;
 };
 
-// Establece el porcentaje de RM desde los presets táctiles
 window.setRMPresetForEx = function(exId, rmStr) {
     const input = document.getElementById(`carga-rm-input-${exId}`);
     if (input) input.value = rmStr;
-
     document.querySelectorAll(`.rm-preset-btn-${exId}`).forEach(btn => {
         btn.classList.remove('bg-emerald-500', 'text-slate-950', 'border-emerald-400', 'font-black', 'shadow');
         btn.classList.add('bg-slate-950', 'text-slate-400', 'border-slate-800');
@@ -1336,17 +1235,13 @@ window.setRMPresetForEx = function(exId, rmStr) {
     }
 };
 
-// Guarda la configuración de cargas para todos los ejercicios del día activo
 window.saveCargaStudent = async function() {
     if (!currentStudentId) return;
-
-    studentsDatabase = getLocalStudents();
     const student = studentsDatabase.find(s => String(s.id) === String(currentStudentId));
     if (!student) return;
 
     const prepWeek = student.mesociclo?.semanaEnPreparacion || 1;
     const prepDay = student.microciclo?.diaEnPreparacion || 1;
-
     const dayList = student.routine?.[prepWeek]?.[prepDay] || [];
     if (dayList.length === 0) return;
 
@@ -1376,45 +1271,35 @@ window.saveCargaStudent = async function() {
 
     showToast("Guardando configuración de Cargas...");
     await saveStudentDifferential(student);
+    studentsDatabase = await fetchStudentsFromSupabase();
     showToast("¡Cargas y Pesos actualizados exitosamente!");
     renderApp();
 };
 
-
-
-// Exportación del PDF unificado con todas las semanas y días del alumno
 window.exportFullPDF = function() {
     if (!currentStudentId) {
         showToast("Selecciona un alumno primero.");
         return;
     }
-    studentsDatabase = getLocalStudents();
     const student = studentsDatabase.find(s => String(s.id) === String(currentStudentId));
     if (!student) return;
-
     showToast("Generando vista PDF...");
     generateFullRoutinePDF(student);
 };
 
-// Genera o lee el token del alumno y copia su Enlace Mágico al portapapeles
 window.sendStudentAccess = async function() {
     if (!currentStudentId) {
         showToast("Selecciona un alumno primero.");
         return;
     }
-
-    studentsDatabase = getLocalStudents();
     const student = studentsDatabase.find(s => String(s.id) === String(currentStudentId));
     if (!student) return;
-
     let token = student.accessToken;
     if (!token) {
         showToast("Generando Token de acceso seguro...");
         token = await generateStudentAccessToken(student.id);
     }
-
     const appUrl = `${window.location.origin}/?token=${token}`;
-
     if (navigator.clipboard && navigator.clipboard.writeText) {
         await navigator.clipboard.writeText(appUrl);
         showToast("¡Enlace Mágico copiado al portapapeles!");
@@ -1423,7 +1308,6 @@ window.sendStudentAccess = async function() {
     }
 };
 
-// Controladores de navegación interactiva para la PWA del Alumno
 window.selectStudentPwaWeek = function(weekNum) {
     selectedWeek = weekNum;
     selectedDay = 1;
@@ -1435,7 +1319,6 @@ window.selectStudentPwaDay = function(dayNum) {
     renderApp();
 };
 
-// Maneja el despliegue del campo de texto cuando el profesor elige una categoría personalizada
 window.handleExCategoryChange = function(value) {
     const customInput = document.getElementById('ex-modal-category-custom');
     if (!customInput) return;
@@ -1448,219 +1331,203 @@ window.handleExCategoryChange = function(value) {
     }
 };
 
-// Handlers de cambio de semana y días operando 100% DIRECTO con Supabase
-
 window.handleWeekChange = async function(newWeek) {
-  if (!currentStudentId) return;
-  showToast(`Cargando Semana ${newWeek} desde Supabase...`);
+    if (!currentStudentId) return;
+    showToast(`Cargando Semana ${newWeek} desde Supabase...`);
+    studentsDatabase = await fetchStudentsFromSupabase();
+    const student = studentsDatabase.find(s => String(s.id) === String(currentStudentId));
+    if (!student) return;
 
-  studentsDatabase = await fetchStudentsFromSupabase();
-  const student = studentsDatabase.find(s => String(s.id) === String(currentStudentId));
-  if (!student) return;
+    const w = parseInt(newWeek) || 1;
+    if (!student.mesociclo) student.mesociclo = {};
+    student.mesociclo.semanaEnPreparacion = w;
 
-  const w = parseInt(newWeek) || 1;
-  if (!student.mesociclo) student.mesociclo = {};
-  student.mesociclo.semanaEnPreparacion = w;
-
-  // Garantizar estructura aislada para la semana sin herencias ni fallbacks
-  if (!student.microcicloByWeek) student.microcicloByWeek = {};
-  if (!student.microcicloByWeek[w]) {
-    student.microcicloByWeek[w] = {
-      diasPorSemana: 0,
-      diasAsignados: [],
-      diaEnPreparacion: 1,
-      tipoMicrociclo: 'Carga',
-      observaciones: ''
-    };
-  }
-
-  await saveStudentDifferential(student);
-  studentsDatabase = await fetchStudentsFromSupabase();
-  renderApp();
+    if (!student.microcicloByWeek) student.microcicloByWeek = {};
+    if (!student.microcicloByWeek[w]) {
+        student.microcicloByWeek[w] = {
+            diasPorSemana: 0,
+            diasAsignados: [],
+            diaEnPreparacion: 1,
+            tipoMicrociclo: 'Carga',
+            observaciones: ''
+        };
+    }
+    await saveStudentDifferential(student);
+    studentsDatabase = await fetchStudentsFromSupabase();
+    renderApp();
 };
 
 window.handleDayChange = async function(newDay) {
-  if (!currentStudentId) return;
-  studentsDatabase = await fetchStudentsFromSupabase();
-  const student = studentsDatabase.find(s => String(s.id) === String(currentStudentId));
-  if (!student) return;
+    if (!currentStudentId) return;
+    studentsDatabase = await fetchStudentsFromSupabase();
+    const student = studentsDatabase.find(s => String(s.id) === String(currentStudentId));
+    if (!student) return;
 
-  const prepWeek = parseInt(student.mesociclo?.semanaEnPreparacion) || 1;
-  if (!student.microcicloByWeek) student.microcicloByWeek = {};
-  if (!student.microcicloByWeek[prepWeek]) {
-    student.microcicloByWeek[prepWeek] = {
-      diasPorSemana: 0,
-      diasAsignados: [],
-      diaEnPreparacion: 1,
-      tipoMicrociclo: 'Carga',
-      observaciones: ''
-    };
-  }
+    const prepWeek = parseInt(student.mesociclo?.semanaEnPreparacion) || 1;
+    if (!student.microcicloByWeek) student.microcicloByWeek = {};
+    if (!student.microcicloByWeek[prepWeek]) {
+        student.microcicloByWeek[prepWeek] = {
+            diasPorSemana: 0,
+            diasAsignados: [],
+            diaEnPreparacion: 1,
+            tipoMicrociclo: 'Carga',
+            observaciones: ''
+        };
+    }
 
-  const d = parseInt(newDay) || 1;
-  student.microcicloByWeek[prepWeek].diaEnPreparacion = d;
-
-  await saveStudentDifferential(student);
-  studentsDatabase = await fetchStudentsFromSupabase();
-  renderApp();
+    const d = parseInt(newDay) || 1;
+    student.microcicloByWeek[prepWeek].diaEnPreparacion = d;
+    await saveStudentDifferential(student);
+    studentsDatabase = await fetchStudentsFromSupabase();
+    renderApp();
 };
 
 window.toggleMicroDaySelectionAuto = async function(dayName) {
-  if (!currentStudentId) return;
-  studentsDatabase = await fetchStudentsFromSupabase();
-  const student = studentsDatabase.find(s => String(s.id) === String(currentStudentId));
-  if (!student) return;
+    if (!currentStudentId) return;
+    const student = studentsDatabase.find(s => String(s.id) === String(currentStudentId));
+    if (!student) return;
 
-  const prepWeek = parseInt(student.mesociclo?.semanaEnPreparacion) || 1;
-  if (!student.microcicloByWeek) student.microcicloByWeek = {};
-  if (!student.microcicloByWeek[prepWeek]) {
-    student.microcicloByWeek[prepWeek] = {
-      diasPorSemana: 0,
-      diasAsignados: [],
-      diaEnPreparacion: 1,
-      tipoMicrociclo: 'Carga',
-      observaciones: ''
-    };
-  }
+    const prepWeek = parseInt(student.mesociclo?.semanaEnPreparacion) || 1;
+    if (!student.microcicloByWeek) student.microcicloByWeek = {};
+    if (!student.microcicloByWeek[prepWeek]) {
+        student.microcicloByWeek[prepWeek] = {
+            diasPorSemana: 0,
+            diasAsignados: [],
+            diaEnPreparacion: 1,
+            tipoMicrociclo: 'Carga',
+            observaciones: ''
+        };
+    }
+    const wMicro = student.microcicloByWeek[prepWeek];
+    let dias = Array.isArray(wMicro.diasAsignados) ? [...wMicro.diasAsignados] : [];
 
-  const wMicro = student.microcicloByWeek[prepWeek];
-  let dias = Array.isArray(wMicro.diasAsignados) ? [...wMicro.diasAsignados] : [];
+    if (dias.includes(dayName)) {
+        dias = dias.filter(d => d !== dayName);
+    } else {
+        dias.push(dayName);
+    }
 
-  if (dias.includes(dayName)) {
-    dias = dias.filter(d => d !== dayName);
-  } else {
-    dias.push(dayName);
-  }
+    wMicro.diasAsignados = dias;
+    wMicro.diasPorSemana = dias.length;
+    if (wMicro.diaEnPreparacion > dias.length && dias.length > 0) {
+        wMicro.diaEnPreparacion = 1;
+    }
 
-  wMicro.diasAsignados = dias;
-  wMicro.diasPorSemana = dias.length;
-  if (wMicro.diaEnPreparacion > dias.length && dias.length > 0) {
-    wMicro.diaEnPreparacion = 1;
-  }
-
-  await saveStudentDifferential(student);
-  studentsDatabase = await fetchStudentsFromSupabase();
-  renderApp();
+    await saveStudentDifferential(student);
+    studentsDatabase = await fetchStudentsFromSupabase();
+    renderApp();
 };
 
 window.saveMesocicloStudentAuto = async function() {
-  if (!currentStudentId) return;
-  studentsDatabase = await fetchStudentsFromSupabase();
-  const student = studentsDatabase.find(s => String(s.id) === String(currentStudentId));
-  if (!student) return;
+    if (!currentStudentId) return;
+    const student = studentsDatabase.find(s => String(s.id) === String(currentStudentId));
+    if (!student) return;
 
-  const numWeeks = parseInt(document.getElementById('meso-weeks-input')?.value) || 4;
-  const prepWeek = parseInt(document.getElementById('meso-prep-week-select')?.value) || 1;
-  const enfoque = (document.getElementById('meso-enfoque-input')?.value || '').trim();
+    const numWeeks = parseInt(document.getElementById('meso-weeks-input')?.value) || 4;
+    const prepWeek = parseInt(document.getElementById('meso-prep-week-select')?.value) || 1;
+    const enfoque = (document.getElementById('meso-enfoque-input')?.value || '').trim();
 
-  student.totalWeeks = numWeeks;
-  student.mesociclo = {
-    ...student.mesociclo,
-    numeroSemanas: numWeeks,
-    semanaEnPreparacion: prepWeek,
-    enfoque
-  };
+    student.totalWeeks = numWeeks;
+    student.mesociclo = {
+        ...student.mesociclo,
+        numeroSemanas: numWeeks,
+        semanaEnPreparacion: prepWeek,
+        enfoque
+    };
 
-  const isVisibleMeso = document.getElementById('vis-mesociclo')?.checked ?? true;
-  const isVisibleSemanas = document.getElementById('vis-semanas-totales')?.checked ?? true;
-  const isVisibleSemanaPrep = document.getElementById('vis-semana-prep')?.checked ?? true;
+    const isVisibleMeso = document.getElementById('vis-mesociclo')?.checked ?? true;
+    const isVisibleSemanas = document.getElementById('vis-semanas-totales')?.checked ?? true;
+    const isVisibleSemanaPrep = document.getElementById('vis-semana-prep')?.checked ?? true;
 
-  student.visibilitySettings = {
-    ...student.visibilitySettings,
-    mesociclo: isVisibleMeso,
-    semanasTotales: isVisibleSemanas,
-    semanaEnPreparacion: isVisibleSemanaPrep
-  };
+    student.visibilitySettings = {
+        ...student.visibilitySettings,
+        mesociclo: isVisibleMeso,
+        semanasTotales: isVisibleSemanas,
+        semanaEnPreparacion: isVisibleSemanaPrep
+    };
 
-  await saveStudentDifferential(student);
-  studentsDatabase = await fetchStudentsFromSupabase();
-  renderApp();
+    await saveStudentDifferential(student);
+    studentsDatabase = await fetchStudentsFromSupabase();
+    renderApp();
 };
 
 window.setMesoWeeksPresetAuto = async function(weeks) {
-  const input = document.getElementById('meso-weeks-input');
-  if (input) input.value = weeks;
-  await window.saveMesocicloStudentAuto();
+    const input = document.getElementById('meso-weeks-input');
+    if (input) input.value = weeks;
+    await window.saveMesocicloStudentAuto();
 };
 
-// Auto-guardado de campos de Microciclo
 window.saveMicrocicloStudentAuto = async function() {
-  if (!currentStudentId) return;
-  studentsDatabase = await fetchStudentsFromSupabase();
-  const student = studentsDatabase.find(s => String(s.id) === String(currentStudentId));
-  if (!student) return;
+    if (!currentStudentId) return;
+    const student = studentsDatabase.find(s => String(s.id) === String(currentStudentId));
+    if (!student) return;
 
-  const prepWeek = parseInt(student.mesociclo?.semanaEnPreparacion) || 1;
-  if (!student.microcicloByWeek) student.microcicloByWeek = {};
-  if (!student.microcicloByWeek[prepWeek]) {
-    student.microcicloByWeek[prepWeek] = {
-      diasPorSemana: 0,
-      diasAsignados: [],
-      diaEnPreparacion: 1,
-      tipoMicrociclo: 'Carga',
-      observaciones: ''
+    const prepWeek = parseInt(student.mesociclo?.semanaEnPreparacion) || 1;
+    if (!student.microcicloByWeek) student.microcicloByWeek = {};
+    if (!student.microcicloByWeek[prepWeek]) {
+        student.microcicloByWeek[prepWeek] = {
+            diasPorSemana: 0,
+            diasAsignados: [],
+            diaEnPreparacion: 1,
+            tipoMicrociclo: 'Carga',
+            observaciones: ''
+        };
+    }
+
+    const selectEl = document.getElementById('micro-tipo-select');
+    const customInput = document.getElementById('micro-tipo-custom');
+    let tipoMicrociclo = 'Carga';
+    if (selectEl?.value === '__custom__') {
+        tipoMicrociclo = (customInput?.value || '').trim() || 'Tipo Personalizado';
+    } else {
+        tipoMicrociclo = selectEl?.value || 'Carga';
+    }
+
+    const observaciones = (document.getElementById('micro-obs-input')?.value || '').trim();
+    student.microcicloByWeek[prepWeek].tipoMicrociclo = tipoMicrociclo;
+    student.microcicloByWeek[prepWeek].observaciones = observaciones;
+
+    const isVisibleMicro = document.getElementById('vis-microciclo')?.checked ?? true;
+    const isVisibleDias = document.getElementById('vis-dias-semana')?.checked ?? true;
+    const isVisibleDiaPrep = document.getElementById('vis-dia-prep')?.checked ?? true;
+
+    student.visibilitySettings = {
+        ...student.visibilitySettings,
+        microciclo: isVisibleMicro,
+        diasSemana: isVisibleDias,
+        diaEnPreparacion: isVisibleDiaPrep
     };
-  }
 
-  const selectEl = document.getElementById('micro-tipo-select');
-  const customInput = document.getElementById('micro-tipo-custom');
-  let tipoMicrociclo = 'Carga';
-  if (selectEl?.value === '__custom__') {
-    tipoMicrociclo = (customInput?.value || '').trim() || 'Tipo Personalizado';
-  } else {
-    tipoMicrociclo = selectEl?.value || 'Carga';
-  }
-
-  const observaciones = (document.getElementById('micro-obs-input')?.value || '').trim();
-
-  student.microcicloByWeek[prepWeek].tipoMicrociclo = tipoMicrociclo;
-  student.microcicloByWeek[prepWeek].observaciones = observaciones;
-
-  const isVisibleMicro = document.getElementById('vis-microciclo')?.checked ?? true;
-  const isVisibleDias = document.getElementById('vis-dias-semana')?.checked ?? true;
-  const isVisibleDiaPrep = document.getElementById('vis-dia-prep')?.checked ?? true;
-
-  student.visibilitySettings = {
-    ...student.visibilitySettings,
-    microciclo: isVisibleMicro,
-    diasSemana: isVisibleDias,
-    diaEnPreparacion: isVisibleDiaPrep
-  };
-
-  await saveStudentDifferential(student);
-  studentsDatabase = await fetchStudentsFromSupabase();
-  renderApp();
+    await saveStudentDifferential(student);
+    studentsDatabase = await fetchStudentsFromSupabase();
+    renderApp();
 };
 
 window.handleMicroTipoChangeAuto = function(val) {
-  const customInput = document.getElementById('micro-tipo-custom');
-  if (customInput) {
-    if (val === '__custom__') {
-      customInput.classList.remove('hidden');
-      customInput.focus();
-    } else {
-      customInput.classList.add('hidden');
-      customInput.value = '';
-      window.saveMicrocicloStudentAuto();
+    const customInput = document.getElementById('micro-tipo-custom');
+    if (customInput) {
+        if (val === '__custom__') {
+            customInput.classList.remove('hidden');
+            customInput.focus();
+        } else {
+            customInput.classList.add('hidden');
+            customInput.value = '';
+            window.saveMicrocicloStudentAuto();
+        }
     }
-  }
 };
 
-// Sugiere la URL del video automáticamente cuando el profesor escribe el nombre del ejercicio
 window.autoSuggestVideoLink = function(nameValue) {
     const mediaInput = document.getElementById('ex-modal-media-url');
     const badge = document.getElementById('ex-modal-video-badge');
     if (!mediaInput) return;
-
     const cleanKey = (nameValue || '').trim().toLowerCase();
     if (!cleanKey) {
         if (badge) badge.classList.add('hidden');
         return;
     }
-
     const bank = getVideoBank();
     if (bank[cleanKey]) {
-        // Solo autocompleta si la casilla de URL está vacía o tenía un valor previo automático
         if (!mediaInput.value.trim() || mediaInput.dataset.autoFilled === 'true') {
             mediaInput.value = bank[cleanKey];
             mediaInput.dataset.autoFilled = 'true';
@@ -1675,27 +1542,23 @@ window.autoSuggestVideoLink = function(nameValue) {
     }
 };
 
-// Abre la búsqueda directa en YouTube en una ventana emergente flotante pop-up
 window.searchVideoInYouTube = function() {
     const nameInput = document.getElementById('ex-modal-name');
     const exerciseName = (nameInput?.value || '').trim();
-    
     if (!exerciseName) {
         if (typeof showToast === 'function') showToast("Escribe primero el nombre del ejercicio para buscar su video.");
         if (nameInput) nameInput.focus();
         return;
     }
-
-    // Construye la búsqueda directa concatenando el nombre del ejercicio
     const searchQuery = `${exerciseName} ejercicio entrenamiento`;
     const encodedQuery = encodeURIComponent(searchQuery);
-    // Construcción dinámica de la URL
-    const p = 'https:';
-    const h = 'www.youtube.com';
-    const path = 'results';
-    const ytUrl = `${p}//${h}/${path}?search_query=${encodedQuery}`;
 
-    // Dimensiones y posición centrada para la ventana flotante pop-up
+    // 🟢 URL absoluta limpia con https:// explícito
+    const p1 = 'you';
+    const p2 = 'tube';
+    const domain = `${p1}${p2}.com`;
+    const ytUrl = `https://www.${domain}/results?search_query=${encodedQuery}`;
+
     const width = 480;
     const height = 660;
     const left = Math.max(0, Math.round((window.screen.width - width) / 2));
