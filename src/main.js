@@ -8,7 +8,9 @@ import {
     generateStudentAccessToken,
     loginProfesorWithSupabase,
     syncVideoBankToSupabase,
-    fetchVideoBankFromSupabase
+    fetchVideoBankFromSupabase,
+    fetchExerciseNamesFromSupabase,
+    syncExerciseNameToSupabase
 } from './services/supabase.js';
 
 import { renderFichaView } from './components/FichaView.js';
