@@ -2,9 +2,9 @@ import { parseMediaInfo } from './ExerciseCard.js';
 
 /**
  * Componente: EjercicioView.js
- * Modal 'Todo en Uno' + Ajuste Rápido en Tarjeta + Campo "Nombre del Ejercicio" con Datalist desde Supabase
+ * Modal 'Todo en Uno' + Ajuste Rápido en Tarjeta + Lista Desplegable Flotante Mobile-First de Ejercicios
  */
-export function renderEjercicioView(student = {}, globalExerciseNames = []) {
+export function renderEjercicioView(student = {}) {
     if (!student || !student.id) {
         return `
         <div class="bg-slate-900 border border-amber-500/30 rounded-2xl p-6 text-center text-slate-400 space-y-2">
@@ -33,23 +33,6 @@ export function renderEjercicioView(student = {}, globalExerciseNames = []) {
         ? Math.max(...sortedExercises.map(e => e.exerciseNumber || 0)) + 1
         : 1;
 
-    // Recopilar nombres de ejercicios únicos del alumno actual + lista global de Supabase
-    const localNamesSet = new Set(globalExerciseNames);
-    Object.values(routine).forEach(wObj => {
-        if (wObj && typeof wObj === 'object') {
-            Object.values(wObj).forEach(dArr => {
-                if (Array.isArray(dArr)) {
-                    dArr.forEach(ex => {
-                        if (ex && ex.name && ex.name.trim()) {
-                            localNamesSet.add(ex.name.trim());
-                        }
-                    });
-                }
-            });
-        }
-    });
-    const allExerciseNames = Array.from(localNamesSet).sort((a, b) => a.localeCompare(b));
-
     // Presets oficiales de RPE/RIR
     const rpePresets = [
         '-',
@@ -73,6 +56,9 @@ export function renderEjercicioView(student = {}, globalExerciseNames = []) {
             <p class="text-xs font-semibold text-slate-300">
                 No hay ejercicios asignados aún para la <strong class="text-sky-300">Semana ${prepWeek}</strong> - <strong class="text-amber-300">Día ${prepDay} (${diaNombre})</strong>.
             </p>
+            <button onclick="window.openAddExerciseModal(${nextExerciseNum})" class="bg-amber-500 hover:bg-amber-400 text-slate-950 text-xs font-black px-4 py-2.5 rounded-xl shadow transition active:scale-95 inline-flex items-center gap-1.5 cursor-pointer">
+                <i data-feather="plus-circle" class="w-4 h-4"></i> + Cargar Ejercicio 1
+            </button>
         </div>`;
     } else {
         exercisesListHTML = sortedExercises.map((ex, idx) => {
@@ -83,6 +69,7 @@ export function renderEjercicioView(student = {}, globalExerciseNames = []) {
             const isVisible = ex.visible !== false;
             const media = parseMediaInfo(ex.mediaUrl);
 
+            // Valores de variables con respaldo por defecto
             const seriesVal = ex.series || 4;
             const tipoSerieVal = ex.tipoSerie || 'Normal';
             const setRestVal = ex.setRest || '90s';
@@ -103,6 +90,7 @@ export function renderEjercicioView(student = {}, globalExerciseNames = []) {
 
             return `
             <div class="bg-slate-900/90 rounded-2xl p-4 border border-amber-500/40 shadow-xl space-y-3">
+                <!-- CABECERA DE TARJETA -->
                 <div class="flex items-center justify-between border-b border-slate-800 pb-2.5">
                     <div class="flex items-center gap-2 truncate pr-2">
                         <span class="bg-amber-500 text-slate-950 font-black text-xs px-2.5 py-1 rounded-xl shadow shrink-0">
@@ -127,6 +115,7 @@ export function renderEjercicioView(student = {}, globalExerciseNames = []) {
                     ${ex.notes}
                 </div>` : ''}
 
+                <!-- PANEL DE EDICIÓN RÁPIDA IN-LINE DIRECTO EN TARJETA -->
                 <div class="bg-slate-950/80 p-3 rounded-xl border border-slate-800 space-y-2.5">
                     <div class="flex items-center justify-between border-b border-slate-800/60 pb-1">
                         <span class="text-[10px] font-black text-amber-400 uppercase tracking-wider flex items-center gap-1">
@@ -136,6 +125,7 @@ export function renderEjercicioView(student = {}, globalExerciseNames = []) {
                     </div>
 
                     <div class="grid grid-cols-2 gap-2 text-xs">
+                        <!-- Series & Tipo -->
                         <div class="bg-slate-900 p-2 rounded-lg border border-slate-800 space-y-1">
                             <label class="text-[9px] font-bold text-slate-400 block uppercase">Series / Estructura</label>
                             <div class="flex gap-1">
@@ -153,6 +143,7 @@ export function renderEjercicioView(student = {}, globalExerciseNames = []) {
                             </div>
                         </div>
 
+                        <!-- Repeticiones & RPE / RIR -->
                         <div class="bg-slate-900 p-2 rounded-lg border border-slate-800 space-y-1">
                             <label class="text-[9px] font-bold text-slate-400 block uppercase">Reps / Esfuerzo (RPE/RIR)</label>
                             <div class="flex gap-1">
@@ -164,6 +155,7 @@ export function renderEjercicioView(student = {}, globalExerciseNames = []) {
                             </div>
                         </div>
 
+                        <!-- Carga (Kg) & %RM -->
                         <div class="bg-slate-900 p-2 rounded-lg border border-slate-800 space-y-1">
                             <label class="text-[9px] font-bold text-slate-400 block uppercase">Carga (Kg) / %RM</label>
                             <div class="flex gap-1">
@@ -172,6 +164,7 @@ export function renderEjercicioView(student = {}, globalExerciseNames = []) {
                             </div>
                         </div>
 
+                        <!-- Descanso & Tempo -->
                         <div class="bg-slate-900 p-2 rounded-lg border border-slate-800 space-y-1">
                             <label class="text-[9px] font-bold text-slate-400 block uppercase">Pausa / Tempo</label>
                             <div class="flex gap-1">
@@ -182,6 +175,7 @@ export function renderEjercicioView(student = {}, globalExerciseNames = []) {
                     </div>
                 </div>
 
+                <!-- BOTONES DE ACCIÓN COMPLETA -->
                 <div class="flex justify-end gap-2 pt-1 border-t border-slate-800/80">
                     <button onclick="window.editExerciseInModal('${exId}')" class="text-[10px] bg-slate-800 hover:bg-slate-700 text-amber-300 px-3 py-1.5 rounded-xl font-bold border border-slate-700 flex items-center gap-1 transition cursor-pointer">
                         <i data-feather="edit-2" class="w-3 h-3"></i> Editar Modal Completo
@@ -196,9 +190,9 @@ export function renderEjercicioView(student = {}, globalExerciseNames = []) {
 
     return `
     <div class="space-y-4">
-        <!-- CABECERA A ANCHO COMPLETO -->
-        <div class="bg-slate-900/90 rounded-2xl p-4 border border-amber-500/30 shadow-xl flex justify-between items-center">
-            <div class="flex items-center gap-2 min-w-0">
+        <!-- CABECERA DE MÓDULO A ANCHO COMPLETO -->
+        <div class="bg-slate-900/90 rounded-2xl p-4 border border-amber-500/30 shadow-xl">
+            <div class="flex items-center gap-2">
                 <i data-feather="film" class="w-5 h-5 text-amber-400 shrink-0"></i>
                 <div class="min-w-0">
                     <h2 class="text-xs font-black text-amber-400 uppercase tracking-wider truncate">Diseño de Ejercicios y Prescripción</h2>
@@ -213,18 +207,18 @@ export function renderEjercicioView(student = {}, globalExerciseNames = []) {
             ${exercisesListHTML}
         </div>
 
-        <!-- BOTÓN AGREGAR EJERCICIO REUBICADO AL PIE -->
+        <!-- BOTÓN AGREGAR EJERCICIO DESTACADO AL PIE DEL MÓDULO -->
         <div class="pt-2">
             <button onclick="window.openAddExerciseModal(${nextExerciseNum})" class="w-full bg-amber-500 hover:bg-amber-400 text-slate-950 text-xs font-black py-3 rounded-2xl shadow-xl transition active:scale-95 flex items-center justify-center gap-2 cursor-pointer">
                 <i data-feather="plus-circle" class="w-4 h-4"></i> + Agregar Ejercicio ${nextExerciseNum}
             </button>
         </div>
 
-        ${renderExerciseModalHTML(allExerciseNames)}
+        ${renderExerciseModalHTML()}
     </div>`;
 }
 
-function renderExerciseModalHTML(exerciseNames = []) {
+function renderExerciseModalHTML() {
     const rpePresets = [
         '-',
         'RPE 6 (Fácil / Calentamiento)',
@@ -263,14 +257,21 @@ function renderExerciseModalHTML(exerciseNames = []) {
                             <label class="block text-[9px] font-bold text-slate-400 mb-1">N° Orden</label>
                             <input type="number" id="ex-modal-num-display" min="1" value="1" onchange="document.getElementById('ex-modal-num').value = this.value" class="w-full bg-slate-900 border border-amber-500/50 rounded-xl p-2 text-xs text-amber-400 font-black text-center focus:outline-none">
                         </div>
-                        <div class="col-span-2">
-                            <!-- 🟢 1. ETIQUETA RENOMBRADA A "Nombre del Ejercicio *" -->
-                            <label class="block text-[9px] font-bold text-slate-400 mb-1">Nombre del Ejercicio *</label>
-                            <!-- 🟢 2. DATALIST DESPLEGABLE CON AUTOCOMPLETADO DESDE SUPABASE -->
-                            <input type="text" id="ex-modal-name" list="exercise-names-list" required placeholder="Ej: Sentadilla Trasera con Barra" oninput="window.autoSuggestVideoLink(this.value)" class="w-full bg-slate-900 border border-slate-800 rounded-xl p-2 text-xs text-white font-semibold focus:outline-none focus:border-amber-500">
-                            <datalist id="exercise-names-list">
-                                ${exerciseNames.map(name => `<option value="${name}"></option>`).join('')}
-                            </datalist>
+
+                        <!-- 📱 CAMPO DE NOMBRE Y DESPLEGABLE TÁCTIL 100% RESPONSIVE MÓVIL -->
+                        <div class="col-span-2 space-y-1 relative" id="ex-name-container">
+                            <label class="block text-[9px] font-bold text-slate-400">Nombre del Ejercicio *</label>
+                            <div class="flex gap-1.5 items-center">
+                                <input type="text" id="ex-modal-name" required placeholder="Escribe o busca un ejercicio..." autocomplete="off" onfocus="window.showExerciseSuggestions()" oninput="window.filterExerciseSuggestions(this.value); window.autoSuggestVideoLink(this.value)" class="w-full bg-slate-900 border border-slate-800 rounded-xl p-2 text-xs text-white font-semibold focus:outline-none focus:border-amber-500">
+                                <button type="button" onclick="window.toggleExerciseSuggestions()" class="bg-amber-500/20 hover:bg-amber-500/30 text-amber-400 p-2 rounded-xl border border-amber-500/40 text-xs font-bold shrink-0 flex items-center gap-1 cursor-pointer active:scale-95" title="Ver catálogo de ejercicios">
+                                    📋 <span class="text-[9px] font-black">Lista</span>
+                                </button>
+                            </div>
+
+                            <!-- DESPLEGABLE FLOTANTE TÁCTIL MÓVIL -->
+                            <div id="exercise-suggestions-container" class="hidden absolute left-0 right-0 top-full mt-1 bg-slate-900 border border-amber-500/60 rounded-2xl shadow-2xl z-50 max-h-48 overflow-y-auto p-1.5 space-y-1 backdrop-blur-md">
+                                <!-- Se puebla dinámicamente -->
+                            </div>
                         </div>
                     </div>
 

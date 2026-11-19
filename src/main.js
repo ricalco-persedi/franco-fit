@@ -818,56 +818,99 @@ export async function loadAndSyncVideoBank() {
     return getVideoBank();
 }
 
-// 🟢 REFRESCAR DATALIST DE NOMBRES DE EJERCICIOS DESDE SUPABASE AL ABRIR EL MODAL
-window.openAddExerciseModal = async function(nextNum) {
+// 🟢 ABRIR MODAL CON RESPUESTA INMEDIATA (Sincrónico)
+window.openAddExerciseModal = function(nextNum) {
     const modal = document.getElementById('exercise-entity-modal');
     if (!modal) return;
 
-    // Resetear valores del formulario
-    document.getElementById('ex-modal-id').value = '';
-    document.getElementById('ex-modal-num').value = nextNum || 1;
-    document.getElementById('ex-modal-num-display').value = nextNum || 1;
-    document.getElementById('ex-modal-name').value = '';
-    document.getElementById('ex-modal-category').value = 'Peso Libre';
-    document.getElementById('ex-modal-category-custom').classList.add('hidden');
-    document.getElementById('ex-modal-category-custom').value = '';
-    document.getElementById('ex-modal-media-url').value = '';
-    document.getElementById('ex-modal-notes').value = '';
+    // 1. Mostrar modal DE INMEDIATO (Respuesta instantánea a clics/taps)
+    modal.classList.remove('hidden');
 
-    document.getElementById('ex-modal-series').value = 4;
-    document.getElementById('ex-modal-tipo-serie').value = 'Normal';
-    document.getElementById('ex-modal-set-rest').value = '90s';
-    document.getElementById('ex-modal-block-rest').value = '120s';
+    // 2. Título dinámico
+    const titleEl = document.getElementById('ex-modal-title');
+    if (titleEl) {
+        titleEl.innerHTML = `<i data-feather="plus-circle" class="w-4 h-4"></i> Cargar Ejercicio ${nextNum || 1} ('Todo en Uno')`;
+    }
 
-    document.getElementById('ex-modal-reps').value = '8-12';
-    document.getElementById('ex-modal-rpe-select').value = 'RPE 8 (Exigente / 2 reps en reserva)';
-    document.getElementById('ex-modal-rpe-custom').classList.add('hidden');
-    document.getElementById('ex-modal-rpe-custom').value = '';
-    document.getElementById('ex-modal-tempo').value = '3-0-1-0';
+    // 3. Resetear todos los campos
+    const idEl = document.getElementById('ex-modal-id');
+    if (idEl) idEl.value = '';
 
-    document.getElementById('ex-modal-carga').value = 0;
-    document.getElementById('ex-modal-rm').value = '75%';
-    document.getElementById('ex-modal-progression').value = 'Lineal';
+    const numEl = document.getElementById('ex-modal-num');
+    if (numEl) numEl.value = nextNum || 1;
+
+    const numDispEl = document.getElementById('ex-modal-num-display');
+    if (numDispEl) numDispEl.value = nextNum || 1;
+
+    // Campo de nombre 100% en blanco
+    const nameEl = document.getElementById('ex-modal-name');
+    if (nameEl) nameEl.value = '';
+
+    const container = document.getElementById('exercise-suggestions-container');
+    if (container) container.classList.add('hidden');
+
+    const catSelect = document.getElementById('ex-modal-category');
+    if (catSelect) catSelect.value = 'Peso Libre';
+
+    const catCustom = document.getElementById('ex-modal-category-custom');
+    if (catCustom) {
+        catCustom.value = '';
+        catCustom.classList.add('hidden');
+    }
+
+    const mediaUrlEl = document.getElementById('ex-modal-media-url');
+    if (mediaUrlEl) mediaUrlEl.value = '';
+
+    const notesEl = document.getElementById('ex-modal-notes');
+    if (notesEl) notesEl.value = '';
 
     const videoBadge = document.getElementById('ex-modal-video-badge');
     if (videoBadge) videoBadge.classList.add('hidden');
 
-    // 🟢 Título dinámico seguro con validación y Feather Icons
-    const titleEl = document.getElementById('ex-modal-title');
-    if (titleEl) {
-        titleEl.innerHTML = `<i data-feather="plus-circle" class="w-4 h-4"></i> Cargar Ejercicio ${nextNum || 1} ('Todo en Uno')`;
-        if (typeof feather !== 'undefined') feather.replace();
+    const seriesEl = document.getElementById('ex-modal-series');
+    if (seriesEl) seriesEl.value = 4;
+
+    const tipoSerieEl = document.getElementById('ex-modal-tipo-serie');
+    if (tipoSerieEl) tipoSerieEl.value = 'Normal';
+
+    const setRestEl = document.getElementById('ex-modal-set-rest');
+    if (setRestEl) setRestEl.value = '90s';
+
+    const blockRestEl = document.getElementById('ex-modal-block-rest');
+    if (blockRestEl) blockRestEl.value = '120s';
+
+    const repsEl = document.getElementById('ex-modal-reps');
+    if (repsEl) repsEl.value = '8-12';
+
+    const rpeSelectEl = document.getElementById('ex-modal-rpe-select');
+    if (rpeSelectEl) rpeSelectEl.value = 'RPE 8 (Exigente / 2 reps en reserva)';
+
+    const rpeCustomEl = document.getElementById('ex-modal-rpe-custom');
+    if (rpeCustomEl) {
+        rpeCustomEl.value = '';
+        rpeCustomEl.classList.add('hidden');
     }
 
-    // Cargar nombres de ejercicios desde Supabase en el datalist
-    const names = await fetchExerciseNamesFromSupabase();
-    const datalist = document.getElementById('exercise-names-list');
-    if (datalist) {
-        datalist.innerHTML = names.map(n => `<option value="${n}"></option>`).join('');
-    }
+    const tempoEl = document.getElementById('ex-modal-tempo');
+    if (tempoEl) tempoEl.value = '3-0-1-0';
 
-    modal.classList.remove('hidden');
+    const cargaEl = document.getElementById('ex-modal-carga');
+    if (cargaEl) cargaEl.value = 0;
+
+    const rmEl = document.getElementById('ex-modal-rm');
+    if (rmEl) rmEl.value = '75%';
+
+    const progEl = document.getElementById('ex-modal-progression');
+    if (progEl) progEl.value = 'Lineal';
+
     if (window.feather) window.feather.replace();
+
+    // 4. Pre-cargar catálogo de ejercicios desde Supabase en segundo plano
+    fetchExerciseNamesFromSupabase().then(names => {
+        _cachedExerciseNamesList = names || [];
+    }).catch(err => {
+        console.warn('Error pre-cargando catálogo de ejercicios desde Supabase:', err);
+    });
 };
 
 window.handleExRpeSelectChange = function(value) {
@@ -995,10 +1038,68 @@ window.editExerciseInModal = function(exId) {
     const modal = document.getElementById('exercise-entity-modal');
     if (!modal) return;
 
+    modal.classList.remove('hidden');
+
+    const titleEl = document.getElementById('ex-modal-title');
+    if (titleEl) {
+        titleEl.innerHTML = `<i data-feather="edit-2" class="w-4 h-4"></i> Editar Ejercicio ${ex.exerciseNumber || 1}`;
+    }
+
     document.getElementById('ex-modal-id').value = ex.id || '';
     document.getElementById('ex-modal-num').value = ex.exerciseNumber || 1;
     document.getElementById('ex-modal-num-display').value = ex.exerciseNumber || 1;
-    document.getElementById('ex-modal-name').value = ex.name || '';
+
+    // Si el nombre es un valor por defecto como 'Ejercicio 1', lo dejamos en blanco para facilitar la edición
+    const cleanName = (ex.name && !ex.name.startsWith('Ejercicio ')) ? ex.name : '';
+    const nameEl = document.getElementById('ex-modal-name');
+    if (nameEl) nameEl.value = cleanName;
+
+    const container = document.getElementById('exercise-suggestions-container');
+    if (container) container.classList.add('hidden');
+
+    fetchExerciseNamesFromSupabase().then(names => {
+        _cachedExerciseNamesList = names || [];
+    }).catch(err => {
+        console.warn('Error pre-cargando catálogo desde Supabase:', err);
+    });
+
+    const catSelect = document.getElementById('ex-modal-category');
+    const catCustom = document.getElementById('ex-modal-category-custom');
+    const categoriesBase = ['Peso Libre', 'Máquinas', 'Calistenia / Peso Corporal', 'Cardio', 'Flexibilidad / Movilidad'];
+    if (categoriesBase.includes(ex.category)) {
+        if (catSelect) catSelect.value = ex.category;
+        if (catCustom) {
+            catCustom.value = '';
+            catCustom.classList.add('hidden');
+        }
+    } else {
+        if (catSelect) catSelect.value = '__custom__';
+        if (catCustom) {
+            catCustom.value = ex.category || '';
+            catCustom.classList.remove('hidden');
+        }
+    }
+
+    const mediaUrlEl = document.getElementById('ex-modal-media-url');
+    if (mediaUrlEl) mediaUrlEl.value = ex.mediaUrl || '';
+
+    const notesEl = document.getElementById('ex-modal-notes');
+    if (notesEl) notesEl.value = ex.notes || '';
+
+    const seriesEl = document.getElementById('ex-modal-series');
+    if (seriesEl) seriesEl.value = ex.series || 4;
+
+    const tipoSerieEl = document.getElementById('ex-modal-tipo-serie');
+    if (tipoSerieEl) tipoSerieEl.value = ex.tipoSerie || 'Normal';
+
+    const setRestEl = document.getElementById('ex-modal-set-rest');
+    if (setRestEl) setRestEl.value = ex.setRest || '90s';
+
+    const blockRestEl = document.getElementById('ex-modal-block-rest');
+    if (blockRestEl) blockRestEl.value = ex.blockRest || '120s';
+
+    const repsEl = document.getElementById('ex-modal-reps');
+    if (repsEl) repsEl.value = ex.repeticiones || ex.repsRange || '8-12';
 
     const rpePresets = [
         '-',
@@ -1012,35 +1113,36 @@ window.editExerciseInModal = function(exId) {
         'RIR 1',
         'RIR 0 (Fallo)'
     ];
-    const rpeSelect = document.getElementById('ex-modal-rpe-select');
-    const rpeCustom = document.getElementById('ex-modal-rpe-custom');
-    const currentRpe = ex.rpe || 'RPE 8 (Exigente / 2 reps en reserva)';
 
-    if (rpePresets.includes(currentRpe)) {
-        if (rpeSelect) rpeSelect.value = currentRpe;
-        if (rpeCustom) {
-            rpeCustom.value = '';
-            rpeCustom.classList.add('hidden');
+    const rpeSelectEl = document.getElementById('ex-modal-rpe-select');
+    const rpeCustomEl = document.getElementById('ex-modal-rpe-custom');
+    if (rpePresets.includes(ex.rpe)) {
+        if (rpeSelectEl) rpeSelectEl.value = ex.rpe;
+        if (rpeCustomEl) {
+            rpeCustomEl.value = '';
+            rpeCustomEl.classList.add('hidden');
         }
     } else {
-        if (rpeSelect) rpeSelect.value = '__custom__';
-        if (rpeCustom) {
-            rpeCustom.value = currentRpe;
-            rpeCustom.classList.remove('hidden');
+        if (rpeSelectEl) rpeSelectEl.value = '__custom__';
+        if (rpeCustomEl) {
+            rpeCustomEl.value = ex.rpe || '';
+            rpeCustomEl.classList.remove('hidden');
         }
     }
 
-    document.getElementById('ex-modal-series').value = ex.series || 4;
-    document.getElementById('ex-modal-tipo-serie').value = ex.tipoSerie || 'Normal';
-    document.getElementById('ex-modal-set-rest').value = ex.setRest || '90s';
-    document.getElementById('ex-modal-block-rest').value = ex.blockRest || '120s';
-    document.getElementById('ex-modal-reps').value = ex.repeticiones || ex.repsRange || '8-12';
-    document.getElementById('ex-modal-tempo').value = ex.tempo || '3-0-1-0';
-    document.getElementById('ex-modal-carga').value = ex.cargaKg !== undefined ? ex.cargaKg : '0';
-    document.getElementById('ex-modal-rm').value = ex.porcentajeRM || '75%';
-    document.getElementById('ex-modal-progression').value = ex.progression || 'Lineal';
+    const tempoEl = document.getElementById('ex-modal-tempo');
+    if (tempoEl) tempoEl.value = ex.tempo || '3-0-1-0';
 
-    modal.classList.remove('hidden');
+    const cargaEl = document.getElementById('ex-modal-carga');
+    if (cargaEl) cargaEl.value = ex.cargaKg !== undefined ? ex.cargaKg : 0;
+
+    const rmEl = document.getElementById('ex-modal-rm');
+    if (rmEl) rmEl.value = ex.porcentajeRM || '75%';
+
+    const progEl = document.getElementById('ex-modal-progression');
+    if (progEl) progEl.value = ex.progression || 'Lineal';
+
+    if (window.feather) window.feather.replace();
 };
 
 window.closeExerciseModal = function() {
@@ -1587,3 +1689,99 @@ window.searchVideoInYouTube = function() {
         `width=${width},height=${height},top=${top},left=${left},scrollbars=yes,resizable=yes`
     );
 };
+
+// =========================================================================
+// 📱 CONTROLADORES DEL DESPLEGABLE FLOTANTE MOBILE-FIRST (100% CELULARES / TOUCH)
+// =========================================================================
+
+let _cachedExerciseNamesList = [];
+
+window.showExerciseSuggestions = async function() {
+    const container = document.getElementById('exercise-suggestions-container');
+    if (!container) return;
+
+    if (_cachedExerciseNamesList.length === 0) {
+        try {
+            _cachedExerciseNamesList = await fetchExerciseNamesFromSupabase();
+        } catch (e) {
+            _cachedExerciseNamesList = [];
+        }
+    }
+
+    const currentVal = (document.getElementById('ex-modal-name')?.value || '').trim();
+    if (currentVal) {
+        window.filterExerciseSuggestions(currentVal);
+    } else {
+        window.renderExerciseSuggestionsList(_cachedExerciseNamesList);
+    }
+    container.classList.remove('hidden');
+};
+
+window.toggleExerciseSuggestions = async function() {
+    const container = document.getElementById('exercise-suggestions-container');
+    if (!container) return;
+
+    if (container.classList.contains('hidden')) {
+        await window.showExerciseSuggestions();
+    } else {
+        container.classList.add('hidden');
+    }
+};
+
+window.filterExerciseSuggestions = function(query) {
+    const container = document.getElementById('exercise-suggestions-container');
+    if (!container) return;
+
+    const q = (query || '').trim().toLowerCase();
+    if (!q) {
+        window.renderExerciseSuggestionsList(_cachedExerciseNamesList);
+        container.classList.remove('hidden');
+        return;
+    }
+
+    const filtered = _cachedExerciseNamesList.filter(n => n.toLowerCase().includes(q));
+    window.renderExerciseSuggestionsList(filtered);
+    container.classList.remove('hidden');
+};
+
+window.renderExerciseSuggestionsList = function(list) {
+    const container = document.getElementById('exercise-suggestions-container');
+    if (!container) return;
+
+    if (!list || list.length === 0) {
+        container.innerHTML = `<div class="p-2.5 text-[10px] text-slate-400 italic text-center">Escribe para registrar un nuevo ejercicio</div>`;
+        return;
+    }
+
+    container.innerHTML = list.map(name => {
+        const safeName = name.replace(/'/g, "\'");
+        return `
+        <div onclick="window.selectExerciseSuggestion('${safeName}')" class="p-2.5 rounded-xl text-xs font-bold text-slate-200 hover:bg-amber-500/20 active:bg-amber-500 active:text-slate-950 transition cursor-pointer flex justify-between items-center select-none border border-transparent hover:border-amber-500/30">
+            <span>${name}</span>
+            <span class="text-[9px] text-amber-400 font-normal bg-amber-500/10 px-1.5 py-0.5 rounded">Seleccionar ↵</span>
+        </div>`;
+    }).join('');
+};
+
+window.selectExerciseSuggestion = function(name) {
+    const nameEl = document.getElementById('ex-modal-name');
+    if (nameEl) {
+        nameEl.value = name;
+        if (window.autoSuggestVideoLink) {
+            window.autoSuggestVideoLink(name);
+        }
+    }
+    const container = document.getElementById('exercise-suggestions-container');
+    if (container) container.classList.add('hidden');
+};
+
+// Listener global para cerrar sugerencias al tocar fuera en pantallas táctiles
+if (typeof document !== 'undefined') {
+    document.addEventListener('click', function(e) {
+        const container = document.getElementById('exercise-suggestions-container');
+        const nameContainer = document.getElementById('ex-name-container');
+        if (container && nameContainer && !nameContainer.contains(e.target)) {
+            container.classList.add('hidden');
+        }
+    });
+}
