@@ -816,47 +816,56 @@ export async function loadAndSyncVideoBank() {
     return getVideoBank();
 }
 
-window.openAddExerciseModal = function(nextNum) {
+// 🟢 REFRESCAR DATALIST DE NOMBRES DE EJERCICIOS DESDE SUPABASE AL ABRIR EL MODAL
+window.openAddExerciseModal = async function(nextNum) {
     const modal = document.getElementById('exercise-entity-modal');
     if (!modal) return;
-    const titleEl = document.getElementById('ex-modal-title');
-    if (titleEl) {
-        titleEl.innerHTML = `<i data-feather="plus-circle" class="w-4 h-4"></i> Cargar Ejercicio ${nextNum || 1} ('Todo en Uno')`;
-        if (typeof feather !== 'undefined') feather.replace();
-    }
+
+    // Resetear valores del formulario
     document.getElementById('ex-modal-id').value = '';
     document.getElementById('ex-modal-num').value = nextNum || 1;
     document.getElementById('ex-modal-num-display').value = nextNum || 1;
     document.getElementById('ex-modal-name').value = '';
-    const catSelect = document.getElementById('ex-modal-category');
-    if (catSelect) catSelect.value = 'Peso Libre';
-    const catCustom = document.getElementById('ex-modal-category-custom');
-    if (catCustom) {
-        catCustom.value = '';
-        catCustom.classList.add('hidden');
-    }
+    document.getElementById('ex-modal-category').value = 'Peso Libre';
+    document.getElementById('ex-modal-category-custom').classList.add('hidden');
+    document.getElementById('ex-modal-category-custom').value = '';
     document.getElementById('ex-modal-media-url').value = '';
     document.getElementById('ex-modal-notes').value = '';
-    const badge = document.getElementById('ex-modal-video-badge');
-    if (badge) badge.classList.add('hidden');
 
     document.getElementById('ex-modal-series').value = 4;
     document.getElementById('ex-modal-tipo-serie').value = 'Normal';
     document.getElementById('ex-modal-set-rest').value = '90s';
     document.getElementById('ex-modal-block-rest').value = '120s';
+
     document.getElementById('ex-modal-reps').value = '8-12';
-    const rpeSelect = document.getElementById('ex-modal-rpe-select');
-    const rpeCustom = document.getElementById('ex-modal-rpe-custom');
-    if (rpeSelect) rpeSelect.value = 'RPE 8 (Exigente / 2 reps en reserva)';
-    if (rpeCustom) {
-        rpeCustom.value = '';
-        rpeCustom.classList.add('hidden');
-    }
+    document.getElementById('ex-modal-rpe-select').value = 'RPE 8 (Exigente / 2 reps en reserva)';
+    document.getElementById('ex-modal-rpe-custom').classList.add('hidden');
+    document.getElementById('ex-modal-rpe-custom').value = '';
     document.getElementById('ex-modal-tempo').value = '3-0-1-0';
-    document.getElementById('ex-modal-carga').value = '0';
+
+    document.getElementById('ex-modal-carga').value = 0;
     document.getElementById('ex-modal-rm').value = '75%';
     document.getElementById('ex-modal-progression').value = 'Lineal';
+
+    const videoBadge = document.getElementById('ex-modal-video-badge');
+    if (videoBadge) videoBadge.classList.add('hidden');
+
+    // 🟢 Título dinámico seguro con validación y Feather Icons
+    const titleEl = document.getElementById('ex-modal-title');
+    if (titleEl) {
+        titleEl.innerHTML = `<i data-feather="plus-circle" class="w-4 h-4"></i> Cargar Ejercicio ${nextNum || 1} ('Todo en Uno')`;
+        if (typeof feather !== 'undefined') feather.replace();
+    }
+
+    // Cargar nombres de ejercicios desde Supabase en el datalist
+    const names = await fetchExerciseNamesFromSupabase();
+    const datalist = document.getElementById('exercise-names-list');
+    if (datalist) {
+        datalist.innerHTML = names.map(n => `<option value="${n}"></option>`).join('');
+    }
+
     modal.classList.remove('hidden');
+    if (window.feather) window.feather.replace();
 };
 
 window.handleExRpeSelectChange = function(value) {
@@ -873,6 +882,7 @@ window.handleExRpeSelectChange = function(value) {
 
 window.saveExerciseFromModal = async function() {
     if (!currentStudentId) return;
+    studentsDatabase = await fetchStudentsFromSupabase();
     const student = studentsDatabase.find(s => String(s.id) === String(currentStudentId));
     if (!student) return;
 
@@ -888,6 +898,10 @@ window.saveExerciseFromModal = async function() {
         return;
     }
 
+    // 🟢 Sincronizar nombre del ejercicio directamente en Supabase (no en caché)
+    await syncExerciseNameToSupabase(exName);
+
+    // Lectura de RPE/RIR
     const rpeSelectVal = document.getElementById('ex-modal-rpe-select')?.value;
     const rpeCustomVal = (document.getElementById('ex-modal-rpe-custom')?.value || '').trim();
     let rpe = 'RPE 8 (Exigente / 2 reps en reserva)';
@@ -900,6 +914,7 @@ window.saveExerciseFromModal = async function() {
     const catSelect = document.getElementById('ex-modal-category')?.value;
     const catCustom = (document.getElementById('ex-modal-category-custom')?.value || '').trim();
     let category = catSelect === '__custom__' ? (catCustom || 'Personalizada') : (catSelect || 'Peso Libre');
+
     const mediaUrl = (document.getElementById('ex-modal-media-url')?.value || '').trim();
     const notes = (document.getElementById('ex-modal-notes')?.value || '').trim();
     const series = parseInt(document.getElementById('ex-modal-series')?.value) || 4;
@@ -917,6 +932,7 @@ window.saveExerciseFromModal = async function() {
     if (!student.routine[prepWeek][prepDay]) student.routine[prepWeek][prepDay] = [];
 
     const dayList = student.routine[prepWeek][prepDay];
+
     const exData = {
         exerciseNumber: exNum,
         name: exName,
@@ -953,10 +969,9 @@ window.saveExerciseFromModal = async function() {
         syncVideoBankToSupabase(exName, mediaUrl);
     }
 
-    showToast(`Guardando ${exName}...`);
+    showToast(`Guardando ${exName} en Supabase...`);
     window.closeExerciseModal();
     await saveStudentDifferential(student);
-    studentsDatabase = await fetchStudentsFromSupabase();
     showToast(`¡${exName} guardado con éxito!`);
     renderApp();
 };

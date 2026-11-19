@@ -190,3 +190,59 @@ export async function generateStudentAccessToken(studentId) {
   }
   return newToken;
 }
+
+// 🟢 SINCRONIZACIÓN Y CONSULTA DIRECTA DE NOMBRES DE EJERCICIOS EN SUPABASE
+export async function syncExerciseNameToSupabase(exerciseName) {
+  if (!supabase || !exerciseName || !exerciseName.trim()) return;
+  const cleanName = exerciseName.trim();
+  try {
+    await supabase.from('video_bank').upsert({
+      exercise_name: cleanName,
+      updated_at: new Date().toISOString()
+    });
+  } catch (e) {
+    console.warn('Advertencia al guardar nombre de ejercicio en Supabase:', e);
+  }
+}
+
+export async function fetchExerciseNamesFromSupabase() {
+  const namesSet = new Set();
+  if (!supabase) return Array.from(namesSet);
+
+  try {
+    // 1. Obtener de la tabla de Supabase (video_bank)
+    const { data: bankData } = await supabase.from('video_bank').select('exercise_name');
+    if (bankData && Array.isArray(bankData)) {
+      bankData.forEach(item => {
+        if (item.exercise_name && item.exercise_name.trim()) {
+          namesSet.add(item.exercise_name.trim());
+        }
+      });
+    }
+
+    // 2. Escanear todas las rutinas registradas en la tabla 'alumnos' en Supabase
+    const { data: alumnosData } = await supabase.from('alumnos').select('routine');
+    if (alumnosData && Array.isArray(alumnosData)) {
+      alumnosData.forEach(al => {
+        const routine = al.routine || {};
+        Object.values(routine).forEach(weekObj => {
+          if (weekObj && typeof weekObj === 'object') {
+            Object.values(weekObj).forEach(dayArr => {
+              if (Array.isArray(dayArr)) {
+                dayArr.forEach(ex => {
+                  if (ex && ex.name && ex.name.trim()) {
+                    namesSet.add(ex.name.trim());
+                  }
+                });
+              }
+            });
+          }
+        });
+      });
+    }
+  } catch (err) {
+    console.warn('Advertencia leyendo nombres de ejercicios de Supabase:', err);
+  }
+
+  return Array.from(namesSet).sort((a, b) => a.localeCompare(b));
+}
